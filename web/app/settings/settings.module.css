@@ -1,0 +1,61 @@
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  max-width: 760px;
+}
+
+.swatch {
+  /* Shows whichever variant the current theme would use. */
+  --sw: var(--sw-dark);
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  align-items: center;
+  gap: 2px 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--fade);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .swatch {
+    --sw: var(--sw-light);
+  }
+}
+
+:root[data-theme='light'] .swatch {
+  --sw: var(--sw-light);
+}
+
+.swatch:hover {
+  border-color: var(--muted);
+}
+
+.swatch[aria-checked='true'] {
+  border-color: var(--sw);
+  box-shadow: inset 0 0 0 1px var(--sw);
+}
+
+.chip {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--sw);
+}
+
+.name {
+  font-weight: 500;
+}
+
+.flag {
+  grid-column: 2;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}

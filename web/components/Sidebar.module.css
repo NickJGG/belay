@@ -1,0 +1,118 @@
+.side {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  height: 100vh;
+  padding: 10px 8px;
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  background: var(--bg-side);
+}
+
+.ws {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 10px;
+  font-weight: 600;
+}
+
+.wsOn {
+  color: var(--fg);
+}
+
+.logo {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--accent);
+}
+
+.heading {
+  padding: 14px 6px 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.group {
+  display: contents;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 5px;
+  color: var(--muted);
+  transition:
+    background var(--fade),
+    color var(--fade);
+}
+
+.item:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
+
+.on,
+.on:hover {
+  background: color-mix(in oklch, var(--accent) 14%, transparent);
+  color: var(--fg);
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pin {
+  width: 14px;
+  color: var(--accent);
+  font-size: 11px;
+  text-align: center;
+}
+
+.dot {
+  width: 14px;
+  text-align: center;
+}
+
+.count {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.foot {
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+@media (max-width: 760px) {
+  .side {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+.button {
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hint {
+  display: inline-flex;
+  opacity: 0.8;
+}

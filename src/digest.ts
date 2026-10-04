@@ -8,7 +8,13 @@ export function clip(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 }
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/** The project's grill sessions that no task links to yet. */
+export function unlinkedGrill(project: Project, tasks: Task[], grill: GrillSession[]) {
+  const linked = new Set(tasks.map((t) => t.grill));
+  return grillForProject(grill.filter((g) => !linked.has(g.slug)), project);
+}
 
 export function digestLines(project: Project, tasks: Task[], sessions: Session[], grill: GrillSession[]): string[] {
   const byId = indexTasks(tasks);
@@ -33,9 +39,7 @@ export function digestLines(project: Project, tasks: Task[], sessions: Session[]
     });
     out.push(`recent: ${recent.join(' · ')}`);
   }
-  const linked = new Set(tasks.map((t) => t.grill));
-  const unlinked = grill.filter((g) => !linked.has(g.slug));
-  const { tagged, matched } = grillForProject(unlinked, project);
+  const { tagged, matched } = unlinkedGrill(project, tasks, grill);
   const parts: string[] = [];
   if (tagged.length) {
     const open = tagged.filter((g) => g.status === 'in-progress').sort((a, b) => (b.updated ?? '').localeCompare(a.updated ?? ''));

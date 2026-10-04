@@ -1,30 +1,15 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { claudeDir, dataDir } from './config.ts';
+import { claudeDir } from './config.ts';
 import { clip, digestLines } from './digest.ts';
 import { grillDir, grillMatches, loadGrillSessions } from './grill.ts';
 import { attachCommits, duration, localStamp, recentSessions } from './history.ts';
-import { indexTasks, isReady, next, openBlockers, projectForCwd } from './query.ts';
-import {
-  PROJECT_STATUSES,
-  SOURCES,
-  TASK_STATUSES,
-  createTask,
-  loadProjects,
-  loadTasks,
-  normalizeStoredPath,
-  projectFile,
-  saveProject,
-  saveTask,
-  taskFile,
-  today,
-  validateKey,
-  type Project,
-  type Task,
-  type TaskStatus,
-} from './store.ts';
+import { Ctx, addProject, addTask, deleteTask, editProject, editTask, idList, oneOf, rekeyProject, setStatus } from './ops.ts';
+import { isReady, next, openBlockers, projectCounts, projectForCwd } from './query.ts';
+import { TASK_STATUSES, normalizeStoredPath, taskFile, type Task, type TaskStatus } from './store.ts';
+import { serve } from './web.ts';
 
 const HELP = `tracker — what should I work on?
 
@@ -33,23 +18,30 @@ const HELP = `tracker — what should I work on?
                 [--priority high] [--source user|claude] [--grill <slug>] [--plan <path>] [--note <text>]
   set <id> <status>                 idea|todo|doing|done|dropped
   edit <id> [--title <t>] [--blocked-by <id>...] [--priority high|none]
-            [--grill <slug>] [--plan <path>] [--note <text>]
+            [--grill <slug>] [--plan <path>] [--note <text>] [--body <text> | --body-file <path|->]
+                                    --body/--body-file replace the notes (- reads stdin)
+  delete <id>                       erase a task for good; strips it from its dependents' blockers
   show <id>
   list [--project <key>] [--status <s,...>|all]   default hides done and dropped
 
   history [<project>] [-n <count>] [-v]
                                     recent Claude sessions and their commits, newest first
   search <words>...                 tasks (title, notes) and grill sessions (slug, topic, project) with every word
+  serve [--port <n>] [--no-open]    dashboard at http://127.0.0.1:4747/ (Ctrl+C to stop); builds web/
+                                    first when it or src/ changed (needs 'npm install' in web/)
   digest                            SessionStart hook: reads the hook JSON on stdin, prints a summary
                                     if its cwd is in a registered project, else nothing
 
-  project add <key> --name <name> --path <dir>... [--group <g>] [--focus]
+  project add [<key>] --name <name> --path <dir>... [--group <g>] [--focus]
+                                    key: 3–4 letters, the task-ID prefix (ELV-12); derived from
+                                    the name when omitted (3 letters, 4 on a clash)
   project list [--all]              --all includes archived
   project set <key> [--status active|paused|archived] [--focus|--no-focus] [--name <n>] [--group <g>]
+  project rekey <key> <new-key>     rename the key and every task ID in the project, fixing blockers
   project which [<dir>]             key of the project containing <dir> (default cwd); prints nothing if none
 
 --project defaults to the project whose path contains the cwd. --blocked-by takes
-repeated flags or a comma list. Data dir: $TRACKER_DATA (default ~/Tracker).`;
+repeated flags or a comma list. Keys and IDs are case-insensitive. Data dir: $TRACKER_DATA (default ~/Tracker).`;
 
 function args<T extends ParseArgsConfig['options']>(
   argv: string[],
@@ -64,45 +56,6 @@ function args<T extends ParseArgsConfig['options']>(
     throw new Error(`expected ${expected} argument(s), got ${n} — see 'tracker help'`);
   }
   return parsed;
-}
-
-function oneOf<T extends string>(value: string, allowed: readonly T[], what: string): T {
-  if (allowed.includes(value as T)) return value as T;
-  throw new Error(`${what} must be one of ${allowed.join('|')} (got '${value}')`);
-}
-
-function idList(values: string[] | undefined): string[] {
-  return (values ?? []).flatMap((v) => v.split(',')).map((s) => s.trim()).filter(Boolean);
-}
-
-function appendNote(body: string, note: string): string {
-  return `${body.trim()}\n- ${today()}: ${note.trim()}`.trim();
-}
-
-class Ctx {
-  readonly dir = dataDir();
-  readonly projects = loadProjects(this.dir);
-  readonly tasks = loadTasks(this.dir);
-  readonly byId = indexTasks(this.tasks);
-
-  project(key: string): Project {
-    const p = this.projects.find((x) => x.key === key);
-    if (!p) throw new Error(`no project '${key}' (see 'tracker project list')`);
-    return p;
-  }
-
-  task(id: string): Task {
-    const t = this.byId.get(id);
-    if (!t) throw new Error(`no task '${id}'`);
-    return t;
-  }
-
-  checkBlockers(id: string | undefined, blockers: string[]): void {
-    for (const b of blockers) {
-      if (b === id) throw new Error(`${id} cannot block itself`);
-      this.task(b);
-    }
-  }
 }
 
 // --- output ---
@@ -162,39 +115,27 @@ function cmdAdd(argv: string[]): void {
     1,
   );
   const ctx = new Ctx();
-  const title = positionals[0].trim();
-  if (!title) throw new Error('title is empty');
   const project = values.project ? ctx.project(values.project) : projectForCwd(ctx.projects, process.cwd());
   if (!project) throw new Error(`cwd is not inside a registered project; pass --project <key>`);
-  const blockers = idList(values['blocked-by']);
-  ctx.checkBlockers(undefined, blockers);
-  const date = today();
-  const task = createTask(ctx.dir, {
-    title,
+  const task = addTask(ctx, {
+    title: positionals[0],
     project: project.key,
-    status: oneOf(values.status ?? 'todo', ['idea', 'todo'] as const, '--status'),
-    blocked_by: blockers,
-    priority: values.priority ? oneOf(values.priority, ['high'] as const, '--priority') : undefined,
-    source: oneOf(values.source ?? 'user', SOURCES, '--source'),
+    status: values.status,
+    blockers: idList(values['blocked-by']),
+    priority: values.priority,
+    source: values.source,
     grill: values.grill,
     plan: values.plan,
-    created: date,
-    updated: date,
-    body: values.note ? appendNote('', values.note) : '',
+    note: values.note,
   });
   print(`added ${task.id} (${task.status}): ${task.title}`);
 }
 
 function cmdSet(argv: string[]): void {
   const { positionals } = args(argv, {}, 2);
-  const ctx = new Ctx();
-  const task = ctx.task(positionals[0]);
-  const status = oneOf(positionals[1], TASK_STATUSES, 'status');
-  const before = task.status;
-  saveTask(ctx.dir, { ...task, status, updated: today() });
-  print(`${task.id}: ${before} → ${status}`);
-  const open = openBlockers(task, ctx.byId);
-  if ((status === 'doing' || status === 'todo') && open.length) {
+  const { before, task, open } = setStatus(new Ctx(), positionals[0], positionals[1]);
+  print(`${task.id}: ${before} → ${task.status}`);
+  if ((task.status === 'doing' || task.status === 'todo') && open.length) {
     print(`  note: still blocked by ${open.map((b) => `${b.id} (${b.status})`).join(', ')}`);
   }
 }
@@ -209,28 +150,32 @@ function cmdEdit(argv: string[]): void {
       grill: { type: 'string' },
       plan: { type: 'string' },
       note: { type: 'string' },
+      body: { type: 'string' },
+      'body-file': { type: 'string' },
     },
     1,
   );
-  const ctx = new Ctx();
-  const task = { ...ctx.task(positionals[0]) };
-  if (values.title !== undefined) {
-    if (!values.title.trim()) throw new Error('title is empty');
-    task.title = values.title.trim();
-  }
-  if (values['blocked-by'] !== undefined) {
-    task.blocked_by = idList(values['blocked-by']);
-    ctx.checkBlockers(task.id, task.blocked_by);
-  }
-  if (values.priority !== undefined) {
-    task.priority = oneOf(values.priority, ['high', 'none'] as const, '--priority') === 'high' ? 'high' : undefined;
-  }
-  if (values.grill !== undefined) task.grill = values.grill || undefined;
-  if (values.plan !== undefined) task.plan = values.plan || undefined;
-  if (values.note !== undefined) task.body = appendNote(task.body, values.note);
-  task.updated = today();
-  saveTask(ctx.dir, task);
+  if (values.body !== undefined && values['body-file'] !== undefined) throw new Error('pass --body or --body-file, not both');
+  const bodyFile = values['body-file'];
+  const task = editTask(new Ctx(), positionals[0], {
+    title: values.title,
+    blockers: values['blocked-by'] && idList(values['blocked-by']),
+    priority: values.priority,
+    grill: values.grill,
+    plan: values.plan,
+    note: values.note,
+    body: bodyFile === undefined ? values.body : readFileSync(bodyFile === '-' ? 0 : bodyFile, 'utf8'),
+  });
   print(`updated ${task.id}`);
+}
+
+function cmdDelete(argv: string[]): void {
+  const { positionals } = args(argv, {}, 1);
+  const ctx = new Ctx();
+  const { id } = ctx.task(positionals[0]);
+  const dependents = deleteTask(ctx, id);
+  print(`deleted ${id}`);
+  if (dependents.length) print(`  no longer blocked by it: ${dependents.map((t) => t.id).join(', ')}`);
 }
 
 function cmdShow(argv: string[]): void {
@@ -262,14 +207,14 @@ function cmdShow(argv: string[]): void {
 function cmdList(argv: string[]): void {
   const { values } = args(argv, { project: { type: 'string', short: 'p' }, status: { type: 'string', short: 's' } }, 0);
   const ctx = new Ctx();
-  if (values.project) ctx.project(values.project);
+  const project = values.project ? ctx.project(values.project).key : undefined;
   const statuses: readonly TaskStatus[] =
     values.status === 'all'
       ? TASK_STATUSES
       : values.status
         ? idList([values.status]).map((s) => oneOf(s, TASK_STATUSES, '--status'))
         : ['idea', 'todo', 'doing'];
-  const tasks = ctx.tasks.filter((t) => statuses.includes(t.status) && (!values.project || t.project === values.project));
+  const tasks = ctx.tasks.filter((t) => statuses.includes(t.status) && (!project || t.project === project));
   print(tasks.length ? lines(tasks, ctx, true) : 'no tasks');
 }
 
@@ -329,6 +274,16 @@ function cmdSearch(argv: string[]): void {
   print(out.length ? out : 'no matches');
 }
 
+function cmdServe(argv: string[]): void {
+  const { values } = args(argv, { port: { type: 'string' }, open: { type: 'boolean' } }, 0);
+  const port = Number(values.port ?? 4747);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`--port must be 1–65535 (got '${values.port}')`);
+  serve({ port, open: values.open ?? true }).catch((e: Error) => {
+    console.error(`tracker: ${e.message}`);
+    process.exitCode = 1;
+  });
+}
+
 /** Must never fail the session start: any error goes to stderr and the exit code stays 0. */
 function cmdDigest(argv: string[]): void {
   args(argv, {}, 0);
@@ -360,8 +315,9 @@ function cmdProject(argv: string[]): void {
   if (sub === 'add') return projectAdd(rest);
   if (sub === 'list') return projectList(rest);
   if (sub === 'set') return projectSet(rest);
+  if (sub === 'rekey') return projectRekey(rest);
   if (sub === 'which') return projectWhich(rest);
-  throw new Error(`unknown 'project ${sub ?? ''}' — expected add, list, set or which`);
+  throw new Error(`unknown 'project ${sub ?? ''}' — expected add, list, set, rekey or which`);
 }
 
 function projectAdd(argv: string[]): void {
@@ -373,28 +329,28 @@ function projectAdd(argv: string[]): void {
       group: { type: 'string' },
       focus: { type: 'boolean' },
     },
+    0,
     1,
   );
-  const key = positionals[0];
-  validateKey(key);
   if (!values.name) throw new Error('--name is required');
   if (!values.path?.length) throw new Error('at least one --path is required');
-  const ctx = new Ctx();
-  if (existsSync(projectFile(ctx.dir, key))) throw new Error(`project '${key}' already exists`);
-  const paths = values.path.map(normalizeStoredPath);
-  for (const p of paths) {
-    if (!existsSync(p)) console.error(`warning: ${p} does not exist`);
-  }
-  saveProject(ctx.dir, {
-    key,
+  const { project, missing } = addProject(new Ctx(), {
+    key: positionals[0],
     name: values.name,
-    paths,
-    status: 'active',
-    focus: values.focus ?? false,
+    paths: values.path,
     group: values.group,
-    body: '',
+    focus: values.focus,
   });
-  print(`added project ${key}`);
+  for (const p of missing) console.error(`warning: ${p} does not exist`);
+  print(`added project ${project.key} — tasks will be ${project.key}-1, ${project.key}-2, …`);
+}
+
+function projectRekey(argv: string[]): void {
+  const { positionals } = args(argv, {}, 2);
+  const ctx = new Ctx();
+  const before = ctx.project(positionals[0]).key;
+  const { project, renamed } = rekeyProject(ctx, before, positionals[1]);
+  print(`rekeyed ${before} → ${project.key}${renamed.size ? `: ${[...renamed].map(([a, b]) => `${a} → ${b}`).join(', ')}` : ''}`);
 }
 
 function projectList(argv: string[]): void {
@@ -409,11 +365,11 @@ function projectList(argv: string[]): void {
   const statusW = Math.max(...projects.map((p) => p.status.length));
   print(
     projects.map((p) => {
-      const own = ctx.tasks.filter((t) => t.project === p.key);
+      const c = projectCounts(p, ctx.tasks, ctx.byId);
       const counts = [
-        [own.filter((t) => t.status === 'doing').length, 'doing'],
-        [own.filter((t) => isReady(t, ctx.byId)).length, 'ready'],
-        [own.filter((t) => t.status === 'idea').length, 'idea'],
+        [c.doing, 'doing'],
+        [c.ready, 'ready'],
+        [c.ideas, 'idea'],
       ]
         .filter(([n]) => n)
         .map(([n, label]) => `${n} ${label}${label === 'idea' && n !== 1 ? 's' : ''}`)
@@ -437,13 +393,7 @@ function projectSet(argv: string[]): void {
     { status: { type: 'string' }, focus: { type: 'boolean' }, name: { type: 'string' }, group: { type: 'string' } },
     1,
   );
-  const ctx = new Ctx();
-  const p = { ...ctx.project(positionals[0]) };
-  if (values.status !== undefined) p.status = oneOf(values.status, PROJECT_STATUSES, '--status');
-  if (values.focus !== undefined) p.focus = values.focus;
-  if (values.name) p.name = values.name;
-  if (values.group !== undefined) p.group = values.group || undefined;
-  saveProject(ctx.dir, p);
+  const p = editProject(new Ctx(), positionals[0], values);
   print(`updated project ${p.key}: ${p.status}${p.focus ? ', focus' : ''}`);
 }
 
@@ -452,10 +402,12 @@ const COMMANDS: Record<string, (argv: string[]) => void> = {
   add: cmdAdd,
   set: cmdSet,
   edit: cmdEdit,
+  delete: cmdDelete,
   show: cmdShow,
   list: cmdList,
   history: cmdHistory,
   search: cmdSearch,
+  serve: cmdServe,
   digest: cmdDigest,
   project: cmdProject,
 };

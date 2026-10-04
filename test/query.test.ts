@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { indexTasks, isReady, next, projectForCwd } from '../src/query.ts';
+import { filterTasks, indexTasks, isReady, next, parseTaskFilter, projectBoard, projectForCwd } from '../src/query.ts';
 import type { Project, Task } from '../src/store.ts';
 
 const project = (key: string, over: Partial<Project> = {}): Project => ({
@@ -82,4 +82,52 @@ test('projectForCwd: longest prefix, segment boundaries, case-insensitive on Win
   assert.equal(key('/c/Users/Nick/Projects/Games/Pixel Imperium'), 'pi');
   assert.equal(key('C:/Users/Nick/Projects'), undefined);
   assert.equal(key('c:/users/nick/projects/websites/pixel-imperium', 'linux'), undefined);
+});
+
+test('projectBoard orders todo ready-first, windows done, and counts the hidden', () => {
+  const tasks = [
+    task('a-1', { status: 'doing' }),
+    task('a-2', { blocked_by: ['a-1'] }),
+    task('a-3'),
+    task('a-4', { priority: 'high' }),
+    task('a-5', { status: 'done', updated: '2026-10-03' }),
+    task('a-6', { status: 'done', updated: '2026-09-01' }),
+    task('a-7', { status: 'dropped' }),
+    task('B-1'),
+  ];
+  const board = projectBoard('a', tasks, { today: '2026-10-04' });
+  assert.deepEqual(board.todo.map((t) => t.id), ['a-4', 'a-3', 'a-2']);
+  assert.deepEqual(board.done.map((t) => t.id), ['a-5']);
+  assert.equal(board.olderDone, 1);
+  assert.deepEqual(board.dropped.map((t) => t.id), ['a-7']);
+  const all = projectBoard('a', tasks, { today: '2026-10-04', older: true });
+  assert.deepEqual(all.done.map((t) => t.id), ['a-5', 'a-6']);
+});
+
+test('parseTaskFilter: defaults to open statuses and drops unknown values', () => {
+  assert.deepEqual(parseTaskFilter({}), { statuses: ['idea', 'todo', 'doing'], project: undefined, ready: undefined, priority: undefined, source: undefined });
+  assert.deepEqual(parseTaskFilter({ status: 'done,bogus,idea' }).statuses, ['done', 'idea']);
+  assert.deepEqual(parseTaskFilter({ status: 'bogus' }).statuses, ['idea', 'todo', 'doing']);
+  assert.equal(parseTaskFilter({ status: 'all' }).statuses.length, 5);
+  const f = parseTaskFilter({ project: 'a', ready: '1', priority: 'high', source: 'claude' });
+  assert.deepEqual([f.project, f.ready, f.priority, f.source], ['A', true, 'high', 'claude']);
+  const g = parseTaskFilter({ project: '', ready: '0', priority: 'low', source: 'bot' });
+  assert.deepEqual([g.project, g.ready, g.priority, g.source], [undefined, undefined, undefined, undefined]);
+});
+
+test('filterTasks combines every filter', () => {
+  const tasks = [
+    task('a-1', { status: 'doing' }),
+    task('a-2', { source: 'claude', priority: 'high' }),
+    task('a-3', { blocked_by: ['a-1'], source: 'claude' }),
+    task('a-4', { status: 'idea', source: 'claude' }),
+    task('B-1', { status: 'done' }),
+  ];
+  const ids = (q: Record<string, string>) => filterTasks(tasks, parseTaskFilter(q)).map((t) => t.id);
+  assert.deepEqual(ids({}), ['a-1', 'a-2', 'a-3', 'a-4']);
+  assert.deepEqual(ids({ ready: '1' }), ['a-2']);
+  assert.deepEqual(ids({ source: 'claude', status: 'todo' }), ['a-2', 'a-3']);
+  assert.deepEqual(ids({ priority: 'high' }), ['a-2']);
+  assert.deepEqual(ids({ project: 'b', status: 'all' }), ['B-1']);
+  assert.deepEqual(ids({ project: 'b' }), []);
 });

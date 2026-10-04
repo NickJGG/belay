@@ -1,0 +1,16 @@
+# tracker
+
+A personal task tracker for Claude Code work: the `tracker` CLI (`src/`) and a local dashboard (`web/`). Run `tracker help` for the commands.
+
+## Dashboard setup
+
+The dashboard is a separate Next.js package in `web/`. Install its dependencies once:
+
+```sh
+cd web
+npm install
+```
+
+Then `tracker serve [--port <n>] [--no-open]` starts it at http://127.0.0.1:4747/. The first run builds it with `next build`. Later runs start straight away, rebuilding only when a file under `web/` or `src/` is newer than the last build. Re-run `npm install` in `web/` after its `package.json` changes.
+
+For development, `npm run dev` in `web/` serves on port 4748. Point `TRACKER_DATA` at a copy of `~/Tracker` so experiments can't touch the real data.

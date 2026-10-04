@@ -1,0 +1,21 @@
+.icon {
+  display: block;
+  flex: none;
+}
+
+.idea,
+.dropped {
+  color: var(--muted);
+}
+
+.todo {
+  color: var(--fg);
+}
+
+.doing {
+  color: var(--accent);
+}
+
+.done {
+  color: var(--ok);
+}

@@ -43,7 +43,7 @@ export function loadGrillSessions(claudeDir: string): GrillSession[] {
 export function grillForProject(grill: GrillSession[], project: Project): { tagged: GrillSession[]; matched: GrillSession[] } {
   const terms = projectTerms(project);
   return {
-    tagged: grill.filter((g) => g.project === project.key),
+    tagged: grill.filter((g) => g.project?.toUpperCase() === project.key),
     matched: grill.filter((g) => !g.project && terms.some((t) => grillMentions(g, t))),
   };
 }

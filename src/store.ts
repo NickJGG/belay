@@ -2,8 +2,11 @@
  * File format for the data dir: `projects/<key>.md` and `tasks/<key>-<n>.md`, each a YAML
  * frontmatter block followed by a free-form markdown body. Everything that writes goes
  * through here so the format rules (field order, validation, ID allocation) live in one place.
+ *
+ * Keys and IDs are uppercase in memory and in frontmatter (`ELV`, `ELV-12`) and lowercase in
+ * file names. Loading uppercases whatever it reads, so files from before that rule still load.
  */
-import { readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parse, stringify } from 'yaml';
 
@@ -40,12 +43,20 @@ export interface Task {
   body: string;
 }
 
-export const KEY_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
-const ID_RE = /^([a-z][a-z0-9-]*)-(\d+)$/;
+/** What a new key must be: 3–4 letters, like Linear's team keys and JIRA's project keys. */
+export const KEY_RE = /^[A-Z]{3,4}$/;
+/** Keys from before the 3–4 letter rule (`PZ-ELEVATORS`) still load and save, so `project rekey` can migrate them. */
+const STORED_KEY_RE = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$/;
+const ID_RE = /^([a-z][a-z0-9-]*)-(\d+)$/i;
+
+/** The stored form of a typed key or ID. */
+export function canon(s: string): string {
+  return s.trim().toUpperCase();
+}
 
 export function parseId(id: string): { key: string; n: number } | undefined {
   const m = ID_RE.exec(id);
-  return m ? { key: m[1], n: Number(m[2]) } : undefined;
+  return m ? { key: m[1].toUpperCase(), n: Number(m[2]) } : undefined;
 }
 
 export function compareIds(a: string, b: string): number {
@@ -108,15 +119,19 @@ function textList(d: Data, k: string, where: string): string[] {
 }
 
 export function validateKey(key: string): void {
-  if (!KEY_RE.test(key)) throw new Error(`invalid project key '${key}' (lowercase letters, digits, single hyphens)`);
+  if (!KEY_RE.test(key)) throw new Error(`invalid project key '${key}' (3–4 letters)`);
+}
+
+function validateStoredKey(key: string, where: string): void {
+  if (!STORED_KEY_RE.test(key)) throw new Error(`${where}: invalid project key '${key}'`);
 }
 
 // --- projects ---
 
 export function parseProject(src: string, where: string): Project {
   const { data: d, body } = splitFrontmatter(src, where);
-  const key = text(d, 'key', where);
-  validateKey(key);
+  const key = canon(text(d, 'key', where));
+  validateStoredKey(key, where);
   if (typeof (d.focus ?? false) !== 'boolean') throw new Error(`${where}: 'focus' must be true or false`);
   return {
     key,
@@ -138,8 +153,8 @@ export function serializeProject(p: Project): string {
 
 export function parseTask(src: string, where: string): Task {
   const { data: d, body } = splitFrontmatter(src, where);
-  const id = text(d, 'id', where);
-  const project = text(d, 'project', where);
+  const id = canon(text(d, 'id', where));
+  const project = canon(text(d, 'project', where));
   if (parseId(id)?.key !== project) throw new Error(`${where}: id '${id}' does not match project '${project}'`);
   const priority = d.priority == null ? undefined : oneOf(d, 'priority', ['high'] as const, where);
   return {
@@ -147,7 +162,7 @@ export function parseTask(src: string, where: string): Task {
     title: text(d, 'title', where),
     project,
     status: oneOf(d, 'status', TASK_STATUSES, where),
-    blocked_by: textList(d, 'blocked_by', where),
+    blocked_by: textList(d, 'blocked_by', where).map(canon),
     priority,
     source: oneOf(d, 'source', SOURCES, where, 'user'),
     grill: optText(d, 'grill', where),
@@ -166,18 +181,25 @@ export function serializeTask(t: Task): string {
 // --- disk ---
 
 export function projectFile(dir: string, key: string): string {
-  return join(dir, 'projects', `${key}.md`);
+  return join(dir, 'projects', `${key.toLowerCase()}.md`);
 }
 
 export function taskFile(dir: string, id: string): string {
-  return join(dir, 'tasks', `${id}.md`);
+  return join(dir, 'tasks', `${id.toLowerCase()}.md`);
+}
+
+/** What a path relative to the data dir holds, if it's a task or project file. Temp files from `writeAtomic` don't count. */
+export function entityForPath(rel: string): { kind: 'task' | 'project'; id: string } | undefined {
+  const m = /^(tasks|projects)[\\/]([^\\/]+)\.md$/.exec(rel);
+  if (!m) return undefined;
+  return { kind: m[1] === 'tasks' ? 'task' : 'project', id: canon(m[2]) };
 }
 
 function mdFiles(sub: string): string[] {
   return readdirSync(sub).filter((f) => f.endsWith('.md'));
 }
 
-function writeAtomic(file: string, content: string): void {
+export function writeAtomic(file: string, content: string): void {
   const tmp = `${file}.${process.pid}.tmp`;
   writeFileSync(tmp, content);
   renameSync(tmp, file);
@@ -187,7 +209,7 @@ export function loadProjects(dir: string): Project[] {
   const sub = join(dir, 'projects');
   return mdFiles(sub).map((f) => {
     const p = parseProject(readFileSync(join(sub, f), 'utf8'), `projects/${f}`);
-    if (`${p.key}.md` !== f) throw new Error(`projects/${f}: key '${p.key}' does not match file name`);
+    if (`${p.key.toLowerCase()}.md` !== f) throw new Error(`projects/${f}: key '${p.key}' does not match file name`);
     return p;
   });
 }
@@ -197,19 +219,23 @@ export function loadTasks(dir: string): Task[] {
   return mdFiles(sub)
     .map((f) => {
       const t = parseTask(readFileSync(join(sub, f), 'utf8'), `tasks/${f}`);
-      if (`${t.id}.md` !== f) throw new Error(`tasks/${f}: id '${t.id}' does not match file name`);
+      if (`${t.id.toLowerCase()}.md` !== f) throw new Error(`tasks/${f}: id '${t.id}' does not match file name`);
       return t;
     })
     .sort((a, b) => compareIds(a.id, b.id));
 }
 
 export function saveProject(dir: string, p: Project): void {
-  validateKey(p.key);
+  validateStoredKey(p.key, `project '${p.key}'`);
   writeAtomic(projectFile(dir, p.key), serializeProject(p));
 }
 
 export function saveTask(dir: string, t: Task): void {
   writeAtomic(taskFile(dir, t.id), serializeTask(t));
+}
+
+export function deleteTaskFile(dir: string, id: string): void {
+  unlinkSync(taskFile(dir, id));
 }
 
 export function nextTaskNumber(dir: string, key: string): number {

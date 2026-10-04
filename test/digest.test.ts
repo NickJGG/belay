@@ -6,7 +6,7 @@ import type { Session } from '../src/history.ts';
 import type { Project, Task } from '../src/store.ts';
 
 const project: Project = {
-  key: 'pz-elevators',
+  key: 'ELV',
   name: 'Rideable Elevators',
   paths: [],
   status: 'active',
@@ -30,7 +30,7 @@ const task = (id: string, over: Partial<Task> = {}): Task => ({
 const grill = (slug: string, topic = '', over: Partial<GrillSession> = {}): GrillSession => ({ slug, topic, ...over });
 
 test('projectTerms: 5+ letter words, singularized', () => {
-  assert.deepEqual(projectTerms(project), ['elevator', 'rideable']);
+  assert.deepEqual(projectTerms(project), ['rideable', 'elevator']);
   assert.deepEqual(projectTerms({ ...project, key: 'pz-fridges', name: 'Turn off Fridges' }), ['fridge']);
 });
 
@@ -42,8 +42,8 @@ test('grillMentions matches word starts only', () => {
 
 test('grillForProject: tags win over term matching', () => {
   const sessions = [
-    grill('tagged', 'anything', { project: 'pz-elevators' }),
-    grill('elevator-other-project', '', { project: 'pz-fridges' }),
+    grill('tagged', 'anything', { project: 'ELV' }),
+    grill('elevator-other-project', '', { project: 'FRI' }),
     grill('elevator-untagged'),
     grill('unrelated'),
   ];
@@ -53,18 +53,18 @@ test('grillForProject: tags win over term matching', () => {
 });
 
 test('grillMatches includes the project tag', () => {
-  assert.ok(grillMatches(grill('call-button', 'x', { project: 'pz-elevators' }), ['pz-elevators', 'call']));
+  assert.ok(grillMatches(grill('call-button', 'x', { project: 'ELV' }), ['elv', 'call']));
   assert.ok(!grillMatches(grill('call-button', 'x'), ['pz-elevators']));
 });
 
 test('digestLines', () => {
   const tasks = [
-    task('pz-elevators-1', { status: 'doing' }),
-    task('pz-elevators-2', { created: '2026-09-01' }),
-    task('pz-elevators-3', { priority: 'high', created: '2026-10-02' }),
-    task('pz-elevators-4', { blocked_by: ['pz-elevators-1'] }),
-    task('pz-elevators-5', { status: 'idea', grill: 'linked-elevator' }),
-    task('other-1'),
+    task('ELV-1', { status: 'doing' }),
+    task('ELV-2', { created: '2026-09-01' }),
+    task('ELV-3', { priority: 'high', created: '2026-10-02' }),
+    task('ELV-4', { blocked_by: ['ELV-1'] }),
+    task('ELV-5', { status: 'idea', grill: 'linked-elevator' }),
+    task('OTH-1'),
   ];
   const sessions: Session[] = [
     {
@@ -78,37 +78,37 @@ test('digestLines', () => {
   ];
   const grills = [grill('elevator-call-button'), grill('linked-elevator'), grill('unrelated')];
   const lines = digestLines(project, tasks, sessions, grills);
-  assert.equal(lines[0], 'tracker: pz-elevators — Rideable Elevators (focus)');
-  assert.equal(lines[1], 'doing: pz-elevators-1 Task pz-elevators-1');
-  assert.equal(lines[2], 'ready 2 (1 idea): pz-elevators-3 Task pz-elevators-3; pz-elevators-2 Task pz-elevators-2');
+  assert.equal(lines[0], 'tracker: ELV — Rideable Elevators (focus)');
+  assert.equal(lines[1], 'doing: ELV-1 Task ELV-1');
+  assert.equal(lines[2], 'ready 2 (1 idea): ELV-3 Task ELV-3; ELV-2 Task ELV-2');
   assert.match(lines[3], /^recent: 09-2[67] Call button light \(1 commit\)$/);
-  assert.equal(lines[4], 'grill: 1 old session matches elevator/rideable (tracker search <word>)');
+  assert.equal(lines[4], 'grill: 1 old session matches rideable/elevator (tracker search <word>)');
   assert.equal(lines.length, 5);
 });
 
 test('digestLines: tagged grill sessions', () => {
   const grills = [
-    grill('a', '', { project: 'pz-elevators', status: 'in-progress', updated: '2026-10-01' }),
-    grill('b', '', { project: 'pz-elevators', status: 'in-progress', updated: '2026-10-03' }),
-    grill('c', '', { project: 'pz-elevators', status: 'in-progress', updated: '2026-09-01' }),
-    grill('d', '', { project: 'pz-elevators', status: 'planned' }),
-    grill('e', '', { project: 'pz-elevators', status: 'in-progress' }),
+    grill('a', '', { project: 'ELV', status: 'in-progress', updated: '2026-10-01' }),
+    grill('b', '', { project: 'ELV', status: 'in-progress', updated: '2026-10-03' }),
+    grill('c', '', { project: 'ELV', status: 'in-progress', updated: '2026-09-01' }),
+    grill('d', '', { project: 'ELV', status: 'planned' }),
+    grill('e', '', { project: 'ELV', status: 'in-progress' }),
     grill('elevator-old'),
   ];
-  const tasks = [task('pz-elevators-1', { grill: 'e' })];
+  const tasks = [task('ELV-1', { grill: 'e' })];
   assert.equal(
     digestLines(project, tasks, [], grills).at(-1),
-    'grill: 4 sessions tagged (in progress: b, a, …) · 1 old session matches elevator/rideable (tracker search <word>)',
+    'grill: 4 sessions tagged (in progress: b, a, …) · 1 old session matches rideable/elevator (tracker search <word>)',
   );
   assert.equal(
-    digestLines(project, [], [], [grill('d', '', { project: 'pz-elevators', status: 'planned' })]).at(-1),
+    digestLines(project, [], [], [grill('d', '', { project: 'elv', status: 'planned' })]).at(-1),
     'grill: 1 session tagged (tracker search <word>)',
   );
 });
 
 test('digestLines: quiet project', () => {
   assert.deepEqual(digestLines({ ...project, focus: false, status: 'paused' }, [], [], []), [
-    'tracker: pz-elevators — Rideable Elevators (paused)',
+    'tracker: ELV — Rideable Elevators (paused)',
     'ready: none',
   ]);
 });
