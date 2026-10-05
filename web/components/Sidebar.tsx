@@ -2,7 +2,7 @@ import { Archive, FolderKanban, House, Inbox, Layers, Settings } from 'lucide-re
 import { ctx } from '@/lib/data';
 import { Logo } from './bits';
 import { NavLink } from './NavLink';
-import { NewIssueButton, SearchButton, ShortcutsButton } from './SidebarKeys';
+import { CreateButton, SearchButton, ShortcutsButton } from './SidebarKeys';
 import { SidebarProjects } from './SidebarProjects';
 import styles from './Sidebar.module.css';
 
@@ -18,7 +18,7 @@ export function Sidebar() {
         Tracker
       </NavLink>
       <SearchButton />
-      <NewIssueButton />
+      <CreateButton />
       <div className={styles.gap} />
       <NavLink href="/" className={styles.item} activeClassName={styles.on}>
         <House size={14} aria-hidden />

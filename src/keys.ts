@@ -10,7 +10,6 @@ export const STATUS_KEYS: readonly IssueStatus[] = ['idea', 'todo', 'doing', 'do
 export type KeyCommand =
   | { kind: 'palette' }
   | { kind: 'create' }
-  | { kind: 'log' }
   | { kind: 'move'; delta: 1 | -1 }
   | { kind: 'status'; status: IssueStatus }
   | { kind: 'edit' }
@@ -35,8 +34,6 @@ export function keyCommand(e: KeyPress): KeyCommand | undefined {
   switch (e.key) {
     case 'c':
       return { kind: 'create' };
-    case 'l':
-      return { kind: 'log' };
     case 'j':
       return { kind: 'move', delta: 1 };
     case 'k':

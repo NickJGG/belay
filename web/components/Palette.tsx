@@ -113,7 +113,6 @@ function Body({ data, onClose: close, target, onTargetPage, defaultProject, act 
           <Command.Item value="log work entry" onSelect={then(act.newLog)} className={styles.item}>
             <span className={styles.icon}>+</span>
             <span className={styles.grow}>Log work…</span>
-            <Kbd>L</Kbd>
           </Command.Item>
           {here && prev && (
             <Command.Item value="move project up" onSelect={then(() => act.moveProject(here, { before: prev }))} className={styles.item}>

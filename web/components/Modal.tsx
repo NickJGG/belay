@@ -6,8 +6,11 @@ export function Modal({ open, onClose, label, className, children }: { open: boo
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current!;
-    if (open && !d.open) d.showModal();
-    else if (!open && d.open) d.close();
+    if (open && !d.open) {
+      d.showModal();
+      // React's autoFocus fires while the dialog is still closed, so it can't take; showModal() would pick the first focusable instead.
+      d.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+    } else if (!open && d.open) d.close();
   }, [open]);
   return (
     <dialog

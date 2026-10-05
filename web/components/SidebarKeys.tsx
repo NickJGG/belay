@@ -19,12 +19,12 @@ export function SearchButton() {
   );
 }
 
-export function NewIssueButton() {
+export function CreateButton() {
   const keys = useKeys();
   return (
-    <button type="button" className={`${styles.item} ${styles.button}`} onClick={() => keys?.newIssue()}>
+    <button type="button" className={`${styles.item} ${styles.button}`} onClick={() => keys?.create()}>
       <SquarePen size={14} aria-hidden />
-      <span className={styles.label}>New issue</span>
+      <span className={styles.label}>Create</span>
       <span className={styles.hint}>
         <Kbd>C</Kbd>
       </span>

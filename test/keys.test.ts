@@ -7,7 +7,7 @@ const press = (key: string, o: Partial<KeyPress> = {}): KeyPress => ({ key, ctrl
 
 test('single keys map to commands', () => {
   assert.deepEqual(keyCommand(press('c')), { kind: 'create' });
-  assert.deepEqual(keyCommand(press('l')), { kind: 'log' });
+  assert.equal(keyCommand(press('l')), undefined);
   assert.deepEqual(keyCommand(press('j')), { kind: 'move', delta: 1 });
   assert.deepEqual(keyCommand(press('k')), { kind: 'move', delta: -1 });
   assert.deepEqual(keyCommand(press('e')), { kind: 'edit' });

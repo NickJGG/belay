@@ -11,9 +11,17 @@ export function Shortcuts({ open, onClose }: { open: boolean; onClose: () => voi
       [
         [[mod, 'K'], 'Command palette'],
         [['/'], 'Search'],
-        [['C'], 'New issue'],
-        [['L'], 'Log work'],
+        [['C'], 'Create a todo, idea or log'],
         [['?'], 'This cheat sheet'],
+      ],
+    ],
+    [
+      'Create dialog',
+      [
+        [['Ctrl', '['], 'Previous type'],
+        [['Ctrl', ']'], 'Next type'],
+        [[mod, '↵'], 'Create'],
+        [['Esc'], 'Keep as draft'],
       ],
     ],
     [

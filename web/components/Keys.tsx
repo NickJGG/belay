@@ -1,19 +1,19 @@
 'use client';
 /**
  * The keyboard layer: the j/k selection, single-key commands, the ⌘K palette, the cheat sheet and
- * the new-issue and log modals, whose drafts are kept here so it survives closing and navigation.
+ * the create dialog, whose draft is kept here so it survives closing and navigation.
  * A component showing an issue registers handlers for it, so a key goes through the same optimistic
  * path as a click on that component. With none registered, the action is called directly.
  */
 import { createContext, useContext, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { EMPTY_CREATE, openDraft, type CreateType } from '../../src/create.ts';
 import { keyCommand, pageProject, pageIssue, step, type KeyCommand } from '../../src/keys.ts';
 import type { MoveTarget } from '../../src/sidebar.ts';
 import { moveProjectTo, setIssuePriority, setIssueStatus, type Result } from '@/app/actions';
 import type { IssueStatus } from '@/lib/types';
 import { issueHref } from './bits';
-import { EMPTY_LOG, LogModal, isBlankLog, lastLog } from './LogModal';
-import { EMPTY_DRAFT, NewIssueModal, isBlank } from './NewIssueModal';
+import { CreateModal, lastCreated } from './CreateModal';
 import { Palette, type PaletteData } from './Palette';
 import { Shortcuts } from './Shortcuts';
 import { toastError } from './Toaster';
@@ -31,8 +31,7 @@ interface Api {
   register: (id: string, h: HandlerRef) => () => void;
   openPalette: () => void;
   openHelp: () => void;
-  newIssue: () => void;
-  newLog: () => void;
+  create: (type?: CreateType) => void;
 }
 
 const ApiCtx = createContext<Api | null>(null);
@@ -77,9 +76,7 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
   const [palette, setPalette] = useState(false);
   const [help, setHelp] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [draft, setDraft] = useState(EMPTY_DRAFT);
-  const [logging, setLogging] = useState(false);
-  const [logDraft, setLogDraft] = useState(EMPTY_LOG);
+  const [draft, setDraft] = useState(EMPTY_CREATE);
   const [, start] = useTransition();
   const path = useRef(pathname);
   const latest = useRef(data);
@@ -106,21 +103,17 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
       },
       openPalette: () => setPalette(true),
       openHelp: () => setHelp(true),
-      newIssue: () => {
-        const key = pageProject(path.current)?.toUpperCase();
-        const project = latest.current.projects.some((p) => p.key === key && p.status !== 'archived') ? key! : '';
-        setDraft((d) => (isBlank(d) ? { ...d, project } : d));
+      create: (type = 'todo') => {
+        const last = lastCreated();
+        const ctx = {
+          type,
+          pageProject: pageProject(path.current)?.toUpperCase(),
+          lastProject: last.project,
+          lastKind: last.kind,
+          openProjects: latest.current.projects.filter((p) => p.status !== 'archived'),
+        };
+        setDraft((d) => openDraft(d, ctx));
         setCreating(true);
-      },
-      /** Defaults to this page's project, else the last one logged to, with its last kind. */
-      newLog: () => {
-        const open = latest.current.projects.filter((p) => p.status !== 'archived');
-        const last = lastLog();
-        const key = pageProject(path.current)?.toUpperCase();
-        const project = open.find((p) => p.key === key) ?? open.find((p) => p.key === last.project);
-        const kind = last.kind && project?.key === last.project && project?.kinds?.includes(last.kind) ? last.kind : '';
-        setLogDraft((d) => (isBlankLog(d) ? { ...d, project: project?.key ?? '', kind } : d));
-        setLogging(true);
       },
     }),
     [],
@@ -171,10 +164,7 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
         api.openPalette();
         return true;
       case 'create':
-        api.newIssue();
-        return true;
-      case 'log':
-        api.newLog();
+        api.create();
         return true;
       case 'help':
         setHelp(true);
@@ -241,10 +231,9 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
           target={targetIssue}
           onTargetPage={target !== undefined && pageIssue(pathname) === target}
           defaultProject={pageProject(pathname)}
-          act={{ ...act, newIssue: api.newIssue, newLog: api.newLog, help: () => setHelp(true), go: (href: string) => router.push(href) }}
+          act={{ ...act, newIssue: () => api.create('todo'), newLog: () => api.create('log'), help: () => setHelp(true), go: (href: string) => router.push(href) }}
         />
-        <NewIssueModal open={creating} onClose={() => setCreating(false)} draft={draft} setDraft={setDraft} data={data} onCreated={act.created} />
-        <LogModal open={logging} onClose={() => setLogging(false)} draft={logDraft} setDraft={setLogDraft} data={data} />
+        <CreateModal open={creating} onClose={() => setCreating(false)} draft={draft} setDraft={setDraft} data={data} onCreated={act.created} />
         <Shortcuts open={help} onClose={() => setHelp(false)} />
       </SelectedCtx>
     </ApiCtx>

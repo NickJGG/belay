@@ -31,11 +31,7 @@ export function Logs({ entries, today, older, moreHref }: { entries: DatedEntry[
   const days = Map.groupBy(entries.toReversed(), (e) => e.day);
   return (
     <>
-      {!days.size && (
-        <p className={ui.empty}>
-          No log entries{older ? ' lately' : ''}. Press <kbd className={ui.kbd}>L</kbd> to log work.
-        </p>
-      )}
+      {!days.size && <p className={ui.empty}>No logs.</p>}
       {[...days].map(([day, list]) => {
         const totals = kindTotals(list);
         return (
