@@ -2,8 +2,9 @@
 /** Thin wrappers: validate the untyped input, call one op on a fresh load, revalidate. */
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { dataDir } from '../../src/config.ts';
+import { claudeDir, dataDir } from '../../src/config.ts';
 import { ConflictError, Ctx, addComment, addIssue, bodyHash, deleteComment, deleteIssue, editComment, editProject, editIssue, moveProject, replaceBody, setFocus, setPriority, setStatus } from '../../src/ops.ts';
+import { isLinked, linkedPath, openFile } from '../../src/open.ts';
 import type { DropPatch, MoveTarget } from '../../src/sidebar.ts';
 import { THEMES, saveSettings, type Theme } from '../../src/settings.ts';
 import { isAccent } from '@/lib/accents';
@@ -166,5 +167,19 @@ export async function updateSettings(accent: unknown, theme: unknown): Promise<R
     return { error: (e as Error).message };
   }
   revalidatePath('/', 'layout');
+  return {};
+}
+
+/** Opens the issue's file, grill session or plan on this machine. The path comes from the issue, never the client. */
+export async function openLinkedFile(id: unknown, kind: unknown): Promise<Result> {
+  try {
+    if (!isLinked(kind)) throw new Error('kind must be file|grill|plan');
+    const data = dataDir();
+    const path = linkedPath(new Ctx(data).issue(str(id, 'id')), kind, { data, claude: claudeDir() });
+    if (!path) throw new Error(`no ${kind} on ${id}`);
+    openFile(path);
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
   return {};
 }

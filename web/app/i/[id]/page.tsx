@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { claudeDir } from '../../../../src/config.ts';
 import { bodyHash } from '../../../../src/ops.ts';
-import { normalizeStoredPath, issueFile } from '../../../../src/store.ts';
+import { linkedPath } from '../../../../src/open.ts';
 import { setIssueTitle } from '@/app/actions';
 import { Flags, projectHref } from '@/components/bits';
 import { Chip, type Ref } from '@/components/Chip';
@@ -16,6 +17,7 @@ import { Activity } from './Activity';
 import { BodyEditor } from './BodyEditor';
 import { Blockers } from './Blockers';
 import { DeleteIssue } from './DeleteIssue';
+import { OpenFile } from './OpenFile';
 import styles from './issue.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -42,7 +44,10 @@ export default async function IssuePage({ params }: Props) {
   const blockers = issue.blocked_by.map((b): Ref => (byId.has(b) ? ref(byId.get(b)!) : { id: b }));
   const open = issue.status === 'todo' ? openBlockers(issue, byId) : [];
   const dependents = issues.filter((t) => t.blocked_by.includes(issue.id));
-  const candidates = issues.filter((t) => t.id !== issue.id && (t.status === 'idea' || t.status === 'todo' || t.status === 'doing')).map(ref);
+  const dirs = { data: dir, claude: claudeDir() };
+  const grillPath = linkedPath(issue, 'grill', dirs);
+  const planPath = linkedPath(issue, 'plan', dirs);
+  const candidates =issues.filter((t) => t.id !== issue.id && (t.status === 'idea' || t.status === 'todo' || t.status === 'doing')).map(ref);
 
   return (
     <div className={styles.page}>
@@ -96,20 +101,26 @@ export default async function IssuePage({ params }: Props) {
             <dd>{issue.created}</dd>
             <dt>Updated</dt>
             <dd>{issue.updated}</dd>
-            {issue.grill && (
+            {grillPath && (
               <>
                 <dt>Grill</dt>
-                <dd className={ui.mono}>{issue.grill}</dd>
+                <dd>
+                  <OpenFile id={issue.id} kind="grill" path={grillPath} />
+                </dd>
               </>
             )}
-            {issue.plan && (
+            {planPath && (
               <>
                 <dt>Plan</dt>
-                <dd className={`${ui.mono} ${styles.wrap}`}>{issue.plan}</dd>
+                <dd>
+                  <OpenFile id={issue.id} kind="plan" path={planPath} />
+                </dd>
               </>
             )}
             <dt>File</dt>
-            <dd className={`${ui.mono} ${ui.muted} ${styles.wrap}`}>{normalizeStoredPath(issueFile(dir, issue.id))}</dd>
+            <dd>
+              <OpenFile id={issue.id} kind="file" path={linkedPath(issue, 'file', dirs)!} />
+            </dd>
           </dl>
           <DeleteIssue id={issue.id} dependents={dependents.map((d) => ({ id: d.id, title: d.title }))} />
         </aside>
