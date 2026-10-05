@@ -1,5 +1,5 @@
 /**
- * The tracker's line in Claude Code's status line: the project's `doing` issue, or the next ready one, then
+ * Belay's line in Claude Code's status line: the project's `doing` issue, or the next ready one, then
  * the goal strip, which shows everywhere.
  */
 import { DEFAULT_PORT } from './config.ts';
@@ -11,7 +11,7 @@ import type { Issue, Project } from './store.ts';
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 
-/** An OSC 8 hyperlink to the issue's dashboard page; Ctrl+click opens it while `tracker serve` runs. */
+/** An OSC 8 hyperlink to the issue's dashboard page; Ctrl+click opens it while `belay serve` runs. */
 const link = (id: string, text: string) =>
   `\x1b]8;;http://127.0.0.1:${DEFAULT_PORT}/i/${encodeURIComponent(id)}\x07${text}\x1b]8;;\x07`;
 

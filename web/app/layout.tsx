@@ -11,7 +11,7 @@ import styles from './layout.module.css';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = { title: { template: '%s · tracker', default: 'tracker' } };
+export const metadata: Metadata = { title: { template: '%s · Belay', default: 'Belay' } };
 
 /** Theme and accent are set on <html> here, on the server, so the first paint is already right. */
 export default function RootLayout({ children }: { children: React.ReactNode }) {

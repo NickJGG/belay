@@ -1,4 +1,4 @@
-/** `tracker serve`: builds `web/` when its sources changed, then runs `next start` on loopback. */
+/** `belay serve`: builds `web/` when its sources changed, then runs `next start` on loopback. */
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -71,10 +71,10 @@ export async function serve({ port, open }: { port: number; open: boolean }): Pr
   if (!existsSync(next)) throw new Error(`web/ dependencies missing — run 'npm install' in ${web}`);
   if (!(await portFree(port))) throw new Error(`port ${port} is in use — already running? (try --port)`);
 
-  // dataDir() resolves TRACKER_DATA to an absolute path, so a relative one survives the cwd change.
-  const env = { ...process.env, TRACKER_DATA: dataDir(), PORT: String(port) };
+  // dataDir() resolves BELAY_DATA to an absolute path, so a relative one survives the cwd change.
+  const env = { ...process.env, BELAY_DATA: dataDir(), PORT: String(port) };
   if (buildStale(ROOT)) {
-    console.log('tracker: building the dashboard…');
+    console.log('belay: building the dashboard…');
     const build = spawnSync(process.execPath, [next, 'build'], { cwd: web, env, stdio: 'inherit' });
     if (build.status !== 0) throw new Error('next build failed');
   }

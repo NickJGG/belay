@@ -13,7 +13,7 @@ import ui from './ui.module.css';
 import styles from './CreateModal.module.css';
 
 // The key predates issues sharing it, so a project and kind remembered from logging carry over.
-const LAST_KEY = 'tracker:last-log';
+const LAST_KEY = 'belay:last-log';
 
 /** The project of the last issue or log created here, and the last log's kind, which the next draft starts from. */
 export function lastCreated(): { project?: string; kind?: string } {

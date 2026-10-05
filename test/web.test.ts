@@ -16,7 +16,7 @@ function touch(rel: string, secondsAgo: number): void {
 }
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'tracker-'));
+  root = mkdtempSync(join(tmpdir(), 'belay-'));
   touch('src/cli.ts', 100);
   touch('web/app/page.tsx', 100);
 });

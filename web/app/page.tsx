@@ -40,7 +40,7 @@ export default function Home() {
         <PageBar crumbs={[{ label: 'Home', icon: <Logo /> }]} />
         <div className={ui.page}>
           <p className={ui.empty}>
-            No projects — run <code>tracker project add</code>.
+            No projects — run <code>belay project add</code>.
           </p>
         </div>
       </>

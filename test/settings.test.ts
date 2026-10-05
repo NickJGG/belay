@@ -8,7 +8,7 @@ import { loadSettings, saveSettings, settingsFile } from '../src/settings.ts';
 let dir: string;
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'tracker-'));
+  dir = mkdtempSync(join(tmpdir(), 'belay-'));
 });
 
 afterEach(() => rmSync(dir, { recursive: true, force: true }));

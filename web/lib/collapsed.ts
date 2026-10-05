@@ -3,7 +3,7 @@
  * than browser storage, so the server renders a collapsed group collapsed instead of it snapping shut on load.
  * Status groups default open, so for them this is the set of collapsed statuses.
  */
-export const COLLAPSED_COOKIE = 'tracker-collapsed';
+export const COLLAPSED_COOKIE = 'belay-collapsed';
 
 // '.' rather than ',', which isn't a legal cookie value character.
 export const parseCollapsed = (value: string | undefined) => new Set(value ? value.split('.') : []);

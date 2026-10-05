@@ -1,11 +1,11 @@
 {
-  "name": "tracker",
+  "name": "belay",
   "version": "0.1.0",
   "private": true,
   "description": "Personal project and issue tracker for Claude Code work",
   "type": "module",
   "bin": {
-    "tracker": "src/cli.ts"
+    "belay": "src/cli.ts"
   },
   "engines": {
     "node": ">=24"

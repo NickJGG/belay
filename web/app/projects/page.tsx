@@ -84,7 +84,7 @@ export default function Projects() {
         {bar}
         <div className={ui.page}>
           <p className={ui.empty}>
-            No projects — run <code>tracker project add</code>.
+            No projects — run <code>belay project add</code>.
           </p>
         </div>
       </>

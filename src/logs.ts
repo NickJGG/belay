@@ -84,13 +84,18 @@ export function saveLog(dir: string, day: string, entries: LogEntry[]): void {
   writeAtomic(file, serializeLog(entries));
 }
 
-/** Entries on work days `from`..`to` inclusive, oldest first. Only reads the files in range. */
-export function loadLogs(dir: string, from: string, to: string): DatedEntry[] {
+/** Every work day with a log file, unsorted. */
+export function loadLogDays(dir: string): string[] {
   const sub = logDir(dir);
   if (!existsSync(sub)) return [];
   return readdirSync(sub)
     .filter((f) => f.endsWith('.yaml') && DAY_RE.test(f.slice(0, -5)))
-    .map((f) => f.slice(0, -5))
+    .map((f) => f.slice(0, -5));
+}
+
+/** Entries on work days `from`..`to` inclusive, oldest first. Only reads the files in range. */
+export function loadLogs(dir: string, from: string, to: string): DatedEntry[] {
+  return loadLogDays(dir)
     .filter((day) => day >= from && day <= to)
     .sort()
     .flatMap((day) => loadLog(dir, day).map((e, i) => ({ ...e, day, n: i + 1 })));

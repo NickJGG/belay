@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, unlinkSync } from 'node:fs';
 import { dataDir } from './config.ts';
-import { loadLog, loadLogs, parseLogAddress, saveLog, type DatedEntry, type LogEntry } from './logs.ts';
+import { loadLog, loadLogDays, loadLogs, parseLogAddress, saveLog, type DatedEntry, type LogEntry } from './logs.ts';
 import { suggestKey } from './projectkey.ts';
 import { indexIssues, openBlockers } from './query.ts';
 import { reorder, type MoveTarget } from './sidebar.ts';
@@ -66,7 +66,7 @@ export class Ctx {
 
   project(key: string): Project {
     const p = this.projects.find((x) => x.key === canon(key));
-    if (!p) throw new Error(`no project '${key}' (see 'tracker project list')`);
+    if (!p) throw new Error(`no project '${key}' (see 'belay project list')`);
     return p;
   }
 
@@ -296,6 +296,8 @@ export interface ProjectPatch {
   kinds?: string[];
   /** `null` clears. */
   goal?: GoalInput | null;
+  /** Replaces the list; can't be empty. */
+  paths?: string[];
 }
 
 const KIND_RE = /^[a-z0-9][a-z0-9_-]*$/;
@@ -316,7 +318,7 @@ function declaredKind(p: Project, kind: string): string {
   const k = kind.trim().toLowerCase();
   const kinds = p.kinds ?? [];
   if (kinds.includes(k)) return k;
-  if (!kinds.length) throw new Error(`${p.key} declares no kinds ('tracker project set ${p.key} --kinds a,b')`);
+  if (!kinds.length) throw new Error(`${p.key} declares no kinds ('belay project set ${p.key} --kinds a,b')`);
   const near = closest(k, kinds);
   throw new Error(`${p.key} has no kind '${kind}'${near ? ` — did you mean '${near}'?` : ''} (kinds: ${kinds.join(', ')})`);
 }
@@ -357,6 +359,10 @@ export function editProject(ctx: Ctx, key: string, patch: ProjectPatch, clock = 
   if (patch.name !== undefined) {
     if (!patch.name.trim()) throw new Error('name is empty');
     p.name = patch.name.trim();
+  }
+  if (patch.paths !== undefined) {
+    if (!patch.paths.length) throw new Error('at least one path is required');
+    p.paths = patch.paths.map(normalizeStoredPath);
   }
   if (patch.group !== undefined) p.group = patch.group.trim() || undefined;
   if (patch.status !== undefined) p.status = oneOf(patch.status, PROJECT_STATUSES, 'status');
@@ -408,7 +414,7 @@ export function addProject(ctx: Ctx, n: NewProject): { project: Project; missing
 }
 
 /**
- * Renames a project's key and its issues' IDs (numbers kept), rewriting `blocked_by` everywhere.
+ * Renames a project's key and its issues' IDs (numbers kept), rewriting `blocked_by` and log entries everywhere.
  * New files are written before old ones are removed, so a crash leaves duplicates, never lost issues.
  */
 export function rekeyProject(ctx: Ctx, from: string, to: string): { project: Project; renamed: Map<string, string> } {
@@ -425,6 +431,15 @@ export function rekeyProject(ctx: Ctx, from: string, to: string): { project: Pro
   for (const t of own) saveIssue(ctx.dir, { ...t, id: renamed.get(t.id)!, project: key, blocked_by: remap(t.blocked_by) });
   for (const t of ctx.issues) {
     if (t.project !== old.key && t.blocked_by.some((b) => renamed.has(b))) saveIssue(ctx.dir, { ...t, blocked_by: remap(t.blocked_by) });
+  }
+  for (const day of loadLogDays(ctx.dir)) {
+    const entries = loadLog(ctx.dir, day);
+    if (!entries.some((e) => e.project === old.key || (e.issue && renamed.has(e.issue)))) continue;
+    saveLog(ctx.dir, day, entries.map((e) => ({
+      ...e,
+      project: e.project === old.key ? key : e.project,
+      ...(e.issue && { issue: renamed.get(e.issue) ?? e.issue }),
+    })));
   }
   for (const t of own) deleteIssueFile(ctx.dir, t.id);
   unlinkSync(projectFile(ctx.dir, old.key));

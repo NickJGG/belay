@@ -67,7 +67,7 @@ export function digestLines(project: Project, issues: Issue[], sessions: Session
   const ideas = own.filter((t) => t.status === 'idea').length;
 
   const tags = [project.focus ? 'focus' : '', project.status !== 'active' ? project.status : ''].filter(Boolean);
-  const out = [`tracker: ${project.key} — ${project.name}${tags.length ? ` (${tags.join(', ')})` : ''}`];
+  const out = [`belay: ${project.key} — ${project.name}${tags.length ? ` (${tags.join(', ')})` : ''}`];
   if (doing.length) out.push(`doing: ${doing.map(label).join('; ')}`);
   const more = ready.length > 3 ? '; …' : '';
   const ideaNote = ideas ? ` (${plural(ideas, 'idea')})` : '';
@@ -90,6 +90,6 @@ export function digestLines(project: Project, issues: Issue[], sessions: Session
   if (matched.length) {
     parts.push(`${plural(matched.length, 'old session')} ${matched.length === 1 ? 'matches' : 'match'} ${projectTerms(project).join('/')}`);
   }
-  if (parts.length) out.push(`grill: ${parts.join(' · ')} (tracker search <word>)`);
+  if (parts.length) out.push(`grill: ${parts.join(' · ')} (belay search <word>)`);
   return out;
 }

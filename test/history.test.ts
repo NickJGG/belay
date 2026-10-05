@@ -55,7 +55,7 @@ test('duration', () => {
 });
 
 let claude: string;
-beforeEach(() => (claude = mkdtempSync(join(tmpdir(), 'tracker-claude-'))));
+beforeEach(() => (claude = mkdtempSync(join(tmpdir(), 'belay-claude-'))));
 afterEach(() => rmSync(claude, { recursive: true, force: true }));
 
 function session(cwd: string, id: string, title: string | undefined, mtime: number) {
@@ -86,7 +86,7 @@ test('recentSessions: newest first, mapped by launch cwd, filtered and limited',
 });
 
 test('commit-day cache: read back for its own week only', () => {
-  const data = mkdtempSync(join(tmpdir(), 'tracker-cache-'));
+  const data = mkdtempSync(join(tmpdir(), 'belay-cache-'));
   try {
     assert.deepEqual(readCommitDays(data, '2026-10-05'), {});
     writeCommitDays(data, { week: '2026-10-05', projects: { JOB: ['2026-10-06'] } });

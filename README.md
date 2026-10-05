@@ -1,6 +1,6 @@
-# tracker
+# belay
 
-A personal issue tracker for Claude Code work: the `tracker` CLI (`src/`) and a local dashboard (`web/`). Run `tracker help` for the commands.
+A personal issue tracker for Claude Code work: the `belay` CLI (`src/`) and a local dashboard (`web/`). Run `belay help` for the commands.
 
 ## Dashboard setup
 
@@ -11,6 +11,6 @@ cd web
 npm install
 ```
 
-Then `tracker serve [--port <n>] [--no-open]` starts it at http://127.0.0.1:4747/. The first run builds it with `next build`. Later runs start straight away, rebuilding only when a file under `web/` or `src/` is newer than the last build. Re-run `npm install` in `web/` after its `package.json` changes.
+Then `belay serve [--port <n>] [--no-open]` starts it at http://127.0.0.1:4747/. The first run builds it with `next build`. Later runs start straight away, rebuilding only when a file under `web/` or `src/` is newer than the last build. Re-run `npm install` in `web/` after its `package.json` changes.
 
-For development, `npm run dev` in `web/` serves on port 4748. Point `TRACKER_DATA` at a copy of `~/Tracker` so experiments can't touch the real data.
+For development, `npm run dev` in `web/` serves on port 4748. Point `BELAY_DATA` at a copy of `~/Belay` so experiments can't touch the real data.

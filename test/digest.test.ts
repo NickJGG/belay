@@ -80,11 +80,11 @@ test('digestLines', () => {
   ];
   const grills = [grill('elevator-call-button'), grill('linked-elevator'), grill('unrelated')];
   const lines = digestLines(project, issues, sessions, grills);
-  assert.equal(lines[0], 'tracker: ELV — Rideable Elevators (focus)');
+  assert.equal(lines[0], 'belay: ELV — Rideable Elevators (focus)');
   assert.equal(lines[1], 'doing: ELV-1 Issue ELV-1');
   assert.equal(lines[2], 'ready 2 (1 idea): ELV-3 Issue ELV-3; ELV-2 Issue ELV-2');
   assert.match(lines[3], /^recent: 09-2[67] Call button light \(1 commit\)$/);
-  assert.equal(lines[4], 'grill: 1 old session matches rideable/elevator (tracker search <word>)');
+  assert.equal(lines[4], 'grill: 1 old session matches rideable/elevator (belay search <word>)');
   assert.equal(lines.length, 5);
 });
 
@@ -100,17 +100,17 @@ test('digestLines: tagged grill sessions', () => {
   const issues = [issue('ELV-1', { grill: 'e' })];
   assert.equal(
     digestLines(project, issues, [], grills).at(-1),
-    'grill: 4 sessions tagged (in progress: b, a, …) · 1 old session matches rideable/elevator (tracker search <word>)',
+    'grill: 4 sessions tagged (in progress: b, a, …) · 1 old session matches rideable/elevator (belay search <word>)',
   );
   assert.equal(
     digestLines(project, [], [], [grill('d', '', { project: 'elv', status: 'planned' })]).at(-1),
-    'grill: 1 session tagged (tracker search <word>)',
+    'grill: 1 session tagged (belay search <word>)',
   );
 });
 
 test('digestLines: quiet project', () => {
   assert.deepEqual(digestLines({ ...project, focus: false, status: 'paused' }, [], [], []), [
-    'tracker: ELV — Rideable Elevators (paused)',
+    'belay: ELV — Rideable Elevators (paused)',
     'ready: none',
   ]);
 });

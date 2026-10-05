@@ -15,7 +15,7 @@ export function Sidebar() {
     <nav className={styles.side} aria-label="Main">
       <NavLink href="/" className={styles.ws} activeClassName={styles.wsOn}>
         <Logo />
-        Tracker
+        Belay
       </NavLink>
       <SearchButton />
       <CreateButton />

@@ -24,7 +24,7 @@ import {
 let dir: string;
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'tracker-'));
+  dir = mkdtempSync(join(tmpdir(), 'belay-'));
   mkdirSync(join(dir, 'projects'));
   mkdirSync(join(dir, 'issues'));
 });

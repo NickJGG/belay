@@ -9,14 +9,14 @@ let dir: string;
 let saved: string | undefined;
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'tracker-'));
-  saved = process.env.TRACKER_DATA;
-  process.env.TRACKER_DATA = dir;
+  dir = mkdtempSync(join(tmpdir(), 'belay-'));
+  saved = process.env.BELAY_DATA;
+  process.env.BELAY_DATA = dir;
 });
 
 afterEach(() => {
-  if (saved === undefined) delete process.env.TRACKER_DATA;
-  else process.env.TRACKER_DATA = saved;
+  if (saved === undefined) delete process.env.BELAY_DATA;
+  else process.env.BELAY_DATA = saved;
   rmSync(dir, { recursive: true, force: true });
 });
 

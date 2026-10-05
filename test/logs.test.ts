@@ -8,7 +8,7 @@ import { firstLine, loadLog, loadLogs, logFile, parseLog, parseLogAddress, saveL
 let dir: string;
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'tracker-'));
+  dir = mkdtempSync(join(tmpdir(), 'belay-'));
 });
 
 afterEach(() => rmSync(dir, { recursive: true, force: true }));

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { claudeDir, DEFAULT_PORT } from './config.ts';
@@ -38,7 +38,7 @@ import { serve } from './web.ts';
 import { weekLines, weekSummary } from './week.ts';
 import { addDays, isDay, weekStart, workDay, workDayOf } from './workday.ts';
 
-const HELP = `tracker — what should I work on?
+const HELP = `belay — what should I work on?
 
   next [--all]                      doing, high-priority, then ready issues in focus projects (those
                                     with a goal behind or not yet met today first)
@@ -85,7 +85,8 @@ const HELP = `tracker — what should I work on?
   project list [--all]              --all includes archived
   project set <key> [--status active|paused|archived] [--focus|--no-focus] [--name <n>] [--group <g>]
                     [--kinds a,b] [--habit <days> | --quantity "<n> <kind>" | --target YYYY-MM-DD | --no-goal]
-                                    kinds: log-entry kinds (empty clears). A goal counts per Mon–Sun week while
+                    [--path <dir>...]
+                                    --path replaces the project's dirs. kinds: log-entry kinds (empty clears). A goal counts per Mon–Sun week while
                                     the project is in focus: habit = moved on N days, quantity = N log counts of
                                     a kind, target = finish the open issues by a date
   project move <key> (--before <key> | --after <key> | --top | --bottom)
@@ -94,7 +95,7 @@ const HELP = `tracker — what should I work on?
   project which [<dir>]             key of the project containing <dir> (default cwd); prints nothing if none
 
 --project defaults to the project whose path contains the cwd. --blocked-by takes
-repeated flags or a comma list. Keys and IDs are case-insensitive. Data dir: $TRACKER_DATA (default ~/Tracker).`;
+repeated flags or a comma list. Keys and IDs are case-insensitive. Data dir: $BELAY_DATA (default ~/Belay).`;
 
 function args<T extends ParseArgsConfig['options']>(
   argv: string[],
@@ -106,7 +107,7 @@ function args<T extends ParseArgsConfig['options']>(
   const n = parsed.positionals.length;
   if (n < positionals || n > maxPositionals) {
     const expected = maxPositionals === positionals ? positionals : `${positionals}–${maxPositionals}`;
-    throw new Error(`expected ${expected} argument(s), got ${n} — see 'tracker help'`);
+    throw new Error(`expected ${expected} argument(s), got ${n} — see 'belay help'`);
   }
   return parsed;
 }
@@ -165,9 +166,9 @@ function cmdNext(argv: string[]): void {
   if (values.all) section('ready — other active projects', n.other);
 
   if (!n.doing.length && !n.high.length && !n.focus.length && !(values.all && n.other.length)) {
-    out.push(focusKeys.length ? 'nothing ready in focus projects' : "no focus projects — 'tracker project set <key> --focus'");
+    out.push(focusKeys.length ? 'nothing ready in focus projects' : "no focus projects — 'belay project set <key> --focus'");
   }
-  if (!values.all && n.other.length) out.push(`${n.other.length} more ready in other active projects (tracker next --all)`);
+  if (!values.all && n.other.length) out.push(`${n.other.length} more ready in other active projects (belay next --all)`);
   print(out);
 }
 
@@ -390,7 +391,7 @@ function cmdLog(argv: string[]): void {
       },
       1,
     );
-    if (Object.values(values).every((v) => v === undefined)) throw new Error('nothing to edit (see tracker help)');
+    if (Object.values(values).every((v) => v === undefined)) throw new Error('nothing to edit (see belay help)');
     const before = parseLogAddress(positionals[0]);
     const { day, n } = editLog(new Ctx(), positionals[0], {
       text: values.text === '-' ? readFileSync(0, 'utf8') : values.text,
@@ -500,7 +501,7 @@ function cmdServe(argv: string[]): void {
   const port = Number(values.port ?? DEFAULT_PORT);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`--port must be 1–65535 (got '${values.port}')`);
   serve({ port, open: values.open ?? true }).catch((e: Error) => {
-    console.error(`tracker: ${e.message}`);
+    console.error(`belay: ${e.message}`);
     process.exitCode = 1;
   });
 }
@@ -525,7 +526,7 @@ function cmdDigest(argv: string[]): void {
     try {
       writeCommitDays(ctx.dir, { week, projects: commits });
     } catch (e) {
-      console.error(`tracker digest: commit cache: ${(e as Error).message}`);
+      console.error(`belay digest: commit cache: ${(e as Error).message}`);
     }
     const project = projectForCwd(ctx.projects, cwd);
     if (!project) return;
@@ -542,11 +543,11 @@ function cmdDigest(argv: string[]): void {
     };
     print(digestLines(project, ctx.issues, sessions, loadGrillSessions(claude), goals));
   } catch (e) {
-    console.error(`tracker digest: ${(e as Error).message}`);
+    console.error(`belay digest: ${(e as Error).message}`);
   }
 }
 
-/** Like digest, never fails: the status line just goes without the tracker's line. Reads files only, no git. */
+/** Like digest, never fails: the status line just goes without Belay's line. Reads files only, no git. */
 function cmdStatusline(argv: string[]): void {
   args(argv, {}, 0);
   try {
@@ -567,7 +568,7 @@ function cmdStatusline(argv: string[]): void {
     const line = withGoals(project ? statusLine(project, ctx.issues) : '', goals);
     if (line) print(line);
   } catch (e) {
-    console.error(`tracker statusline: ${(e as Error).message}`);
+    console.error(`belay statusline: ${(e as Error).message}`);
   }
 }
 
@@ -642,7 +643,7 @@ function projectList(argv: string[]): void {
   const projects = ctx.projects
     .filter((p) => values.all || p.status !== 'archived')
     .sort((a, b) => (a.group ?? '').localeCompare(b.group ?? ''));
-  if (!projects.length) return print("no projects — 'tracker project add'");
+  if (!projects.length) return print("no projects — 'belay project add'");
   const keyW = Math.max(...projects.map((p) => p.key.length));
   const nameW = Math.max(...projects.map((p) => p.name.length));
   const statusW = Math.max(...projects.map((p) => p.status.length));
@@ -684,10 +685,11 @@ function projectSet(argv: string[]): void {
       quantity: { type: 'string' },
       target: { type: 'string' },
       goal: { type: 'boolean' },
+      path: { type: 'string', multiple: true },
     },
     1,
   );
-  const { kinds, habit, quantity, target, goal: keepGoal, ...rest } = values;
+  const { kinds, habit, quantity, target, goal: keepGoal, path: paths, ...rest } = values;
   if (keepGoal === true) throw new Error('--goal takes no value: use --habit, --quantity or --target (or --no-goal)');
   if ([habit, quantity, target, keepGoal].filter((v) => v !== undefined).length > 1) {
     throw new Error('pass one of --habit, --quantity, --target or --no-goal');
@@ -701,7 +703,8 @@ function projectSet(argv: string[]): void {
     if (!m) throw new Error(`--quantity must be "<n> <kind>", e.g. "10 applied" (got '${quantity}')`);
     goal = { quantity: Number(m[1]), kind: m[2] };
   }
-  const p = editProject(new Ctx(), positionals[0], { ...rest, kinds: kinds === undefined ? undefined : idList([kinds]), goal });
+  const p = editProject(new Ctx(), positionals[0], { ...rest, kinds: kinds === undefined ? undefined : idList([kinds]), goal, paths });
+  if (paths) for (const dir of p.paths.filter((d) => !existsSync(d))) console.error(`warning: ${dir} does not exist`);
   const parts = [p.status, p.focus && 'focus', p.goal && `goal ${goalSpec(p.goal)}`, p.kinds && `kinds ${p.kinds.join(', ')}`];
   print(`updated project ${p.key}: ${parts.filter(Boolean).join(', ')}`);
 }
@@ -732,10 +735,10 @@ if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
 } else {
   try {
     const run = COMMANDS[cmd];
-    if (!run) throw new Error(`unknown command '${cmd}' — see 'tracker help'`);
+    if (!run) throw new Error(`unknown command '${cmd}' — see 'belay help'`);
     run(rest);
   } catch (e) {
-    console.error(`tracker: ${(e as Error).message}`);
+    console.error(`belay: ${(e as Error).message}`);
     process.exitCode = 1;
   }
 }

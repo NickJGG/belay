@@ -28,14 +28,14 @@ import {
   setPriority,
   setStatus,
 } from '../src/ops.ts';
-import { loadLog } from '../src/logs.ts';
+import { loadLog, saveLog } from '../src/logs.ts';
 import { next } from '../src/query.ts';
 import { createIssue, loadOrder, loadProjects, loadIssues, saveOrder, saveProject, today, type Issue } from '../src/store.ts';
 
 let dir: string;
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'tracker-'));
+  dir = mkdtempSync(join(tmpdir(), 'belay-'));
   mkdirSync(join(dir, 'projects'));
   mkdirSync(join(dir, 'issues'));
   saveProject(dir, { key: 'PIX', name: 'Pixel Imperium', paths: ['C:/x'], status: 'active', focus: false, body: '' });
@@ -246,6 +246,13 @@ test('editProject sets, clears and validates fields', () => {
   assert.throws(() => editProject(new Ctx(dir), 'nope', {}), /no project 'nope'/);
 });
 
+test('editProject replaces paths, normalized, and refuses an empty list', () => {
+  const p = editProject(new Ctx(dir), 'PIX', { paths: ['C:\\Code\\pix\\','C:/Code/pix-old'] });
+  assert.deepEqual(loadProjects(dir)[0].paths, p.paths);
+  assert.deepEqual(p.paths, ['C:/Code/pix', 'C:/Code/pix-old']);
+  assert.throws(() => editProject(new Ctx(dir), 'PIX', { paths: [] }), /at least one path/);
+});
+
 test('keys and IDs are case-insensitive and stored uppercase', () => {
   createIssue(dir, issue());
   const t = addIssue(new Ctx(dir), { title: 'x', project: 'pix', blockers: ['pix-1'] });
@@ -266,11 +273,13 @@ test('addProject derives a 3-letter key, 4 on a clash, or takes one', () => {
   assert.throws(() => addProject(new Ctx(dir), { name: 'X', paths: [] }), /at least one path/);
 });
 
-test('rekeyProject renames the project, its issues and every blocker reference', () => {
+test('rekeyProject renames the project, its issues, every blocker reference and its log entries', () => {
   saveProject(dir, { key: 'PZ-ELEVATORS', name: 'Rideable Elevators', paths: [], status: 'active', focus: true, body: '' });
   createIssue(dir, issue({ project: 'PZ-ELEVATORS' }));
   createIssue(dir, issue({ project: 'PZ-ELEVATORS', blocked_by: ['PZ-ELEVATORS-1'] }));
   createIssue(dir, issue({ blocked_by: ['PZ-ELEVATORS-2'] }));
+  const entry = { at: '2026-01-02T10:00', by: 'user', text: 'x' } as const;
+  saveLog(dir, '2026-01-02', [{ ...entry, project: 'PZ-ELEVATORS' }, { ...entry, project: 'PZ-ELEVATORS', issue: 'PZ-ELEVATORS-2' }, { ...entry, project: 'PIX' }]);
 
   const { renamed } = rekeyProject(new Ctx(dir), 'pz-elevators', 'elv');
   assert.deepEqual([...renamed], [['PZ-ELEVATORS-1', 'ELV-1'], ['PZ-ELEVATORS-2', 'ELV-2']]);
@@ -281,6 +290,7 @@ test('rekeyProject renames the project, its issues and every blocker reference',
     ['PIX-1', 'PIX', ['ELV-2']],
   ]);
   assert.equal(existsSync(join(dir, 'projects', 'pz-elevators.md')), false);
+  assert.deepEqual(loadLog(dir, '2026-01-02').map((e) => [e.project, e.issue]), [['ELV', undefined], ['ELV', 'ELV-2'], ['PIX', undefined]]);
   assert.throws(() => rekeyProject(new Ctx(dir), 'elv', 'pix'), /project 'PIX' already exists/);
   assert.throws(() => rekeyProject(new Ctx(dir), 'elv', 'elevator'), /3–4 letters/);
 });
