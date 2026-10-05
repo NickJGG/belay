@@ -3,7 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { claudeDir, dataDir } from '../../src/config.ts';
-import { ConflictError, Ctx, addComment, addIssue, bodyHash, deleteComment, deleteIssue, editComment, editProject, editIssue, moveProject, replaceBody, setFocus, setPriority, setStatus } from '../../src/ops.ts';
+import { parseGoalSpec } from '../../src/goals.ts';
+import { ConflictError, Ctx, addComment, addIssue, addLog, bodyHash, deleteComment, deleteIssue, deleteLog, editComment, editProject, editIssue, moveProject, replaceBody, setFocus, setPriority, setStatus } from '../../src/ops.ts';
 import { isLinked, linkedPath, openFile } from '../../src/open.ts';
 import type { DropPatch, MoveTarget } from '../../src/sidebar.ts';
 import { THEMES, saveSettings, type Theme } from '../../src/settings.ts';
@@ -126,6 +127,44 @@ export async function setProjectGroup(key: unknown, group: unknown): Promise<Res
 
 export async function setProjectStatus(key: unknown, status: unknown): Promise<Result> {
   return run((ctx) => void editProject(ctx, str(key, 'key'), { status: str(status, 'status') }));
+}
+
+/** `kinds` is comma-separated, as typed. */
+export async function setProjectKinds(key: unknown, kinds: unknown): Promise<Result> {
+  return run((ctx) => void editProject(ctx, str(key, 'key'), { kinds: str(kinds, 'kinds').split(',') }));
+}
+
+/** `spec` is `goalSpec`'s form; empty clears. */
+export async function setProjectGoal(key: unknown, spec: unknown): Promise<Result> {
+  return run((ctx) => void editProject(ctx, str(key, 'key'), { goal: parseGoalSpec(str(spec, 'goal')) }));
+}
+
+function optStr(v: unknown, what: string): string | undefined {
+  return v === undefined || v === '' ? undefined : str(v, what);
+}
+
+/** `day` is `today`, `yesterday` or a work day. */
+export async function createLog(input: unknown): Promise<Result> {
+  return run((ctx) => {
+    if (!input || typeof input !== 'object') throw new Error('input must be an object');
+    const { project, text, kind, count, day } = input as Record<string, unknown>;
+    addLog(
+      ctx,
+      {
+        project: str(project, 'project'),
+        text: str(text, 'text'),
+        kind: optStr(kind, 'kind'),
+        count: count === undefined ? undefined : num(count, 'count'),
+        day: optStr(day, 'day'),
+      },
+      { by: 'user' },
+    );
+  });
+}
+
+/** `at` is the entry's `at` as loaded: the op refuses if the address now holds another entry. */
+export async function deleteLogEntry(address: unknown, at: unknown): Promise<Result> {
+  return run((ctx) => void deleteLog(ctx, str(address, 'address'), str(at, 'at')));
 }
 
 function dropPatch(v: unknown): DropPatch | undefined {

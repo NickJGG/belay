@@ -19,8 +19,10 @@ export interface PaletteIssue {
 }
 
 export interface PaletteData {
-  projects: SidebarProject[];
+  projects: (SidebarProject & { kinds?: string[] })[];
   issues: PaletteIssue[];
+  /** The work day at render, which the log form's dates count back from. */
+  day: string;
 }
 
 interface Actions {
@@ -28,6 +30,7 @@ interface Actions {
   setHigh: (id: string, high: boolean) => void;
   open: (id: string) => void;
   newIssue: () => void;
+  newLog: () => void;
   moveProject: (key: string, move: MoveTarget) => void;
   help: () => void;
   go: (href: string) => void;
@@ -106,6 +109,11 @@ function Body({ data, onClose: close, target, onTargetPage, defaultProject, act 
             <span className={styles.icon}>+</span>
             <span className={styles.grow}>New issue…</span>
             <Kbd>C</Kbd>
+          </Command.Item>
+          <Command.Item value="log work entry" onSelect={then(act.newLog)} className={styles.item}>
+            <span className={styles.icon}>+</span>
+            <span className={styles.grow}>Log work…</span>
+            <Kbd>L</Kbd>
           </Command.Item>
           {here && prev && (
             <Command.Item value="move project up" onSelect={then(() => act.moveProject(here, { before: prev }))} className={styles.item}>

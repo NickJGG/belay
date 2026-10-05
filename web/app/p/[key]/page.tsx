@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { today } from '../../../../src/store.ts';
-import { setProjectGroup, setProjectName } from '@/app/actions';
+import { setProjectGoal, setProjectGroup, setProjectKinds, setProjectName } from '@/app/actions';
 import { projectHref } from '@/components/bits';
 import { FocusToggle, ProjectStatusSelect, IssueRow } from '@/components/controls';
 import { TextEdit } from '@/components/InlineEdit';
@@ -10,15 +10,16 @@ import { PageBar, projectsCrumb } from '@/components/PageBar';
 import panel from '@/components/PropsPanel.module.css';
 import { StatusGroup } from '@/components/StatusGroup';
 import ui from '@/components/ui.module.css';
-import { ctx, projectBoard, projectCounts } from '@/lib/data';
+import { addDays, ctx, goalSpec, projectBoard, projectCounts, workDay } from '@/lib/data';
 import type { Issue, IssueStatus } from '@/lib/types';
+import { Logs } from './Logs';
 import styles from './page.module.css';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ key: string }>;
-  searchParams: Promise<{ dropped?: string; older?: string }>;
+  searchParams: Promise<{ tab?: string; dropped?: string; older?: string; all?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -28,10 +29,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProjectPage({ params, searchParams }: Props) {
   const key = decodeURIComponent((await params).key).toUpperCase();
   const view = await searchParams;
-  const { projects, issues, byId } = ctx();
+  const data = ctx();
+  const { projects, issues, byId } = data;
   const project = projects.find((p) => p.key === key);
   if (!project) notFound();
 
+  const logsTab = view.tab === 'logs';
   const showDropped = view.dropped === '1';
   const showOlder = view.older === '1';
   const board = projectBoard(project.key, issues, { today: today(), older: showOlder });
@@ -54,6 +57,10 @@ export default async function ProjectPage({ params, searchParams }: Props) {
     );
   const counts = projectCounts(project, issues, byId);
   const issuesHref = (filter: string) => `/issues?project=${encodeURIComponent(project.key)}&${filter}`;
+  const tabHref = (logs: boolean) => `${projectHref(project.key)}${logs ? '?tab=logs' : ''}`;
+  const day = workDay();
+  const allLogs = logsTab ? data.logs('0000-01-01', day).filter((e) => e.project === project.key) : [];
+  const logs = view.all === '1' ? allLogs : allLogs.filter((e) => e.day > addDays(day, -28));
   const empty = !board.idea.length && !board.todo.length && !board.doing.length && !board.done.length && !board.olderDone;
 
   return (
@@ -62,26 +69,40 @@ export default async function ProjectPage({ params, searchParams }: Props) {
       <div className={panel.page}>
         <div className={panel.layout}>
           <div className={panel.main}>
-            {empty && <p className={ui.empty}>No issues.</p>}
-            {section('idea', board.idea)}
-            {section('todo', board.todo)}
-            {section('doing', board.doing)}
-            {section(
-              'done',
-              board.done,
-              board.olderDone > 0 && (
-                <Link className={`${ui.link} ${styles.more}`} href={href({ dropped: showDropped, older: !showOlder })}>
-                  {showOlder ? 'Hide older' : `${board.olderDone} older`}
-                </Link>
-              ),
-            )}
-            {showDropped && section('dropped', board.dropped)}
-            {board.dropped.length > 0 && (
-              <p>
-                <Link className={ui.link} href={href({ dropped: !showDropped, older: showOlder })}>
-                  {showDropped ? 'Hide dropped' : `Show dropped (${board.dropped.length})`}
-                </Link>
-              </p>
+            <nav className={styles.tabs} aria-label="View">
+              <Link className={styles.tab} href={tabHref(false)} aria-current={logsTab ? undefined : 'page'}>
+                Issues
+              </Link>
+              <Link className={styles.tab} href={tabHref(true)} aria-current={logsTab ? 'page' : undefined}>
+                Logs
+              </Link>
+            </nav>
+            {logsTab ? (
+              <Logs entries={logs} today={day} older={allLogs.length - logs.length} moreHref={`${tabHref(true)}&all=1`} />
+            ) : (
+              <>
+              {empty && <p className={ui.empty}>No issues.</p>}
+              {section('idea', board.idea)}
+              {section('todo', board.todo)}
+              {section('doing', board.doing)}
+              {section(
+                'done',
+                board.done,
+                board.olderDone > 0 && (
+                  <Link className={`${ui.link} ${styles.more}`} href={href({ dropped: showDropped, older: !showOlder })}>
+                    {showOlder ? 'Hide older' : `${board.olderDone} older`}
+                  </Link>
+                ),
+              )}
+              {showDropped && section('dropped', board.dropped)}
+              {board.dropped.length > 0 && (
+                <p>
+                  <Link className={ui.link} href={href({ dropped: !showDropped, older: showOlder })}>
+                    {showDropped ? 'Hide dropped' : `Show dropped (${board.dropped.length})`}
+                  </Link>
+                </p>
+              )}
+              </>
             )}
           </div>
 
@@ -102,6 +123,19 @@ export default async function ProjectPage({ params, searchParams }: Props) {
               <dt>Group</dt>
               <dd>
                 <TextEdit value={project.group ?? ''} label="Group" placeholder="None" save={setProjectGroup.bind(null, project.key)} />
+              </dd>
+              <dt>Goal</dt>
+              <dd>
+                <TextEdit
+                  value={project.goal ? goalSpec(project.goal) : ''}
+                  label="Goal"
+                  placeholder="None: 5 days, 10 applied, by date"
+                  save={setProjectGoal.bind(null, project.key)}
+                />
+              </dd>
+              <dt>Kinds</dt>
+              <dd>
+                <TextEdit value={project.kinds?.join(', ') ?? ''} label="Kinds" placeholder="None" save={setProjectKinds.bind(null, project.key)} />
               </dd>
               <dt>Key</dt>
               <dd className={ui.mono}>{project.key}</dd>

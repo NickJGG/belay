@@ -7,6 +7,7 @@ const press = (key: string, o: Partial<KeyPress> = {}): KeyPress => ({ key, ctrl
 
 test('single keys map to commands', () => {
   assert.deepEqual(keyCommand(press('c')), { kind: 'create' });
+  assert.deepEqual(keyCommand(press('l')), { kind: 'log' });
   assert.deepEqual(keyCommand(press('j')), { kind: 'move', delta: 1 });
   assert.deepEqual(keyCommand(press('k')), { kind: 'move', delta: -1 });
   assert.deepEqual(keyCommand(press('e')), { kind: 'edit' });
@@ -27,7 +28,7 @@ test('1–5 set the status in board order', () => {
 });
 
 test('typing disables everything but Ctrl/Cmd+K', () => {
-  for (const k of ['c', 'j', '1', '/', '?', 'Escape', 'Enter']) assert.equal(keyCommand(press(k, { focus: 'text' })), undefined, k);
+  for (const k of ['c', 'l', 'j', '1', '/', '?', 'Escape', 'Enter']) assert.equal(keyCommand(press(k, { focus: 'text' })), undefined, k);
   assert.deepEqual(keyCommand(press('k', { focus: 'text', ctrl: true })), { kind: 'palette' });
   assert.deepEqual(keyCommand(press('K', { meta: true })), { kind: 'palette' });
 });

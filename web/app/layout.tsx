@@ -5,7 +5,7 @@ import type { PaletteData } from '@/components/Palette';
 import { Sidebar } from '@/components/Sidebar';
 import { Toaster } from '@/components/Toaster';
 import { accent } from '@/lib/accents';
-import { ctx, settings } from '@/lib/data';
+import { ctx, settings, workDay } from '@/lib/data';
 import './tokens.css';
 import styles from './layout.module.css';
 
@@ -20,8 +20,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const style = { '--accent-dark': a.dark, '--accent-light': a.light } as React.CSSProperties;
   const { projects, issues } = ctx();
   const palette: PaletteData = {
-    projects: projects.map((p) => ({ key: p.key, name: p.name, status: p.status, focus: p.focus, group: p.group })),
+    projects: projects.map((p) => ({ key: p.key, name: p.name, status: p.status, focus: p.focus, group: p.group, kinds: p.kinds })),
     issues: issues.map((t) => ({ id: t.id, title: t.title, status: t.status, project: t.project, high: t.priority === 'high' })),
+    day: workDay(),
   };
   return (
     <html lang="en" data-theme={s.theme === 'system' ? undefined : s.theme} style={style}>

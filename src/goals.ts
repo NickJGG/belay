@@ -4,6 +4,7 @@
  */
 import type { DatedEntry } from './logs.ts';
 import { movedDays } from './moved.ts';
+import type { GoalInput } from './ops.ts';
 import type { Goal, Issue, Project } from './store.ts';
 import { daysBetween, weekStart, workDayOf } from './workday.ts';
 
@@ -96,4 +97,17 @@ export function goalSpec(goal: Goal): string {
   if ('habit' in goal) return `${goal.habit} days/wk`;
   if ('quantity' in goal) return `${goal.quantity} ${goal.kind}/wk`;
   return `by ${goal.target}`;
+}
+
+/** Reads `goalSpec`'s forms back, loosely: `5`, `5 days/wk`, `10 applied`, `by 2026-10-19`. Empty or `none` clears. */
+export function parseGoalSpec(spec: string): GoalInput | null {
+  const s = spec.trim().toLowerCase().replace(/\s*\/\s*wk$/, '');
+  if (!s || s === 'none') return null;
+  const target = /^(?:by\s+)?(\d{4}-\d{2}-\d{2})$/.exec(s);
+  if (target) return { target: target[1] };
+  const habit = /^(\d+)(?:\s+days?)?$/.exec(s);
+  if (habit) return { habit: Number(habit[1]) };
+  const quantity = /^(\d+)\s+(\S+)$/.exec(s);
+  if (quantity) return { quantity: Number(quantity[1]), kind: quantity[2] };
+  throw new Error(`goal must be '<n> days', '<n> <kind>' or 'by YYYY-MM-DD' (got '${spec}')`);
 }

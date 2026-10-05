@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 import { ChevronRight, FolderKanban } from 'lucide-react';
 import Link from 'next/link';
+import { LogButton } from './LogButton';
 import styles from './PageBar.module.css';
 
 type Crumb = { label: React.ReactNode; href?: string; icon?: React.ReactNode };
@@ -16,7 +17,7 @@ function Content({ c }: { c: Crumb }) {
   );
 }
 
-/** The sticky top bar on every page. The last crumb is the page's <h1>, and `after` follows it. */
+/** The sticky top bar on every page. The last crumb is the page's <h1>, and `after` follows it. Log work sits at the right. */
 export function PageBar({ crumbs, after }: { crumbs: Crumb[]; after?: React.ReactNode }) {
   const parents = crumbs.slice(0, -1);
   const last = crumbs[crumbs.length - 1];
@@ -42,6 +43,7 @@ export function PageBar({ crumbs, after }: { crumbs: Crumb[]; after?: React.Reac
         </h1>
         {after}
       </nav>
+      <LogButton />
     </header>
   );
 }

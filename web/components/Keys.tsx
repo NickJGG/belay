@@ -1,7 +1,7 @@
 'use client';
 /**
  * The keyboard layer: the j/k selection, single-key commands, the ⌘K palette, the cheat sheet and
- * the new-issue modal, whose draft is kept here so it survives closing and navigation.
+ * the new-issue and log modals, whose drafts are kept here so it survives closing and navigation.
  * A component showing an issue registers handlers for it, so a key goes through the same optimistic
  * path as a click on that component. With none registered, the action is called directly.
  */
@@ -12,6 +12,7 @@ import type { MoveTarget } from '../../src/sidebar.ts';
 import { moveProjectTo, setIssuePriority, setIssueStatus, type Result } from '@/app/actions';
 import type { IssueStatus } from '@/lib/types';
 import { issueHref } from './bits';
+import { EMPTY_LOG, LogModal, isBlankLog, lastLog } from './LogModal';
 import { EMPTY_DRAFT, NewIssueModal, isBlank } from './NewIssueModal';
 import { Palette, type PaletteData } from './Palette';
 import { Shortcuts } from './Shortcuts';
@@ -31,6 +32,7 @@ interface Api {
   openPalette: () => void;
   openHelp: () => void;
   newIssue: () => void;
+  newLog: () => void;
 }
 
 const ApiCtx = createContext<Api | null>(null);
@@ -76,6 +78,8 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
   const [help, setHelp] = useState(false);
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  const [logging, setLogging] = useState(false);
+  const [logDraft, setLogDraft] = useState(EMPTY_LOG);
   const [, start] = useTransition();
   const path = useRef(pathname);
   const latest = useRef(data);
@@ -107,6 +111,16 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
         const project = latest.current.projects.some((p) => p.key === key && p.status !== 'archived') ? key! : '';
         setDraft((d) => (isBlank(d) ? { ...d, project } : d));
         setCreating(true);
+      },
+      /** Defaults to this page's project, else the last one logged to, with its last kind. */
+      newLog: () => {
+        const open = latest.current.projects.filter((p) => p.status !== 'archived');
+        const last = lastLog();
+        const key = pageProject(path.current)?.toUpperCase();
+        const project = open.find((p) => p.key === key) ?? open.find((p) => p.key === last.project);
+        const kind = last.kind && project?.key === last.project && project?.kinds?.includes(last.kind) ? last.kind : '';
+        setLogDraft((d) => (isBlankLog(d) ? { ...d, project: project?.key ?? '', kind } : d));
+        setLogging(true);
       },
     }),
     [],
@@ -158,6 +172,9 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
         return true;
       case 'create':
         api.newIssue();
+        return true;
+      case 'log':
+        api.newLog();
         return true;
       case 'help':
         setHelp(true);
@@ -224,9 +241,10 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
           target={targetIssue}
           onTargetPage={target !== undefined && pageIssue(pathname) === target}
           defaultProject={pageProject(pathname)}
-          act={{ ...act, newIssue: api.newIssue, help: () => setHelp(true), go: (href: string) => router.push(href) }}
+          act={{ ...act, newIssue: api.newIssue, newLog: api.newLog, help: () => setHelp(true), go: (href: string) => router.push(href) }}
         />
         <NewIssueModal open={creating} onClose={() => setCreating(false)} draft={draft} setDraft={setDraft} data={data} onCreated={act.created} />
+        <LogModal open={logging} onClose={() => setLogging(false)} draft={logDraft} setDraft={setLogDraft} data={data} />
         <Shortcuts open={help} onClose={() => setHelp(false)} />
       </SelectedCtx>
     </ApiCtx>

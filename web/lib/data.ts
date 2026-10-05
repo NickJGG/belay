@@ -11,3 +11,5 @@ export { dataDir };
 
 export { plural } from '../../src/digest.ts';
 export { filterIssues, indexIssues, isReady, next, oldestFirst, openBlockers, parseIssueFilter, projectBoard, projectCounts } from '../../src/query.ts';
+export { addDays, workDay } from '../../src/workday.ts';
+export { goalSpec } from '../../src/goals.ts';

@@ -1,0 +1,44 @@
+.kinds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.kind {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--bg-raised);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color var(--fade),
+    background var(--fade),
+    color var(--fade);
+}
+
+.kind:hover {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--line));
+  color: var(--fg);
+}
+
+.kind[aria-pressed='true'] {
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--line));
+  background: color-mix(in oklab, var(--accent) 14%, var(--bg-raised));
+  color: var(--fg);
+}
+
+.count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+}
+
+.count input {
+  width: 64px;
+  height: 26px;
+}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { goalLabel, goalProgress, goalSpec, goalStrip, goalsProgress, urgencies } from '../src/goals.ts';
+import { goalLabel, goalProgress, goalSpec, goalStrip, goalsProgress, parseGoalSpec, urgencies } from '../src/goals.ts';
 import type { DatedEntry } from '../src/logs.ts';
 import type { Goal, Issue, Project, Transition } from '../src/store.ts';
 
@@ -152,4 +152,19 @@ test('goalsProgress: every counting goal in project order, commits moving habits
   assert.equal(goalStrip(goals), 'JOB 1/2 ✓ · APP 6/10 applied ✓ · PORT 1 left ▲11d');
   assert.deepEqual([...urgencies(goals)], [['JOB', 2], ['APP', 2], ['PORT', 2]]);
   assert.equal(goalStrip(goalsProgress(projects, issues, [], {}, THU)), 'JOB 0/2 · APP 0/10 applied · PORT 1 left ▲11d');
+});
+
+test('parseGoalSpec reads goalSpec back', () => {
+  for (const g of [{ habit: 5 }, { quantity: 10, kind: 'applied' }, { target: '2026-10-19', set: '2026-10-05' }] as Goal[]) {
+    const { set: _, ...input } = g as Goal & { set?: string };
+    assert.deepEqual(parseGoalSpec(goalSpec(g)), input);
+  }
+  assert.deepEqual(parseGoalSpec(' 3 '), { habit: 3 });
+  assert.deepEqual(parseGoalSpec('1 day'), { habit: 1 });
+  assert.deepEqual(parseGoalSpec('4 Outreach'), { quantity: 4, kind: 'outreach' });
+  assert.deepEqual(parseGoalSpec('2026-11-01'), { target: '2026-11-01' });
+  assert.equal(parseGoalSpec(''), null);
+  assert.equal(parseGoalSpec('None'), null);
+  assert.throws(() => parseGoalSpec('lots'), /goal must be/);
+  assert.throws(() => parseGoalSpec('by friday'), /goal must be/);
 });
