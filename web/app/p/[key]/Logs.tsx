@@ -1,12 +1,11 @@
 import Link from 'next/link';
-import type { DatedEntry } from '../../../../src/logs.ts';
-import { IssueLink } from '@/components/bits';
+import { firstLine, type DatedEntry } from '../../../../src/logs.ts';
+import { IssueLink, logHref } from '@/components/bits';
 import ui from '@/components/ui.module.css';
 import { addDays } from '@/lib/data';
-import { LogDelete } from './LogDelete';
 import styles from './page.module.css';
 
-function dayLabel(day: string, today: string): string {
+export function dayLabel(day: string, today: string): string {
   if (day === today) return 'Today';
   if (day === addDays(today, -1)) return 'Yesterday';
   const [y, m, d] = day.split('-').map(Number);
@@ -42,13 +41,16 @@ export function Logs({ entries, today, older, moreHref }: { entries: DatedEntry[
             </h3>
             <ul className={ui.rows}>
               {list.map((e) => {
-                const address = `${e.day}/${e.n}`;
+                const { line, more } = firstLine(e.text);
                 return (
-                  <li key={`${address}-${e.at}`} className={`${ui.row} ${styles.logRow}`}>
+                  <li key={`${e.day}/${e.n}-${e.at}`} className={`${ui.row} ${styles.logRow}`}>
                     <time className={`${ui.mono} ${ui.muted}`} dateTime={e.at} title={`Logged ${e.at.replace('T', ' ')}`}>
                       {e.at.slice(11)}
                     </time>
-                    <span className={styles.logText}>{e.text}</span>
+                    <Link className={`${styles.logText} ${ui.stretch}`} href={logHref(e.day, e.n, e.at)}>
+                      {line}
+                      {more && <span className={`${ui.muted} ${styles.moreMark}`}>more</span>}
+                    </Link>
                     {e.kind && (
                       <span className={styles.badge}>
                         {e.kind}
@@ -56,9 +58,12 @@ export function Logs({ entries, today, older, moreHref }: { entries: DatedEntry[
                       </span>
                     )}
                     {e.minutes && <span className={ui.muted}>{e.minutes}m</span>}
-                    {e.issue && <IssueLink id={e.issue} />}
+                    {e.issue && (
+                      <span className={styles.above}>
+                        <IssueLink id={e.issue} />
+                      </span>
+                    )}
                     {e.by === 'claude' && <span className={ui.src}>claude</span>}
-                    <LogDelete address={address} at={e.at} />
                   </li>
                 );
               })}

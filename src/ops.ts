@@ -445,6 +445,11 @@ export interface NewLog {
 
 export const LOG_BACKDATE_DAYS = 7;
 
+/** The work days a log entry may be filed under or moved to, `current` first. */
+export function logDays(current: string): string[] {
+  return Array.from({ length: LOG_BACKDATE_DAYS + 1 }, (_, i) => addDays(current, -i));
+}
+
 /** A work day a log entry may be filed under: today back to `LOG_BACKDATE_DAYS` ago. */
 function logDay(value: string, clock: Date): string {
   const current = workDay(clock);

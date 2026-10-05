@@ -62,20 +62,12 @@
   white-space: nowrap;
 }
 
-/* Revealed on row hover or focus, like comment actions. */
-.logDelete {
-  align-self: center;
-  opacity: 0;
+.moreMark {
+  margin-left: 6px;
+  font-size: 11.5px;
 }
 
-.logRow:hover .logDelete,
-.logDelete:focus-visible {
-  opacity: 1;
-}
-
-.confirm {
-  display: inline-flex;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 12px;
+/* Positioned after the stretched link, so it paints above the link's overlay and stays clickable. */
+.above {
+  position: relative;
 }

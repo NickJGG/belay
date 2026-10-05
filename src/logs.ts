@@ -101,3 +101,9 @@ export function parseLogAddress(addr: string): { day: string; n: number } {
   if (!m || Number(m[2]) < 1) throw new Error(`log entry address must be <YYYY-MM-DD>/<n> (got '${addr}')`);
   return { day: m[1], n: Number(m[2]) };
 }
+
+/** The text's first line, and whether anything follows it. */
+export function firstLine(text: string): { line: string; more: boolean } {
+  const i = text.indexOf('\n');
+  return i < 0 ? { line: text, more: false } : { line: text.slice(0, i).trimEnd(), more: text.slice(i).trim() !== '' };
+}

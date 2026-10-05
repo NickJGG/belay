@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
-import { loadLog, loadLogs, logFile, parseLog, parseLogAddress, saveLog, serializeLog, type LogEntry } from '../src/logs.ts';
+import { firstLine, loadLog, loadLogs, logFile, parseLog, parseLogAddress, saveLog, serializeLog, type LogEntry } from '../src/logs.ts';
 
 let dir: string;
 
@@ -64,4 +64,10 @@ test('parseLogAddress reads <day>/<n>', () => {
   assert.deepEqual(parseLogAddress('2026-10-05/#2'), { day: '2026-10-05', n: 2 });
   assert.throws(() => parseLogAddress('2026-10-05/0'), /<YYYY-MM-DD>\/<n>/);
   assert.throws(() => parseLogAddress('10-05/1'), /<YYYY-MM-DD>\/<n>/);
+});
+
+test('firstLine splits off the first line and says whether more follows', () => {
+  assert.deepEqual(firstLine('one'), { line: 'one', more: false });
+  assert.deepEqual(firstLine('one\r\n\ntwo'), { line: 'one', more: true });
+  assert.deepEqual(firstLine('one\n  \n'), { line: 'one', more: false });
 });

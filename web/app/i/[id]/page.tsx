@@ -3,11 +3,12 @@ import { notFound } from 'next/navigation';
 import { claudeDir } from '../../../../src/config.ts';
 import { bodyHash } from '../../../../src/ops.ts';
 import { linkedPath } from '../../../../src/open.ts';
-import { setIssueTitle } from '@/app/actions';
+import { openLinkedFile, setIssueTitle } from '@/app/actions';
 import { Flags, projectHref } from '@/components/bits';
 import { Chip, type Ref } from '@/components/Chip';
 import { PrioritySelect, StatusSelect } from '@/components/controls';
 import { TitleEdit } from '@/components/InlineEdit';
+import { OpenFile } from '@/components/OpenFile';
 import { PageBar, projectsCrumb } from '@/components/PageBar';
 import panel from '@/components/PropsPanel.module.css';
 import { StatusIcon } from '@/components/StatusIcon';
@@ -18,7 +19,6 @@ import { Activity } from './Activity';
 import { BodyEditor } from './BodyEditor';
 import { Blockers } from './Blockers';
 import { DeleteIssue } from './DeleteIssue';
-import { OpenFile } from './OpenFile';
 import styles from './issue.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -103,7 +103,7 @@ export default async function IssuePage({ params }: Props) {
                 <>
                   <dt>Grill</dt>
                   <dd>
-                    <OpenFile id={issue.id} kind="grill" path={grillPath} />
+                    <OpenFile open={openLinkedFile.bind(null, issue.id, 'grill')} path={grillPath} />
                   </dd>
                 </>
               )}
@@ -111,13 +111,13 @@ export default async function IssuePage({ params }: Props) {
                 <>
                   <dt>Plan</dt>
                   <dd>
-                    <OpenFile id={issue.id} kind="plan" path={planPath} />
+                    <OpenFile open={openLinkedFile.bind(null, issue.id, 'plan')} path={planPath} />
                   </dd>
                 </>
               )}
               <dt>File</dt>
               <dd>
-                <OpenFile id={issue.id} kind="file" path={linkedPath(issue, 'file', dirs)!} />
+                <OpenFile open={openLinkedFile.bind(null, issue.id, 'file')} path={linkedPath(issue, 'file', dirs)!} />
               </dd>
             </dl>
             <DeleteIssue id={issue.id} dependents={dependents.map((d) => ({ id: d.id, title: d.title }))} />

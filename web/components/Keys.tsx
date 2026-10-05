@@ -61,7 +61,7 @@ export function useIssueKeys(id: string, handlers: IssueHandlers) {
 
 const NOT_TEXT = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color']);
 
-function focusKind(t: EventTarget | null): 'text' | 'control' | 'none' {
+export function focusKind(t: EventTarget | null): 'text' | 'control' | 'none' {
   if (!(t instanceof HTMLElement)) return 'none';
   if (t.isContentEditable || t.closest('textarea, select')) return 'text';
   if (t instanceof HTMLInputElement) return NOT_TEXT.has(t.type) ? 'control' : 'text';

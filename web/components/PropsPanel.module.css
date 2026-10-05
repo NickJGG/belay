@@ -97,6 +97,21 @@
   overflow-wrap: anywhere;
 }
 
+.fileLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: 11.5px var(--mono);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.fileLink:hover {
+  text-decoration: underline;
+}
+
 .counts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

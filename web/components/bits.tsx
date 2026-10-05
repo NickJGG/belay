@@ -20,6 +20,9 @@ export const projectHref = (key: string) => `/p/${encodeURIComponent(key)}`;
 
 export const issueHref = (id: string) => `/i/${encodeURIComponent(id)}`;
 
+/** `at` lets the page tell when the address has come to hold a different entry. */
+export const logHref = (day: string, n: number, at: string) => `/l/${day}/${n}?at=${encodeURIComponent(at)}`;
+
 /** `stretch` makes the link cover its whole `ui.row`. */
 export function IssueLink({ id, stretch }: { id: string; stretch?: boolean }) {
   return (

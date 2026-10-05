@@ -17,6 +17,7 @@ import {
   deleteIssue,
   deleteLog,
   editLog,
+  logDays,
   editComment,
   editProject,
   editIssue,
@@ -478,4 +479,11 @@ test('Ctx.logs reads the range once and only on demand', () => {
   addLog(ctx, { project: 'PIX', text: 'b' }, USER, new Date(2026, 9, 5, 12));
   assert.equal(ctx.logs('2026-10-01', '2026-10-07').length, 1);
   assert.equal(new Ctx(dir).logs('2026-10-01', '2026-10-07').length, 2);
+});
+
+test('logDays lists today back to the backdate limit', () => {
+  const days = logDays('2026-10-05');
+  assert.equal(days.length, 8);
+  assert.equal(days[0], '2026-10-05');
+  assert.equal(days.at(-1), '2026-09-28');
 });

@@ -4,10 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { claudeDir, dataDir } from '../../src/config.ts';
 import { parseGoalSpec } from '../../src/goals.ts';
-import { ConflictError, Ctx, addComment, addIssue, addLog, bodyHash, deleteComment, deleteIssue, deleteLog, editComment, editProject, editIssue, moveProject, replaceBody, setFocus, setPriority, setStatus } from '../../src/ops.ts';
+import { ConflictError, Ctx, addComment, addIssue, addLog, bodyHash, deleteComment, deleteIssue, deleteLog, editComment, editLog, editProject, editIssue, moveProject, replaceBody, setFocus, setPriority, setStatus } from '../../src/ops.ts';
+import { logFile } from '../../src/logs.ts';
 import { isLinked, linkedPath, openFile } from '../../src/open.ts';
 import type { DropPatch, MoveTarget } from '../../src/sidebar.ts';
 import { THEMES, saveSettings, type Theme } from '../../src/settings.ts';
+import { isDay } from '../../src/workday.ts';
 import { isAccent } from '@/lib/accents';
 
 export interface Result {
@@ -162,9 +164,42 @@ export async function createLog(input: unknown): Promise<Result> {
   });
 }
 
-/** `at` is the entry's `at` as loaded: the op refuses if the address now holds another entry. */
+/**
+ * `at` is the entry's `at` as loaded: the op refuses if the address now holds another entry.
+ * On success, navigates to the project's Logs tab, since the entry's own page no longer exists.
+ */
 export async function deleteLogEntry(address: unknown, at: unknown): Promise<Result> {
-  return run((ctx) => void deleteLog(ctx, str(address, 'address'), str(at, 'at')));
+  let project = '';
+  const r = await run((ctx) => void (project = deleteLog(ctx, str(address, 'address'), str(at, 'at')).project));
+  if (r.error) return r;
+  redirect(`/p/${encodeURIComponent(project)}?tab=logs`);
+}
+
+/** `''` or `null` clears a number. */
+function optNum(v: unknown, what: string): number | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null || v === '') return null;
+  return num(v, what);
+}
+
+/** `patch` is a `LogPatch`. A day move changes the entry's address, so it navigates to the new one. */
+export async function editLogEntry(address: unknown, at: unknown, patch: unknown): Promise<Result> {
+  let moved: string | undefined;
+  const r = await run((ctx) => {
+    if (!patch || typeof patch !== 'object') throw new Error('patch must be an object');
+    const { text, kind, count, minutes, issue, day } = patch as Record<string, unknown>;
+    const opt = (v: unknown, what: string) => (v === undefined ? undefined : str(v, what));
+    const addr = str(address, 'address');
+    const e = editLog(
+      ctx,
+      addr,
+      { text: opt(text, 'text'), kind: opt(kind, 'kind'), count: optNum(count, 'count'), minutes: optNum(minutes, 'minutes'), issue: opt(issue, 'issue'), day: opt(day, 'day') },
+      str(at, 'at'),
+    );
+    if (`${e.day}/${e.n}` !== addr) moved = `/l/${e.day}/${e.n}?at=${encodeURIComponent(e.entry.at)}`;
+  });
+  if (r.error || !moved) return r;
+  redirect(moved);
 }
 
 function dropPatch(v: unknown): DropPatch | undefined {
@@ -217,6 +252,18 @@ export async function openLinkedFile(id: unknown, kind: unknown): Promise<Result
     const path = linkedPath(new Ctx(data).issue(str(id, 'id')), kind, { data, claude: claudeDir() });
     if (!path) throw new Error(`no ${kind} on ${id}`);
     openFile(path);
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  return {};
+}
+
+/** Opens a work day's log file on this machine. */
+export async function openLogFile(day: unknown): Promise<Result> {
+  try {
+    const d = str(day, 'day');
+    if (!isDay(d)) throw new Error(`day must be YYYY-MM-DD (got '${d}')`);
+    openFile(logFile(dataDir(), d));
   } catch (e) {
     return { error: (e as Error).message };
   }
