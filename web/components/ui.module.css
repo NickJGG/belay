@@ -219,6 +219,15 @@
   flex: none;
   width: 16px;
   height: 16px;
-  border-radius: 4px;
-  background: var(--accent);
+}
+
+.logo rect {
+  fill: var(--accent);
+}
+
+.logo g {
+  fill: none;
+  stroke: var(--on-accent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
