@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, useTransition } from 'react';
-import { CREATE_TYPES, EMPTY_CREATE, cycleType, switchKeyDelta, type CreateDraft, type CreateType } from '../../src/create.ts';
+import { CREATE_TYPES, EMPTY_CREATE, cycleType, logText, switchKeyDelta, type CreateDraft, type CreateType } from '../../src/create.ts';
 import { createIssue, createLog } from '@/app/actions';
 import type { Ref } from './Chip';
 import { Dropdown, type Option } from './Dropdown';
@@ -115,7 +115,7 @@ function Form({
     start(async () => {
       if (type === 'log') {
         const count = draft.count.trim() ? Number(draft.count) : undefined;
-        const r = await createLog({ project, text, kind, count, day: draft.day });
+        const r = await createLog({ project, text: logText(draft), kind, count, day: draft.day });
         if (r.error) return setError(r.error);
         rememberLast(project, kind);
         setDraft(EMPTY_CREATE);
@@ -216,21 +216,19 @@ function Form({
           </div>
         )
       ) : (
-        <>
-          <div className={styles.blockers}>
-            <span className={styles.label}>Blocked by</span>
-            <IssuePicker
-              label="Blocked by"
-              value={blockers}
-              onChange={(ids) => set({ blockers: ids })}
-              candidates={candidates}
-              preferProject={draft.project}
-              link={false}
-            />
-          </div>
-          <MarkdownField value={draft.body} onChange={(body) => set({ body })} minRows={6} placeholder="Add a description…" />
-        </>
+        <div className={styles.blockers}>
+          <span className={styles.label}>Blocked by</span>
+          <IssuePicker
+            label="Blocked by"
+            value={blockers}
+            onChange={(ids) => set({ blockers: ids })}
+            candidates={candidates}
+            preferProject={draft.project}
+            link={false}
+          />
+        </div>
       )}
+      <MarkdownField value={draft.body} onChange={(body) => set({ body })} minRows={isLog ? 3 : 6} placeholder="Add a description…" />
       {error && (
         <p className={styles.error} role="alert">
           {error}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CREATE_TYPES, EMPTY_CREATE, cycleType, isBlankCreate, openDraft, switchKeyDelta, type OpenContext } from '../src/create.ts';
+import { CREATE_TYPES, EMPTY_CREATE, cycleType, isBlankCreate, logText, openDraft, switchKeyDelta, type OpenContext } from '../src/create.ts';
 
 const ctx = (o: Partial<OpenContext> = {}): OpenContext => ({
   type: 'todo',
@@ -21,6 +21,12 @@ test('remembered defaults leave a draft blank, anything typed or chosen does not
   for (const patch of [{ text: 'x' }, { body: 'x' }, { blockers: ['WEB-1'] }, { high: true }, { count: '2' }, { day: 'yesterday' }]) {
     assert.equal(isBlankCreate({ ...EMPTY_CREATE, ...patch }), false, JSON.stringify(patch));
   }
+});
+
+test('a log entry joins the summary and description with a blank line', () => {
+  assert.equal(logText({ text: ' did it ', body: '' }), 'did it');
+  assert.equal(logText({ text: 'did it', body: '  \n ' }), 'did it');
+  assert.equal(logText({ text: 'did it', body: '\r\nfirst\r\n\r\nsecond\n' }), 'did it\n\nfirst\n\nsecond');
 });
 
 test('cycleType wraps round in switcher order', () => {

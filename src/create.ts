@@ -27,6 +27,13 @@ export const EMPTY_CREATE: CreateDraft = { type: 'todo', text: '', project: '', 
 /** Nothing typed or chosen yet. Kind and project don't count: they're remembered defaults. */
 export const isBlankCreate = (d: CreateDraft): boolean => !d.text && !d.body && !d.blockers.length && !d.high && !d.count && d.day === 'today';
 
+/** A log entry has one text: the summary line, then the description as further paragraphs. */
+export function logText(d: Pick<CreateDraft, 'text' | 'body'>): string {
+  const summary = d.text.trim();
+  const body = d.body.replaceAll('\r\n', '\n').trim();
+  return body ? `${summary}\n\n${body}` : summary;
+}
+
 export function cycleType(t: CreateType, delta: 1 | -1): CreateType {
   const n = CREATE_TYPES.length;
   return CREATE_TYPES[(CREATE_TYPES.indexOf(t) + delta + n) % n];
