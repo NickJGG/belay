@@ -7,7 +7,8 @@
 import { createContext, useContext, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { keyCommand, pageProject, pageTask, step, type KeyCommand } from '../../src/keys.ts';
-import { quickAdd, setTaskPriority, setTaskStatus, type Result } from '@/app/actions';
+import type { MoveTarget } from '../../src/sidebar.ts';
+import { moveProjectTo, quickAdd, setTaskPriority, setTaskStatus, type Result } from '@/app/actions';
 import type { TaskStatus } from '@/lib/types';
 import { taskHref } from './bits';
 import { Palette, type PaletteData, type PalettePage } from './Palette';
@@ -128,6 +129,7 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
       if (h) h();
       else act.open(id);
     },
+    moveProject: (key: string, move: MoveTarget) => direct(() => moveProjectTo(key, null, move)),
     create: async (project: string, title: string, status: TaskStatus) => {
       const r = await quickAdd(project, title, status);
       if (r.error) return toastError(r.error);

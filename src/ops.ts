@@ -7,6 +7,7 @@ import { existsSync, unlinkSync } from 'node:fs';
 import { dataDir } from './config.ts';
 import { suggestKey } from './projectkey.ts';
 import { indexTasks, openBlockers } from './query.ts';
+import { reorder, type MoveTarget } from './sidebar.ts';
 import {
   PROJECT_STATUSES,
   SOURCES,
@@ -227,21 +228,13 @@ export function editProject(ctx: Ctx, key: string, patch: ProjectPatch): Project
   return p;
 }
 
-export type MoveTarget = { before: string } | { after: string } | 'top' | 'bottom';
+export type { MoveTarget };
 
 /** Saves the full order, so projects that were unlisted get pinned where they currently sort. */
 export function moveProject(ctx: Ctx, key: string, where: MoveTarget): string[] {
   const moved = ctx.project(key).key;
-  const keys = ctx.projects.map((p) => p.key).filter((k) => k !== moved);
-  let at: number;
-  if (where === 'top') at = 0;
-  else if (where === 'bottom') at = keys.length;
-  else {
-    const anchor = ctx.project('before' in where ? where.before : where.after).key;
-    if (anchor === moved) throw new Error(`cannot move ${moved} relative to itself`);
-    at = keys.indexOf(anchor) + ('after' in where ? 1 : 0);
-  }
-  keys.splice(at, 0, moved);
+  const anchor = typeof where === 'string' ? where : 'before' in where ? { before: ctx.project(where.before).key } : { after: ctx.project(where.after).key };
+  const keys = reorder(ctx.projects.map((p) => p.key), moved, anchor);
   saveOrder(ctx.dir, keys);
   return keys;
 }

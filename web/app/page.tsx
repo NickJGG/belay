@@ -45,7 +45,7 @@ export default function Home() {
   const n = next(projects, tasks);
   const focusKeys = projects.filter((p) => p.focus && p.status === 'active').map((p) => p.key);
   const ordered = (list: Project[]) =>
-    [...list].sort((a, b) => (a.group ?? '').localeCompare(b.group ?? '') || Number(b.focus) - Number(a.focus) || a.key.localeCompare(b.key));
+    [...list].sort((a, b) => (a.group ?? '').localeCompare(b.group ?? ''));
   const active = ordered(projects.filter((p) => p.status === 'active'));
   const groups = [...new Set(active.map((p) => p.group ?? ''))];
   const paused = ordered(projects.filter((p) => p.status === 'paused'));

@@ -3,7 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { dataDir } from '../../src/config.ts';
-import { ConflictError, Ctx, addTask, bodyHash, deleteTask, editProject, editTask, replaceBody, setFocus, setPriority, setStatus } from '../../src/ops.ts';
+import { ConflictError, Ctx, addTask, bodyHash, deleteTask, editProject, editTask, moveProject, replaceBody, setFocus, setPriority, setStatus } from '../../src/ops.ts';
+import type { DropPatch, MoveTarget } from '../../src/sidebar.ts';
 import { THEMES, saveSettings, type Theme } from '../../src/settings.ts';
 import { isAccent } from '@/lib/accents';
 
@@ -96,6 +97,34 @@ export async function setProjectGroup(key: unknown, group: unknown): Promise<Res
 
 export async function setProjectStatus(key: unknown, status: unknown): Promise<Result> {
   return run((ctx) => void editProject(ctx, str(key, 'key'), { status: str(status, 'status') }));
+}
+
+function dropPatch(v: unknown): DropPatch | undefined {
+  if (v === null || v === undefined) return undefined;
+  if (typeof v !== 'object') throw new Error('patch must be an object');
+  const { focus, group } = v as Record<string, unknown>;
+  if (focus !== undefined && typeof focus !== 'boolean') throw new Error('focus must be a boolean');
+  return { focus, group: group === undefined ? undefined : str(group, 'group') };
+}
+
+function moveTarget(v: unknown): MoveTarget {
+  if (v === 'top' || v === 'bottom') return v;
+  if (v && typeof v === 'object') {
+    if ('before' in v) return { before: str(v.before, 'before') };
+    if ('after' in v) return { after: str(v.after, 'after') };
+  }
+  throw new Error('move must be top, bottom, {before} or {after}');
+}
+
+/** A sidebar drop: the focus/group change (if any) and the reorder, as one action. */
+export async function moveProjectTo(key: unknown, patch: unknown, move: unknown): Promise<Result> {
+  return run((ctx) => {
+    const k = str(key, 'key');
+    const p = dropPatch(patch);
+    const where = moveTarget(move);
+    if (p) editProject(ctx, k, p);
+    moveProject(ctx, k, where);
+  });
 }
 
 export async function updateSettings(accent: unknown, theme: unknown): Promise<Result> {

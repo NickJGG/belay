@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { Command } from 'cmdk';
 import { STATUS_KEYS } from '../../src/keys.ts';
-import type { ProjectStatus, TaskStatus } from '@/lib/types';
+import { sectionNeighbours, sidebarSections, type MoveTarget, type SidebarProject } from '../../src/sidebar.ts';
+import type { TaskStatus } from '@/lib/types';
 import { projectHref } from './bits';
 import { Kbd, useModKey } from './Kbd';
 import { Modal } from './Modal';
@@ -18,7 +19,7 @@ export interface PaletteTask {
 }
 
 export interface PaletteData {
-  projects: { key: string; name: string; status: ProjectStatus }[];
+  projects: SidebarProject[];
   tasks: PaletteTask[];
 }
 
@@ -30,6 +31,7 @@ interface Actions {
   setHigh: (id: string, high: boolean) => void;
   open: (id: string) => void;
   create: (project: string, title: string, status: TaskStatus) => Promise<void>;
+  moveProject: (key: string, move: MoveTarget) => void;
   help: () => void;
   go: (href: string) => void;
 }
@@ -71,6 +73,8 @@ function Body({ data, page, setPage, target, onTargetPage, defaultProject, act }
     fn();
   };
   const project = page.kind === 'title' ? data.projects.find((p) => p.key === page.project) : undefined;
+  const here = defaultProject?.toUpperCase();
+  const { prev, next } = here ? sectionNeighbours(sidebarSections(data.projects), here) : {};
 
   const placeholder = { root: 'Type a command or search…', project: 'Create a task in which project?', title: `New task in ${project?.name ?? ''}` }[page.kind];
 
@@ -153,6 +157,18 @@ function Body({ data, page, setPage, target, onTargetPage, defaultProject, act }
                 <Command.Item value="create task in another project" onSelect={() => setPage({ kind: 'project' })} className={styles.item}>
                   <span className={styles.icon}>+</span>
                   <span className={styles.grow}>Create task in another project…</span>
+                </Command.Item>
+              )}
+              {here && prev && (
+                <Command.Item value="move project up" onSelect={then(() => act.moveProject(here, { before: prev }))} className={styles.item}>
+                  <span className={styles.icon}>↑</span>
+                  <span className={styles.grow}>Move project up</span>
+                </Command.Item>
+              )}
+              {here && next && (
+                <Command.Item value="move project down" onSelect={then(() => act.moveProject(here, { after: next }))} className={styles.item}>
+                  <span className={styles.icon}>↓</span>
+                  <span className={styles.grow}>Move project down</span>
                 </Command.Item>
               )}
               <Command.Item value="keyboard shortcuts help" onSelect={then(act.help)} className={styles.item}>

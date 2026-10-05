@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const style = { '--accent-dark': a.dark, '--accent-light': a.light } as React.CSSProperties;
   const { projects, tasks } = ctx();
   const palette: PaletteData = {
-    projects: projects.map((p) => ({ key: p.key, name: p.name, status: p.status })),
+    projects: projects.map((p) => ({ key: p.key, name: p.name, status: p.status, focus: p.focus, group: p.group })),
     tasks: tasks.map((t) => ({ id: t.id, title: t.title, status: t.status, project: t.project, high: t.priority === 'high' })),
   };
   return (
