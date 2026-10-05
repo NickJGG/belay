@@ -16,6 +16,7 @@ import {
   deleteComment,
   deleteIssue,
   deleteLog,
+  editLog,
   editComment,
   editIssue,
   editProject,
@@ -28,7 +29,7 @@ import {
   type MoveTarget,
 } from './ops.ts';
 import { goalOf, goalSpec, goalStrip, goalsProgress, urgencies } from './goals.ts';
-import { type DatedEntry } from './logs.ts';
+import { parseLogAddress, type DatedEntry } from './logs.ts';
 import { commitDays, movedDays } from './moved.ts';
 import { isReady, next, openBlockers, projectCounts, projectForCwd } from './query.ts';
 import { statusLine, withGoals } from './statusline.ts';
@@ -60,6 +61,10 @@ const HELP = `tracker — what should I work on?
   log [<key>] [--since 7d|YYYY-MM-DD]
                                     log entries, newest first, addressed <day>/<n>
   log delete <day>/<n>
+  log edit <day>/<n> [--text <t>|-] [--kind <k>] [--count <n>] [--minutes <n>] [--issue <id>]
+           [--date today|yesterday|YYYY-MM-DD]
+                                    '' clears kind (and count), count, minutes or issue; --date moves
+                                    the entry to the end of that day (up to 7 days back)
   list [--project <key>] [--status <s,...>|all]   default hides done and dropped
   week [--last]                     this (or last) Mon–Sun week per project: days moved, goal, issues
                                     done, commits and log entries
@@ -327,6 +332,11 @@ function intArg(value: string | undefined, flag: string): number | undefined {
   return n;
 }
 
+/** Like `intArg`, but `''` clears the field. */
+function clearableIntArg(value: string | undefined, flag: string): number | null | undefined {
+  return value?.trim() === '' ? null : intArg(value, flag);
+}
+
 function entryTags(e: { kind?: string; count?: number; minutes?: number; issue?: string }): string {
   return [e.kind && `${e.kind}${(e.count ?? 1) > 1 ? ` ×${e.count}` : ''}`, e.minutes && `${e.minutes}m`, e.issue].filter(Boolean).join(' ');
 }
@@ -366,6 +376,31 @@ function cmdLog(argv: string[]): void {
     const { positionals } = args(argv.slice(1), {}, 1);
     const e = deleteLog(new Ctx(), positionals[0]);
     return print(`deleted ${positionals[0]} (${e.project}: ${clip(e.text, 60)})`);
+  }
+  if (argv[0] === 'edit') {
+    const { values, positionals } = args(
+      argv.slice(1),
+      {
+        text: { type: 'string', short: 't' },
+        kind: { type: 'string', short: 'k' },
+        count: { type: 'string', short: 'n' },
+        minutes: { type: 'string', short: 'm' },
+        issue: { type: 'string', short: 'i' },
+        date: { type: 'string', short: 'd' },
+      },
+      1,
+    );
+    if (Object.values(values).every((v) => v === undefined)) throw new Error('nothing to edit (see tracker help)');
+    const before = parseLogAddress(positionals[0]);
+    const { day, n } = editLog(new Ctx(), positionals[0], {
+      text: values.text === '-' ? readFileSync(0, 'utf8') : values.text,
+      kind: values.kind,
+      count: clearableIntArg(values.count, '--count'),
+      minutes: clearableIntArg(values.minutes, '--minutes'),
+      issue: values.issue,
+      day: values.date,
+    });
+    return print(day === before.day ? `edited ${day}/${n}` : `edited, moved to ${day}/${n}`);
   }
   const { values, positionals } = args(argv, { since: { type: 'string', short: 's' } }, 0, 1);
   const ctx = new Ctx();

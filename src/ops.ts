@@ -445,6 +445,21 @@ export interface NewLog {
 
 export const LOG_BACKDATE_DAYS = 7;
 
+/** A work day a log entry may be filed under: today back to `LOG_BACKDATE_DAYS` ago. */
+function logDay(value: string, clock: Date): string {
+  const current = workDay(clock);
+  const day = parseDay(value, clock);
+  if (day > current) throw new Error(`${day} is in the future`);
+  if (day < addDays(current, -LOG_BACKDATE_DAYS)) throw new Error(`${day} is more than ${LOG_BACKDATE_DAYS} days back`);
+  return day;
+}
+
+function projectIssue(ctx: Ctx, project: Project, id: string): string {
+  const t = ctx.issue(id);
+  if (t.project !== project.key) throw new Error(`${t.id} is not in ${project.key}`);
+  return t.id;
+}
+
 export function addLog(ctx: Ctx, n: NewLog, author: Author, clock = new Date()): { entry: LogEntry; day: string; n: number } {
   const project = ctx.project(n.project);
   const text = n.text.replaceAll('\r\n', '\n').trim();
@@ -453,16 +468,8 @@ export function addLog(ctx: Ctx, n: NewLog, author: Author, clock = new Date()):
   if (n.count !== undefined && !kind) throw new Error('a count needs a kind');
   const count = n.count === undefined ? undefined : positiveInt(n.count, 'count', 1000);
   const minutes = n.minutes === undefined ? undefined : positiveInt(n.minutes, 'minutes', 24 * 60);
-  let issue: string | undefined;
-  if (n.issue !== undefined) {
-    const t = ctx.issue(n.issue);
-    if (t.project !== project.key) throw new Error(`${t.id} is not in ${project.key}`);
-    issue = t.id;
-  }
-  const current = workDay(clock);
-  const day = n.day === undefined ? current : parseDay(n.day, clock);
-  if (day > current) throw new Error(`${day} is in the future`);
-  if (day < addDays(current, -LOG_BACKDATE_DAYS)) throw new Error(`${day} is more than ${LOG_BACKDATE_DAYS} days back`);
+  const issue = n.issue === undefined ? undefined : projectIssue(ctx, project, n.issue);
+  const day = n.day === undefined ? workDay(clock) : logDay(n.day, clock);
   const entry: LogEntry = {
     project: project.key,
     at: now(clock),
@@ -479,12 +486,67 @@ export function addLog(ctx: Ctx, n: NewLog, author: Author, clock = new Date()):
 }
 
 /** `addr` is `<day>/<n>`. With `expectAt`, refuses when the entry there isn't the one that was loaded. */
-export function deleteLog(ctx: Ctx, addr: string, expectAt?: string): LogEntry {
+function findLog(ctx: Ctx, addr: string, expectAt: string | undefined): { day: string; n: number; entries: LogEntry[]; entry: LogEntry } {
   const { day, n } = parseLogAddress(addr);
   const entries = loadLog(ctx.dir, day);
   if (n > entries.length) throw new Error(`${day} has no log entry #${n} (it has ${entries.length})`);
   const entry = entries[n - 1];
   if (expectAt !== undefined && entry.at !== expectAt) throw new Error(`log entry ${day}/${n} changed on disk since it was loaded`);
+  return { day, n, entries, entry };
+}
+
+export function deleteLog(ctx: Ctx, addr: string, expectAt?: string): LogEntry {
+  const { day, n, entries, entry } = findLog(ctx, addr, expectAt);
   saveLog(ctx.dir, day, entries.filter((_, i) => i !== n - 1));
   return entry;
+}
+
+/** `''` or `null` clears a field; clearing `kind` clears `count` too. `day` moves the entry to the end of that day. */
+export interface LogPatch {
+  text?: string;
+  kind?: string;
+  count?: number | null;
+  minutes?: number | null;
+  issue?: string;
+  day?: string;
+}
+
+/** `at`, `by`, `session` and `project` never change. Returns the entry's (possibly new) address. */
+export function editLog(ctx: Ctx, addr: string, patch: LogPatch, expectAt?: string, clock = new Date()): { entry: LogEntry; day: string; n: number } {
+  const { day, n, entries, entry: old } = findLog(ctx, addr, expectAt);
+  const project = ctx.project(old.project);
+  const e: LogEntry = { ...old };
+  if (patch.text !== undefined) {
+    const text = patch.text.replaceAll('\r\n', '\n').trim();
+    if (!text) throw new Error('log entry text is empty');
+    e.text = text;
+  }
+  if (patch.kind !== undefined) {
+    if (patch.kind.trim()) e.kind = declaredKind(project, patch.kind);
+    else {
+      delete e.kind;
+      delete e.count;
+    }
+  }
+  if (patch.count === null) delete e.count;
+  else if (patch.count !== undefined) {
+    if (!e.kind) throw new Error('a count needs a kind');
+    e.count = positiveInt(patch.count, 'count', 1000);
+  }
+  if (patch.minutes === null) delete e.minutes;
+  else if (patch.minutes !== undefined) e.minutes = positiveInt(patch.minutes, 'minutes', 24 * 60);
+  if (patch.issue !== undefined) {
+    if (patch.issue.trim()) e.issue = projectIssue(ctx, project, patch.issue);
+    else delete e.issue;
+  }
+  const target = patch.day === undefined ? day : parseDay(patch.day, clock);
+  if (target === day) {
+    saveLog(ctx.dir, day, entries.map((x, i) => (i === n - 1 ? e : x)));
+    return { entry: e, day, n };
+  }
+  logDay(target, clock);
+  const moved = [...loadLog(ctx.dir, target), e];
+  saveLog(ctx.dir, target, moved);
+  saveLog(ctx.dir, day, entries.filter((_, i) => i !== n - 1));
+  return { entry: e, day: target, n: moved.length };
 }

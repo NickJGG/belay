@@ -8,7 +8,7 @@
 
 **Goal** — An optional expectation on a focus project: a _habit goal_ (move on N days per week), a _quantity goal_ (N log-entry counts of a kind per week, e.g. 10 `applied`), or a _target goal_ (finish the committed issues, `todo`/`doing` plus those done since the goal was set, by a date). Weeks run Monday–Sunday. Ignored while the project is out of focus. A focus project without one is pinned but never nudged.
 
-**Log entry** — A dated record of work done on a project, optionally linked to an issue and carrying a kind, count or minutes. Time-first, like a journal; a Comment is context on one issue. Its kind must be one the project declares. _Avoid_: activity, did-entry.
+**Log entry** — A dated record of work done on a project, optionally linked to an issue and carrying a kind, count or minutes. Time-first, like a journal; a Comment is context on one issue. Its kind must be one the project declares. Its text is Markdown whose first line is its summary. It's addressed `<day>/<n>`, its 1-based position in that work day's file, so deleting an earlier entry that day shifts it. _Avoid_: activity, did-entry.
 
 **Work day** — The day activity counts toward, ending at 4am local rather than midnight, so late-night work belongs to the day it felt like. Goals, Moved and log entries use it; stored timestamps stay real local time.
 

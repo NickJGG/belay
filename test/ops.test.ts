@@ -16,6 +16,7 @@ import {
   deleteComment,
   deleteIssue,
   deleteLog,
+  editLog,
   editComment,
   editProject,
   editIssue,
@@ -405,6 +406,69 @@ test('addLog validates and appends to the work day file; deleteLog removes by ad
   assert.throws(() => deleteLog(new Ctx(dir), '2026-10-05/1', '2026-10-05T09:00'), /changed on disk/);
   deleteLog(new Ctx(dir), '2026-10-05/1', '2026-10-06T01:30');
   assert.equal(existsSync(join(dir, 'log', '2026-10-05.yaml')), false);
+});
+
+test('editLog patches fields in place and validates like addLog', () => {
+  editProject(new Ctx(dir), 'PIX', { kinds: ['applied'] });
+  saveProject(dir, { key: 'JOB', name: 'Job', paths: [], status: 'active', focus: true, body: '' });
+  createIssue(dir, issue());
+  createIssue(dir, issue({ project: 'JOB' }));
+  const clock = new Date(2026, 9, 6, 1, 30);
+  addLog(new Ctx(dir), { project: 'PIX', text: 'first' }, USER, clock);
+  addLog(new Ctx(dir), { project: 'PIX', text: 'sent CV', kind: 'applied', count: 2, minutes: 30 }, { by: 'claude', session: 's1' }, clock);
+  const edit = (patch: Parameters<typeof editLog>[2], expectAt?: string) => () => editLog(new Ctx(dir), '2026-10-05/2', patch, expectAt, clock);
+
+  const r = edit({ text: ' fixed\r\nsecond line ', minutes: 45, issue: 'pix-1' }, '2026-10-06T01:30')();
+  assert.deepEqual([r.day, r.n], ['2026-10-05', 2]);
+  assert.deepEqual(loadLog(dir, '2026-10-05')[1], {
+    project: 'PIX',
+    at: '2026-10-06T01:30',
+    by: 'claude',
+    session: 's1',
+    text: 'fixed\nsecond line',
+    kind: 'applied',
+    count: 2,
+    minutes: 45,
+    issue: 'PIX-1',
+  });
+  assert.equal(loadLog(dir, '2026-10-05')[0].text, 'first');
+
+  assert.equal(edit({ count: null })().entry.count, undefined);
+  assert.equal(edit({ count: 3 })().entry.count, 3);
+  const cleared = edit({ kind: '', minutes: null, issue: '' })().entry;
+  assert.deepEqual([cleared.kind, cleared.count, cleared.minutes, cleared.issue], [undefined, undefined, undefined, undefined]);
+  assert.throws(edit({ count: 2 }), /a count needs a kind/);
+  assert.equal(edit({ kind: 'Applied', count: 4 })().entry.count, 4);
+
+  assert.throws(edit({ text: ' ' }), /text is empty/);
+  assert.throws(edit({ kind: 'aplied' }), /did you mean 'applied'/);
+  assert.throws(edit({ issue: 'JOB-1' }), /JOB-1 is not in PIX/);
+  assert.throws(edit({ minutes: 0 }), /minutes must be a whole number/);
+  assert.throws(edit({ text: 'x' }, '2026-10-05T09:00'), /changed on disk/);
+  assert.throws(() => editLog(new Ctx(dir), '2026-10-05/3', { text: 'x' }), /has no log entry #3/);
+});
+
+test('editLog moves an entry to the end of another day within the backdate window', () => {
+  const clock = new Date(2026, 9, 6, 1, 30);
+  const add = (text: string, day: string) => addLog(new Ctx(dir), { project: 'PIX', text }, USER, clock).day && day;
+  add('a', '2026-10-05');
+  addLog(new Ctx(dir), { project: 'PIX', text: 'y', day: 'yesterday' }, USER, clock);
+  const move = (addr: string, day: string) => editLog(new Ctx(dir), addr, { day }, undefined, clock);
+
+  const r = move('2026-10-05/1', 'yesterday');
+  assert.deepEqual([r.day, r.n], ['2026-10-04', 2]);
+  assert.equal(r.entry.at, '2026-10-06T01:30');
+  assert.deepEqual(loadLog(dir, '2026-10-04').map((e) => e.text), ['y', 'a']);
+  assert.equal(existsSync(join(dir, 'log', '2026-10-05.yaml')), false);
+
+  assert.equal(move('2026-10-04/2', '2026-10-04').n, 2);
+  assert.throws(() => move('2026-10-04/2', '2026-10-06'), /2026-10-06 is in the future/);
+  assert.throws(() => move('2026-10-04/2', '2026-09-27'), /more than 7 days back/);
+  assert.deepEqual(loadLog(dir, '2026-10-04').map((e) => e.text), ['y', 'a']);
+
+  writeFileSync(join(dir, 'log', '2026-09-01.yaml'), 'entries:\n  - { project: PIX, at: "2026-09-01T10:00", by: user, text: old }\n');
+  assert.equal(move('2026-09-01/1', 'today').day, '2026-10-05');
+  assert.equal(existsSync(join(dir, 'log', '2026-09-01.yaml')), false);
 });
 
 test('Ctx.logs reads the range once and only on demand', () => {
