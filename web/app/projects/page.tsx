@@ -3,7 +3,8 @@ import { projectHref } from '@/components/bits';
 import { FocusToggle } from '@/components/controls';
 import { PageBar, projectsCrumb } from '@/components/PageBar';
 import ui from '@/components/ui.module.css';
-import { ctx, indexIssues, plural, projectCounts } from '@/lib/data';
+import { commitTimes, ctx, heatLevel, heatmap, heatRange, indexIssues, plural, projectCounts, workDay } from '@/lib/data';
+import type { Heatmap } from '../../../src/heatmap.ts';
 import type { Project } from '@/lib/types';
 import styles from './projects.module.css';
 
@@ -11,8 +12,71 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = { title: 'Projects' };
 
+const WEEKS = 8;
+const SHADES = 4;
+
+function Heat({ heat, day }: { heat: Heatmap; day: string }) {
+  const weeks = Array.from({ length: heat.days.length / 7 }, (_, w) => heat.days.slice(w * 7, w * 7 + 7));
+  return (
+    <section className={styles.heat}>
+      <h3 className={ui.h3}>Moved, last {weeks.length} weeks</h3>
+      <div className={styles.heatScroll}>
+        <table className={styles.heatTable}>
+          <thead>
+            <tr>
+              <th />
+              {weeks.map((w) => (
+                <th key={w[0]} className={styles.week} scope="col">
+                  {w[0].slice(5)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {heat.rows.map((r) => (
+              <tr key={r.project}>
+                <th scope="row">
+                  <Link href={projectHref(r.project)} className={`${ui.mono} ${styles.heatKey}`}>
+                    {r.project}
+                  </Link>
+                </th>
+                {weeks.map((w, wi) => (
+                  <td key={w[0]}>
+                    <span className={styles.cells}>
+                      {w.map((d, i) => {
+                        const n = r.counts[wi * 7 + i];
+                        return (
+                          <span
+                            key={d}
+                            className={styles.cell}
+                            data-level={n === null ? undefined : heatLevel(n)}
+                            data-today={d === day || undefined}
+                            title={n === null ? d : `${r.project} ${d}: ${n ? plural(n, 'move') : 'no moves'}`}
+                          />
+                        );
+                      })}
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className={styles.legend} aria-hidden>
+        Fewer
+        {Array.from({ length: SHADES + 1 }, (_, l) => (
+          <span key={l} className={styles.cell} data-level={l} />
+        ))}
+        More
+      </p>
+    </section>
+  );
+}
+
 export default function Projects() {
-  const { projects, issues } = ctx();
+  const data = ctx();
+  const { projects, issues } = data;
   const bar = <PageBar crumbs={[projectsCrumb]} />;
   if (!projects.length) {
     return (
@@ -35,6 +99,13 @@ export default function Projects() {
   const paused = ordered(projects.filter((p) => p.status === 'paused'));
   const archived = projects.filter((p) => p.status === 'archived').length;
 
+  const day = workDay();
+  const { from, to } = heatRange(day, WEEKS);
+  const shown = [...active, ...paused];
+  const commits = Object.fromEntries(shown.map((p) => [p.key, commitTimes(p.key, from, to)]));
+  const heat = heatmap(shown, issues, data.logs('0000-01-01', day), commits, day, WEEKS);
+  const lastMoved = new Map(heat.rows.map((r) => [r.project, r.lastMoved]));
+
   const projectRow = (p: Project) => {
     const c = projectCounts(p, issues, byId);
     const counts = [
@@ -51,7 +122,15 @@ export default function Projects() {
         </Link>
         <span className={`${ui.mono} ${ui.muted}`}>{p.key}</span>
         <span className={`${ui.grow} ${ui.muted}`}>{counts.join(' · ')}</span>
-        <span className={`${ui.muted} ${styles.date}`}>{c.lastTouched}</span>
+        {lastMoved.get(p.key) ? (
+          <span className={`${ui.muted} ${styles.date}`} title="Last moved: an issue changed status, a comment, a log entry or a commit">
+            {lastMoved.get(p.key)}
+          </span>
+        ) : (
+          <span className={`${ui.muted} ${styles.date} ${styles.edited}`} title="Not moved since status changes were recorded; last edited">
+            {c.lastTouched}
+          </span>
+        )}
       </li>
     );
   };
@@ -67,6 +146,7 @@ export default function Projects() {
           </section>
         ))}
         {!active.length && <p className={ui.empty}>No active projects.</p>}
+        {shown.length > 0 && <Heat heat={heat} day={day} />}
         {paused.length > 0 && (
           <details className={ui.disclosure}>
             <summary>Paused ({paused.length})</summary>

@@ -1,11 +1,13 @@
 import Link from 'next/link';
+import { CalendarDays } from 'lucide-react';
 import { Logo } from '@/components/bits';
 import { IssueRow } from '@/components/controls';
 import { PageBar } from '@/components/PageBar';
 import { Group } from '@/components/StatusGroup';
 import { StatusIcon } from '@/components/StatusIcon';
+import { ThisWeek } from '@/components/ThisWeek';
 import ui from '@/components/ui.module.css';
-import { ctx, next } from '@/lib/data';
+import { addDays, burndown, commitTimes, ctx, goalOf, next, urgencies, weekDays, weekStart, weekSummary, workDay } from '@/lib/data';
 import type { Issue } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -30,7 +32,8 @@ function Section({ id, icon, label, issues, defaultOpen }: { id: string; icon: R
 }
 
 export default function Home() {
-  const { projects, issues } = ctx();
+  const data = ctx();
+  const { projects, issues } = data;
   if (!projects.length) {
     return (
       <>
@@ -44,13 +47,30 @@ export default function Home() {
     );
   }
 
-  const n = next(projects, issues);
+  const day = workDay();
+  const week = weekStart(day);
+  const sunday = addDays(week, 6);
+  const goalProjects = projects.filter((p) => goalOf(p));
+  const commits = Object.fromEntries(goalProjects.map((p) => [p.key, commitTimes(p.key, week, sunday)]));
+  const goalRows = weekSummary(goalProjects, issues, data.logs(week, sunday), commits, week, day).filter((r) => r.goal);
+  const burndowns = Object.fromEntries(
+    goalProjects.flatMap((p) => {
+      const g = goalOf(p);
+      return g && 'target' in g ? [[p.key, { set: g.set, points: burndown(p, issues, day) }]] : [];
+    }),
+  );
+  const n = next(projects, issues, urgencies(goalRows.map((r) => r.goal!)));
   const focusKeys = projects.filter((p) => p.focus && p.status === 'active').map((p) => p.key);
 
   return (
     <>
       <PageBar crumbs={[{ label: 'Home', icon: <Logo /> }]} />
       <div className={ui.page}>
+        {goalRows.length > 0 && (
+          <Group id="week" icon={<CalendarDays size={14} aria-hidden />} label="This week" count={goalRows.length}>
+            <ThisWeek rows={goalRows} week={weekDays(week)} burndowns={burndowns} />
+          </Group>
+        )}
         <Section id="doing" icon={<StatusIcon status="doing" />} label="Doing" issues={n.doing} />
         <Section id="high" icon={<span className={ui.high}>!!</span>} label="High priority" issues={n.high} />
         <Section id="focus" icon={<StatusIcon status="todo" />} label={`Ready — focus: ${focusKeys.join(', ') || 'none'}`} issues={n.focus} />

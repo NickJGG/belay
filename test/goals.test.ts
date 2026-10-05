@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { goalLabel, goalProgress, goalSpec, goalStrip, goalsProgress, parseGoalSpec, urgencies } from '../src/goals.ts';
+import { burndown, goalLabel, goalProgress, goalSpec, goalStrip, goalsProgress, parseGoalSpec, urgencies } from '../src/goals.ts';
 import type { DatedEntry } from '../src/logs.ts';
 import type { Goal, Issue, Project, Transition } from '../src/store.ts';
 
@@ -167,4 +167,23 @@ test('parseGoalSpec reads goalSpec back', () => {
   assert.equal(parseGoalSpec('None'), null);
   assert.throws(() => parseGoalSpec('lots'), /goal must be/);
   assert.throws(() => parseGoalSpec('by friday'), /goal must be/);
+});
+
+test('burndown: issues left per day since the target was set, with scope added on creation', () => {
+  const p = project({ target: '2026-10-10', set: '2026-10-05' });
+  const issues = [
+    issue('done', { transitions: doneAt('2026-10-06T15:00') }),
+    issue('done', { transitions: doneAt('2026-10-03T15:00') }),
+    issue('doing'),
+    issue('todo', { created: '2026-10-07' }),
+    issue('idea'),
+  ];
+  assert.deepEqual(burndown(p, issues, THU), [
+    { day: '2026-10-05', left: 2 },
+    { day: '2026-10-06', left: 1 },
+    { day: '2026-10-07', left: 2 },
+    { day: '2026-10-08', left: 2 },
+  ]);
+  assert.equal(burndown(p, issues, '2026-10-20').length, 6);
+  assert.deepEqual(burndown(project({ habit: 3 }), issues, THU), []);
 });

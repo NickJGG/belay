@@ -6,7 +6,7 @@ import type { DatedEntry } from './logs.ts';
 import { movedDays } from './moved.ts';
 import type { GoalInput } from './ops.ts';
 import type { Goal, Issue, Project } from './store.ts';
-import { daysBetween, weekStart, workDayOf } from './workday.ts';
+import { addDays, daysBetween, weekStart, workDayOf } from './workday.ts';
 
 export type TargetState = 'noscope' | 'ontrack' | 'behind' | 'overdue' | 'done';
 
@@ -23,11 +23,15 @@ export function goalOf(project: Project): Goal | undefined {
   return project.status === 'active' && project.focus ? project.goal : undefined;
 }
 
-/** Whether `t` was finished on or after work day `set`; `updated` stands in for issues done before transitions were recorded. */
-function doneSince(t: Issue, set: string): boolean {
-  if (t.status !== 'done') return false;
+/** The work day `t` was last finished; `updated` stands in for issues done before transitions were recorded. */
+function doneDay(t: Issue): string | undefined {
+  if (t.status !== 'done') return undefined;
   const last = t.transitions?.findLast((x) => x.to === 'done');
-  return last ? workDayOf(last.at) >= set : t.updated >= set;
+  return last ? workDayOf(last.at) : t.updated;
+}
+
+function inScope(t: Issue, set: string): boolean {
+  return t.status === 'todo' || t.status === 'doing' || (doneDay(t) ?? '') >= set;
 }
 
 /**
@@ -50,15 +54,32 @@ export function goalProgress(project: Project, issues: Issue[], logs: DatedEntry
     const metToday = counted.some((e) => e.day === day);
     return { project: project.key, urgency: metToday ? 2 : 1, form: 'quantity', kind: goal.kind, done, of: goal.quantity, metToday };
   }
-  const own = issues.filter((t) => t.project === project.key);
-  const left = own.filter((t) => t.status === 'todo' || t.status === 'doing').length;
-  const scope = left + own.filter((t) => doneSince(t, goal.set)).length;
+  const own = issues.filter((t) => t.project === project.key && inScope(t, goal.set));
+  const scope = own.length;
+  const left = own.filter((t) => t.status !== 'done').length;
   const daysLeft = daysBetween(day, goal.target);
   const total = daysBetween(goal.set, goal.target);
   const expected = total > 0 ? Math.ceil((scope * daysLeft) / total) : 0;
   const state: TargetState = !scope ? 'noscope' : !left ? 'done' : daysLeft < 0 ? 'overdue' : left > expected ? 'behind' : 'ontrack';
   const urgency = state === 'overdue' || state === 'behind' ? 0 : 2;
   return { project: project.key, urgency, form: 'target', date: goal.target, state, scope, left, daysLeft };
+}
+
+/**
+ * Issues left in a target's scope at the end of each work day from `set` through `day` (capped at the target
+ * date). An issue only counts from the day it was created, so added scope shows as a rise.
+ */
+export function burndown(project: Project, issues: Issue[], day: string): { day: string; left: number }[] {
+  const goal = goalOf(project);
+  if (!goal || !('target' in goal)) return [];
+  const own = issues.filter((t) => t.project === project.key && inScope(t, goal.set));
+  const end = day < goal.target ? day : goal.target;
+  const points = [];
+  for (let d = goal.set; d <= end; d = addDays(d, 1)) {
+    const left = own.filter((t) => t.created <= d && !((doneDay(t) ?? '9999') <= d)).length;
+    points.push({ day: d, left });
+  }
+  return points;
 }
 
 /** Progress of every goal that counts, in project order. `commits` maps project keys to their commit work days. */
