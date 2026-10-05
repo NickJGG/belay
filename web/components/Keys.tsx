@@ -1,6 +1,7 @@
 'use client';
 /**
- * The keyboard layer: the j/k selection, single-key commands, the ⌘K palette and the cheat sheet.
+ * The keyboard layer: the j/k selection, single-key commands, the ⌘K palette, the cheat sheet and
+ * the new-issue modal, whose draft is kept here so it survives closing and navigation.
  * A component showing an issue registers handlers for it, so a key goes through the same optimistic
  * path as a click on that component. With none registered, the action is called directly.
  */
@@ -8,10 +9,11 @@ import { createContext, useContext, useEffect, useEffectEvent, useMemo, useRef, 
 import { usePathname, useRouter } from 'next/navigation';
 import { keyCommand, pageProject, pageIssue, step, type KeyCommand } from '../../src/keys.ts';
 import type { MoveTarget } from '../../src/sidebar.ts';
-import { moveProjectTo, quickAdd, setIssuePriority, setIssueStatus, type Result } from '@/app/actions';
+import { moveProjectTo, setIssuePriority, setIssueStatus, type Result } from '@/app/actions';
 import type { IssueStatus } from '@/lib/types';
 import { issueHref } from './bits';
-import { Palette, type PaletteData, type PalettePage } from './Palette';
+import { EMPTY_DRAFT, NewIssueModal, isBlank } from './NewIssueModal';
+import { Palette, type PaletteData } from './Palette';
 import { Shortcuts } from './Shortcuts';
 import { toastError } from './Toaster';
 
@@ -26,8 +28,9 @@ type HandlerRef = { current: IssueHandlers };
 interface Api {
   select: (id: string | undefined) => void;
   register: (id: string, h: HandlerRef) => () => void;
-  openPalette: (page?: PalettePage) => void;
+  openPalette: () => void;
   openHelp: () => void;
+  newIssue: () => void;
 }
 
 const ApiCtx = createContext<Api | null>(null);
@@ -69,12 +72,16 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
   const pathname = usePathname();
   const handlers = useRef(new Map<string, Set<HandlerRef>>());
   const [sel, setSel] = useState<{ path: string; id: string }>();
-  const [palette, setPalette] = useState<PalettePage>();
+  const [palette, setPalette] = useState(false);
   const [help, setHelp] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [, start] = useTransition();
   const path = useRef(pathname);
+  const latest = useRef(data);
   useEffect(() => {
     path.current = pathname;
+    latest.current = data;
   });
 
   // A selection belongs to the page it was made on.
@@ -93,8 +100,14 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
           if (!map.get(id)?.size) map.delete(id);
         };
       },
-      openPalette: (page = { kind: 'root' }) => setPalette(page),
+      openPalette: () => setPalette(true),
       openHelp: () => setHelp(true),
+      newIssue: () => {
+        const key = pageProject(path.current)?.toUpperCase();
+        const project = latest.current.projects.some((p) => p.key === key && p.status !== 'archived') ? key! : '';
+        setDraft((d) => (isBlank(d) ? { ...d, project } : d));
+        setCreating(true);
+      },
     }),
     [],
   );
@@ -130,11 +143,10 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
       else act.open(id);
     },
     moveProject: (key: string, move: MoveTarget) => direct(() => moveProjectTo(key, null, move)),
-    create: async (project: string, title: string, status: IssueStatus) => {
-      const r = await quickAdd(project, title, status);
-      if (r.error) return toastError(r.error);
-      if (pageProject(pathname) === project) api.select(r.id);
-      else router.push(issueHref(r.id!));
+    created: (id: string, project: string) => {
+      setCreating(false);
+      if (!pageIssue(pathname) && pageProject(pathname)?.toUpperCase() === project) api.select(id);
+      else router.push(issueHref(id));
     },
   };
 
@@ -144,11 +156,9 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
       case 'palette':
         api.openPalette();
         return true;
-      case 'create': {
-        const project = pageProject(pathname);
-        api.openPalette(project ? { kind: 'title', project } : { kind: 'project' });
+      case 'create':
+        api.newIssue();
         return true;
-      }
       case 'help':
         setHelp(true);
         return true;
@@ -209,13 +219,14 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
         {children}
         <Palette
           data={data}
-          page={palette}
-          setPage={setPalette}
+          open={palette}
+          onClose={() => setPalette(false)}
           target={targetIssue}
           onTargetPage={target !== undefined && pageIssue(pathname) === target}
           defaultProject={pageProject(pathname)}
-          act={{ ...act, help: () => setHelp(true), go: (href: string) => router.push(href) }}
+          act={{ ...act, newIssue: api.newIssue, help: () => setHelp(true), go: (href: string) => router.push(href) }}
         />
+        <NewIssueModal open={creating} onClose={() => setCreating(false)} draft={draft} setDraft={setDraft} data={data} onCreated={act.created} />
         <Shortcuts open={help} onClose={() => setHelp(false)} />
       </SelectedCtx>
     </ApiCtx>

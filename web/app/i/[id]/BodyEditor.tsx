@@ -3,6 +3,8 @@ import { useEffect, useState, useTransition } from 'react';
 import { saveIssueBody } from '@/app/actions';
 import { useIssueKeys } from '@/components/Keys';
 import { Markdown } from '@/components/Markdown';
+import { MarkdownField } from '@/components/MarkdownField';
+import field from '@/components/MarkdownField.module.css';
 import { toastError } from '@/components/Toaster';
 import ui from '@/components/ui.module.css';
 import styles from './issue.module.css';
@@ -19,7 +21,6 @@ export function BodyEditor({ id, body, hash }: { id: string; body: string; hash:
   const [draft, setDraft] = useState('');
   const [original, setOriginal] = useState('');
   const [base, setBase] = useState(hash);
-  const [preview, setPreview] = useState(false);
   const [disk, setDisk] = useState({ body: '', hash: '' });
   const [pending, start] = useTransition();
   const dirty = mode !== 'view' && draft !== original;
@@ -36,7 +37,6 @@ export function BodyEditor({ id, body, hash }: { id: string; body: string; hash:
     setDraft(body);
     setOriginal(body);
     setBase(hash);
-    setPreview(false);
     setMode('edit');
   };
 
@@ -97,7 +97,7 @@ export function BodyEditor({ id, body, hash }: { id: string; body: string; hash:
         <div className={styles.conflict}>
           <label className={styles.pane}>
             <span className={styles.paneHead}>Your draft</span>
-            <textarea className={styles.textarea} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={keys} rows={16} />
+            <textarea className={field.textarea} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={keys} rows={16} />
           </label>
           <div className={styles.pane}>
             <span className={styles.paneHead}>On disk</span>
@@ -133,27 +133,7 @@ export function BodyEditor({ id, body, hash }: { id: string; body: string; hash:
           </button>
         </div>
       )}
-      <div className={styles.tabs} role="tablist">
-        <button type="button" role="tab" aria-selected={!preview} className={styles.tab} onClick={() => setPreview(false)}>
-          Write
-        </button>
-        <button type="button" role="tab" aria-selected={preview} className={styles.tab} onClick={() => setPreview(true)}>
-          Preview
-        </button>
-      </div>
-      {preview ? (
-        <div className={styles.preview}>{draft.trim() ? <Markdown>{draft}</Markdown> : <span className={ui.muted}>Nothing to preview.</span>}</div>
-      ) : (
-        <textarea
-          className={styles.textarea}
-          aria-label="Description"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={keys}
-          rows={Math.max(10, draft.split('\n').length + 2)}
-          autoFocus
-        />
-      )}
+      <MarkdownField value={draft} onChange={setDraft} onKeyDown={keys} minRows={10} autoFocus />
       <div className={styles.bodyActions}>
         <span className={ui.muted}>Markdown · Ctrl+Enter to save · Esc to cancel</span>
         <button type="button" className={ui.btn} onClick={cancel} disabled={pending}>

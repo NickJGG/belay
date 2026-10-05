@@ -16,22 +16,25 @@ export function Dropdown({
   options,
   onChange,
   className,
+  placeholder,
 }: {
   label: string;
   value: string;
   options: Option[];
   onChange: (value: string) => void;
   className?: string;
+  /** Shown while `value` matches no option. */
+  placeholder?: string;
 }) {
   const id = useId();
   const wrap = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const current = Math.max(0, options.findIndex(([v]) => v === value));
+  const current = options.findIndex(([v]) => v === value);
 
   const show = () => {
-    setActive(current);
+    setActive(Math.max(0, current));
     setOpen(true);
   };
   const pick = (i: number) => {
@@ -54,6 +57,7 @@ export function Dropdown({
   }, [open]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     const last = options.length - 1;
     if (!open) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') show();
@@ -64,7 +68,7 @@ export function Dropdown({
     else if (e.key === 'End') setActive(last);
     else if (e.key === 'Enter' || e.key === ' ') pick(active);
     else if (e.key === 'Escape') setOpen(false);
-    else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    else if (e.key.length === 1) {
       const k = e.key.toLowerCase();
       const order = options.map((_, i) => (active + 1 + i) % options.length);
       const hit = order.find((i) => options[i][1].toLowerCase().startsWith(k));
@@ -88,7 +92,7 @@ export function Dropdown({
         onKeyDown={onKeyDown}
         onBlur={() => setOpen(false)}
       >
-        {options[current]?.[1]}
+        {current >= 0 ? options[current][1] : <span className={styles.placeholder}>{placeholder}</span>}
         <ChevronDown size={12} aria-hidden />
       </button>
       {open && (
@@ -105,7 +109,7 @@ export function Dropdown({
               onClick={() => pick(i)}
             >
               <span className={styles.label}>{l}</span>
-              {v === value && <Check size={12} aria-hidden />}
+              {v === value && <Check size={12} className={styles.check} aria-hidden />}
             </li>
           ))}
         </ul>

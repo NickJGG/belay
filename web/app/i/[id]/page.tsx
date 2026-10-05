@@ -5,6 +5,7 @@ import { bodyHash } from '../../../../src/ops.ts';
 import { normalizeStoredPath, issueFile } from '../../../../src/store.ts';
 import { setIssueTitle } from '@/app/actions';
 import { Flags, projectHref } from '@/components/bits';
+import { Chip, type Ref } from '@/components/Chip';
 import { PrioritySelect, StatusSelect } from '@/components/controls';
 import { TitleEdit } from '@/components/InlineEdit';
 import panel from '@/components/PropsPanel.module.css';
@@ -12,7 +13,7 @@ import ui from '@/components/ui.module.css';
 import { ctx, openBlockers } from '@/lib/data';
 import type { Issue } from '@/lib/types';
 import { BodyEditor } from './BodyEditor';
-import { Blockers, Chip, type Ref } from './Blockers';
+import { Blockers } from './Blockers';
 import { DeleteIssue } from './DeleteIssue';
 import styles from './issue.module.css';
 
@@ -75,7 +76,7 @@ export default async function IssuePage({ params }: Props) {
             </dd>
             <dt>Blocked by</dt>
             <dd>
-              <Blockers id={issue.id} blockers={blockers} candidates={candidates} />
+              <Blockers id={issue.id} project={issue.project} blockers={blockers} candidates={candidates} />
             </dd>
             {dependents.length > 0 && (
               <>

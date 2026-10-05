@@ -16,10 +16,11 @@ const HELP = `tracker — what should I work on?
   next [--all]                      doing, high-priority, then ready issues in focus projects
   add "<title>" [--project <key>] [--status idea|todo] [--blocked-by <id>...]
                 [--priority high] [--source user|claude] [--grill <slug>] [--plan <path>] [--note <text>]
+                [--body <text> | --body-file <path|->]
   set <id> <status>                 idea|todo|doing|done|dropped
   edit <id> [--title <t>] [--blocked-by <id>...] [--priority high|none]
             [--grill <slug>] [--plan <path>] [--note <text>] [--body <text> | --body-file <path|->]
-                                    --body/--body-file replace the description (- reads stdin)
+                                    --body/--body-file set the description (- reads stdin)
   delete <id>                       erase an issue for good; strips it from its dependents' blockers
   show <id>
   list [--project <key>] [--status <s,...>|all]   default hides done and dropped
@@ -78,6 +79,11 @@ function print(text: string | string[]): void {
   console.log(Array.isArray(text) ? text.join('\n') : text);
 }
 
+function bodyArg(body: string | undefined, file: string | undefined): string | undefined {
+  if (body !== undefined && file !== undefined) throw new Error('pass --body or --body-file, not both');
+  return file === undefined ? body : readFileSync(file === '-' ? 0 : file, 'utf8');
+}
+
 // --- commands ---
 
 function cmdNext(argv: string[]): void {
@@ -113,6 +119,8 @@ function cmdAdd(argv: string[]): void {
       grill: { type: 'string' },
       plan: { type: 'string' },
       note: { type: 'string' },
+      body: { type: 'string' },
+      'body-file': { type: 'string' },
     },
     1,
   );
@@ -129,6 +137,7 @@ function cmdAdd(argv: string[]): void {
     grill: values.grill,
     plan: values.plan,
     note: values.note,
+    body: bodyArg(values.body, values['body-file']),
   });
   print(`added ${issue.id} (${issue.status}): ${issue.title}`);
 }
@@ -157,8 +166,6 @@ function cmdEdit(argv: string[]): void {
     },
     1,
   );
-  if (values.body !== undefined && values['body-file'] !== undefined) throw new Error('pass --body or --body-file, not both');
-  const bodyFile = values['body-file'];
   const issue = editIssue(new Ctx(), positionals[0], {
     title: values.title,
     blockers: values['blocked-by'] && idList(values['blocked-by']),
@@ -166,7 +173,7 @@ function cmdEdit(argv: string[]): void {
     grill: values.grill,
     plan: values.plan,
     note: values.note,
-    body: bodyFile === undefined ? values.body : readFileSync(bodyFile === '-' ? 0 : bodyFile, 'utf8'),
+    body: bodyArg(values.body, values['body-file']),
   });
   print(`updated ${issue.id}`);
 }

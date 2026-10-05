@@ -11,7 +11,7 @@ import { StatusGroup } from '@/components/StatusGroup';
 import ui from '@/components/ui.module.css';
 import { ctx, projectBoard, projectCounts } from '@/lib/data';
 import type { Issue, IssueStatus } from '@/lib/types';
-import { QuickAdd } from './QuickAdd';
+import { NewIssueButton } from './NewIssueButton';
 import styles from './page.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -60,8 +60,10 @@ export default async function ProjectPage({ params, searchParams }: Props) {
     <div className={ui.page}>
       <div className={panel.layout}>
         <div className={panel.main}>
-          <TitleEdit key={project.name} value={project.name} label="Name" save={setProjectName.bind(null, project.key)} />
-          <QuickAdd projectKey={project.key} />
+          <div className={styles.titleRow}>
+            <TitleEdit key={project.name} value={project.name} label="Name" save={setProjectName.bind(null, project.key)} />
+            <NewIssueButton className={styles.newIssue} />
+          </div>
 
           {empty && <p className={ui.empty}>No issues.</p>}
           {section('idea', board.idea)}

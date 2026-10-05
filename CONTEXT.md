@@ -10,7 +10,7 @@
 
 **Description** — An issue's Markdown body, below its frontmatter (`body` in code, `--body` on the CLI). _Avoid_: notes.
 
-**Comment** — A dated, attributed entry in an issue's log, kept apart from its Description. The Description says what the issue is; comments record what happened: progress, "what's left" handoffs, capture context, system events. Not a discussion thread: no replies. _Avoid_: note.
+**Comment** — A dated, attributed entry in an issue's log, kept apart from its Description. The Description says what the issue is; comments record what happened: progress, "what's left" handoffs, capture context, system events. Each has a time, an author (`user` or `claude`, never a separate system author) and, for Claude's, the Session it came from. Not a discussion thread: no replies. _Avoid_: note.
 
 **Idea** — An issue in the `idea` status: a captured but uncommitted inbox item. Claude may capture ideas on its own (`source: claude`). Promoting an idea to `todo` is a commitment, so the user decides.
 

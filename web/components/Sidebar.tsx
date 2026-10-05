@@ -1,7 +1,7 @@
 import { Archive, Inbox, Layers, Settings } from 'lucide-react';
 import { ctx } from '@/lib/data';
 import { NavLink } from './NavLink';
-import { SearchButton, ShortcutsButton } from './SidebarKeys';
+import { NewIssueButton, SearchButton, ShortcutsButton } from './SidebarKeys';
 import { SidebarProjects } from './SidebarProjects';
 import styles from './Sidebar.module.css';
 
@@ -16,6 +16,7 @@ export function Sidebar() {
         <i className={styles.logo} aria-hidden />
         Tracker
       </NavLink>
+      <NewIssueButton />
       <SearchButton />
       <NavLink href="/issues" className={styles.item} activeClassName={styles.on}>
         <Layers size={14} aria-hidden />

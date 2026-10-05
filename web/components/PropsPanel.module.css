@@ -28,9 +28,17 @@
 .propList {
   display: grid;
   grid-template-columns: 76px minmax(0, 1fr);
-  gap: 8px 10px;
-  align-items: center;
+  gap: 4px 10px;
+  align-items: start;
   margin: 0 0 14px;
+}
+
+/* A one-line cell is as tall as a control, so labels line up with control text and plain values alike. */
+.propList dt,
+.propList dd {
+  display: flex;
+  align-items: center;
+  min-height: 26px;
 }
 
 .propList dt {
@@ -65,7 +73,7 @@
   border-color: var(--line);
 }
 
-.propList input {
+.propList > dd > input {
   width: calc(100% + 7px);
   margin-left: -7px;
 }

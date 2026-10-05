@@ -1,17 +1,19 @@
-.add {
+.titleRow {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 12px 0 16px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
 }
 
-.add button {
-  height: 28px;
-}
-
-.addTitle {
+.titleRow > :first-child {
   flex: 1;
-  min-width: 220px;
+  min-width: 0;
+}
+
+.newIssue {
+  flex: none;
+  height: 28px;
+  padding: 0 6px 0 10px;
 }
 
 .more {

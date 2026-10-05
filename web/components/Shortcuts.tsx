@@ -11,7 +11,7 @@ export function Shortcuts({ open, onClose }: { open: boolean; onClose: () => voi
       [
         [[mod, 'K'], 'Command palette'],
         [['/'], 'Search'],
-        [['C'], 'Create an issue'],
+        [['C'], 'New issue'],
         [['?'], 'This cheat sheet'],
       ],
     ],

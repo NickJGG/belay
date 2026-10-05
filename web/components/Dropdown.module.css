@@ -51,6 +51,10 @@
   flex: 1;
 }
 
-.option svg {
+.check {
   color: var(--accent);
+}
+
+.placeholder {
+  color: var(--muted);
 }

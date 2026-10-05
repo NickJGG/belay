@@ -1,0 +1,40 @@
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.input {
+  width: 120px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px dashed var(--line);
+  border-radius: 11px;
+  background: none;
+  font-size: 12px;
+}
+
+.input:focus {
+  border-style: solid;
+  border-color: var(--accent);
+  outline: none;
+}
+
+.list {
+  width: 340px;
+  max-width: calc(100vw - 32px);
+}
+
+.id {
+  flex: none;
+  color: var(--muted);
+  font: 11.5px var(--mono);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

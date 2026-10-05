@@ -77,6 +77,13 @@ test('addIssue validates title, project, status and blockers', () => {
   assert.match(t.body, /^- \d{4}-\d{2}-\d{2}: why$/);
 });
 
+test('addIssue takes a body and appends the note after it', () => {
+  const ctx = new Ctx(dir);
+  assert.equal(addIssue(ctx, { title: 'a', project: 'PIX', body: ' hi \n' }).body, 'hi');
+  assert.match(addIssue(new Ctx(dir), { title: 'b', project: 'PIX', body: 'hi', note: 'n' }).body, /^hi\n- \d{4}-\d{2}-\d{2}: n$/);
+  assert.equal(addIssue(new Ctx(dir), { title: 'c', project: 'PIX' }).body, '');
+});
+
 test('an issue cannot block itself', () => {
   createIssue(dir, issue());
   assert.throws(() => new Ctx(dir).checkBlockers('PIX-1', ['PIX-1']), /cannot block itself/);

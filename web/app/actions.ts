@@ -79,12 +79,22 @@ export async function setProjectFocus(key: unknown, focus: unknown): Promise<Res
   return run((ctx) => void setFocus(ctx, str(key, 'key'), focus === true));
 }
 
-export async function quickAdd(key: unknown, title: unknown, status: unknown): Promise<Result & { id?: string }> {
+export async function createIssue(input: unknown): Promise<Result & { id?: string }> {
   let id: string | undefined;
   const r = await run((ctx) => {
-    id = addIssue(ctx, { project: str(key, 'key'), title: str(title, 'title'), status: str(status, 'status') }).id;
+    if (!input || typeof input !== 'object') throw new Error('input must be an object');
+    const { project, title, status, high, blockers, body } = input as Record<string, unknown>;
+    if (!Array.isArray(blockers)) throw new Error('blockers must be a list');
+    id = addIssue(ctx, {
+      project: str(project, 'project'),
+      title: str(title, 'title'),
+      status: str(status, 'status'),
+      priority: high === true ? 'high' : undefined,
+      blockers: blockers.map((b) => str(b, 'blocker')),
+      body: str(body, 'body'),
+    }).id;
   });
-  return { ...r, id };
+  return r.error ? r : { id };
 }
 
 export async function setProjectName(key: unknown, name: unknown): Promise<Result> {

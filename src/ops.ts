@@ -101,6 +101,8 @@ export interface NewIssue {
   source?: string;
   grill?: string;
   plan?: string;
+  body?: string;
+  /** Appended after `body`. */
   note?: string;
 }
 
@@ -121,7 +123,7 @@ export function addIssue(ctx: Ctx, t: NewIssue): Issue {
     plan: t.plan,
     created: date,
     updated: date,
-    body: t.note ? appendNote('', t.note) : '',
+    body: t.note ? appendNote(t.body ?? '', t.note) : (t.body ?? '').trim(),
   });
 }
 
