@@ -12,6 +12,7 @@ import {
   deleteTask,
   editProject,
   editTask,
+  moveProject,
   rekeyProject,
   replaceBody,
   setFocus,
@@ -19,7 +20,7 @@ import {
   setStatus,
 } from '../src/ops.ts';
 import { next } from '../src/query.ts';
-import { createTask, loadProjects, loadTasks, saveProject, today, type Task } from '../src/store.ts';
+import { createTask, loadOrder, loadProjects, loadTasks, saveOrder, saveProject, today, type Task } from '../src/store.ts';
 
 let dir: string;
 
@@ -210,4 +211,44 @@ test('rekeyProject renames the project, its tasks and every blocker reference', 
   assert.equal(existsSync(join(dir, 'projects', 'pz-elevators.md')), false);
   assert.throws(() => rekeyProject(new Ctx(dir), 'elv', 'pix'), /project 'PIX' already exists/);
   assert.throws(() => rekeyProject(new Ctx(dir), 'elv', 'elevator'), /3–4 letters/);
+});
+
+test('moveProject places a project before, after, at the top or bottom, and saves the full order', () => {
+  for (const key of ['ELV', 'FRG']) saveProject(dir, { key, name: key, paths: [], status: 'active', focus: false, body: '' });
+  const keys = () => new Ctx(dir).projects.map((p) => p.key);
+  assert.deepEqual(keys(), ['ELV', 'FRG', 'PIX']);
+
+  assert.deepEqual(moveProject(new Ctx(dir), 'pix', 'top'), ['PIX', 'ELV', 'FRG']);
+  assert.deepEqual(loadOrder(dir), ['PIX', 'ELV', 'FRG']);
+  moveProject(new Ctx(dir), 'pix', 'bottom');
+  assert.deepEqual(keys(), ['ELV', 'FRG', 'PIX']);
+  moveProject(new Ctx(dir), 'frg', { before: 'elv' });
+  assert.deepEqual(keys(), ['FRG', 'ELV', 'PIX']);
+  moveProject(new Ctx(dir), 'frg', { after: 'pix' });
+  assert.deepEqual(keys(), ['ELV', 'PIX', 'FRG']);
+  moveProject(new Ctx(dir), 'elv', { after: 'pix' });
+  assert.deepEqual(keys(), ['PIX', 'ELV', 'FRG']);
+
+  assert.throws(() => moveProject(new Ctx(dir), 'elv', { before: 'nope' }), /no project 'nope'/);
+  assert.throws(() => moveProject(new Ctx(dir), 'elv', { after: 'ELV' }), /relative to itself/);
+});
+
+test('moveProject materialises unlisted projects where they currently sort', () => {
+  for (const key of ['ELV', 'FRG', 'ZED']) saveProject(dir, { key, name: key, paths: [], status: 'active', focus: false, body: '' });
+  saveOrder(dir, ['FRG', 'GONE']);
+  moveProject(new Ctx(dir), 'zed', { before: 'pix' });
+  assert.deepEqual(loadOrder(dir), ['FRG', 'ELV', 'ZED', 'PIX']);
+});
+
+test('rekeyProject renames the key in order.yaml', () => {
+  saveProject(dir, { key: 'PZ-ELEVATORS', name: 'Elevators', paths: [], status: 'active', focus: false, body: '' });
+  saveOrder(dir, ['PZ-ELEVATORS', 'PIX']);
+  rekeyProject(new Ctx(dir), 'pz-elevators', 'elv');
+  assert.deepEqual(loadOrder(dir), ['ELV', 'PIX']);
+  assert.deepEqual(new Ctx(dir).projects.map((p) => p.key), ['ELV', 'PIX']);
+});
+
+test('rekeyProject leaves order.yaml alone when the project is unlisted', () => {
+  rekeyProject(new Ctx(dir), 'pix', 'pxl');
+  assert.equal(existsSync(join(dir, 'order.yaml')), false);
 });

@@ -38,8 +38,8 @@ export function GET(request: Request) {
         const rel = file?.toString();
         const entity = rel ? entityForPath(rel) : undefined;
         if (entity) (entity.kind === 'task' ? tasks : projects).add(entity.id);
-        // A null name means the platform couldn't say what changed; settings.yaml carries the theme and accent.
-        else if (rel !== undefined && rel !== 'settings.yaml') return;
+        // A null name means the platform couldn't say what changed; settings.yaml carries the theme and accent, order.yaml the sidebar order.
+        else if (rel !== undefined && rel !== 'settings.yaml' && rel !== 'order.yaml') return;
         clearTimeout(timer);
         timer = setTimeout(flush, DEBOUNCE_MS);
       });

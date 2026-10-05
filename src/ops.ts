@@ -14,13 +14,16 @@ import {
   canon,
   createTask,
   deleteTaskFile,
+  loadOrder,
   loadProjects,
   loadTasks,
   normalizeStoredPath,
   parseId,
   projectFile,
+  saveOrder,
   saveProject,
   saveTask,
+  sortByOrder,
   today,
   validateKey,
   type Project,
@@ -43,13 +46,17 @@ export function appendNote(body: string, note: string): string {
 
 export class Ctx {
   readonly dir: string;
+  /** As stored in `order.yaml`; may be partial or hold stale keys. */
+  readonly order: string[];
+  /** Sorted by `order` (see `sortByOrder`). */
   readonly projects: Project[];
   readonly tasks: Task[];
   readonly byId: Map<string, Task>;
 
   constructor(dir = dataDir()) {
     this.dir = dir;
-    this.projects = loadProjects(dir);
+    this.order = loadOrder(dir);
+    this.projects = sortByOrder(loadProjects(dir), this.order);
     this.tasks = loadTasks(dir);
     this.byId = indexTasks(this.tasks);
   }
@@ -220,6 +227,25 @@ export function editProject(ctx: Ctx, key: string, patch: ProjectPatch): Project
   return p;
 }
 
+export type MoveTarget = { before: string } | { after: string } | 'top' | 'bottom';
+
+/** Saves the full order, so projects that were unlisted get pinned where they currently sort. */
+export function moveProject(ctx: Ctx, key: string, where: MoveTarget): string[] {
+  const moved = ctx.project(key).key;
+  const keys = ctx.projects.map((p) => p.key).filter((k) => k !== moved);
+  let at: number;
+  if (where === 'top') at = 0;
+  else if (where === 'bottom') at = keys.length;
+  else {
+    const anchor = ctx.project('before' in where ? where.before : where.after).key;
+    if (anchor === moved) throw new Error(`cannot move ${moved} relative to itself`);
+    at = keys.indexOf(anchor) + ('after' in where ? 1 : 0);
+  }
+  keys.splice(at, 0, moved);
+  saveOrder(ctx.dir, keys);
+  return keys;
+}
+
 export function setFocus(ctx: Ctx, key: string, focus: boolean): Project {
   return editProject(ctx, key, { focus });
 }
@@ -267,5 +293,6 @@ export function rekeyProject(ctx: Ctx, from: string, to: string): { project: Pro
   }
   for (const t of own) deleteTaskFile(ctx.dir, t.id);
   unlinkSync(projectFile(ctx.dir, old.key));
+  if (ctx.order.includes(old.key)) saveOrder(ctx.dir, ctx.order.map((k) => (k === old.key ? key : k)));
   return { project, renamed };
 }

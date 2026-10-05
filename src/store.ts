@@ -6,7 +6,7 @@
  * Keys and IDs are uppercase in memory and in frontmatter (`ELV`, `ELV-12`) and lowercase in
  * file names. Loading uppercases whatever it reads, so files from before that rule still load.
  */
-import { readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parse, stringify } from 'yaml';
 
@@ -228,6 +228,33 @@ export function loadTasks(dir: string): Task[] {
 export function saveProject(dir: string, p: Project): void {
   validateStoredKey(p.key, `project '${p.key}'`);
   writeAtomic(projectFile(dir, p.key), serializeProject(p));
+}
+
+export function orderFile(dir: string): string {
+  return join(dir, 'order.yaml');
+}
+
+/** The hand-arranged project order from `order.yaml` (`project_order: [KEY, ...]`); `[]` when there's no file. */
+export function loadOrder(dir: string): string[] {
+  const file = orderFile(dir);
+  if (!existsSync(file)) return [];
+  const data = parse(readFileSync(file, 'utf8')) ?? {};
+  if (typeof data !== 'object' || Array.isArray(data)) throw new Error('order.yaml: not a mapping');
+  return textList(data, 'project_order', 'order.yaml').map(canon);
+}
+
+export function saveOrder(dir: string, keys: string[]): void {
+  writeAtomic(orderFile(dir), stringify({ project_order: keys }));
+}
+
+/** Listed keys first, in list order, then the unlisted ones by key. Listed keys with no project are ignored. */
+export function sortByOrder(projects: Project[], order: string[]): Project[] {
+  const rank = new Map(order.map((k, i) => [k, i]));
+  return [...projects].sort((a, b) => {
+    const ra = rank.get(a.key) ?? Infinity;
+    const rb = rank.get(b.key) ?? Infinity;
+    return ra === rb ? a.key.localeCompare(b.key) : ra - rb;
+  });
 }
 
 export function saveTask(dir: string, t: Task): void {

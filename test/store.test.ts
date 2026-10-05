@@ -6,6 +6,7 @@ import { afterEach, beforeEach, test } from 'node:test';
 import {
   createTask,
   entityForPath,
+  loadOrder,
   loadProjects,
   loadTasks,
   nextTaskNumber,
@@ -14,6 +15,7 @@ import {
   saveProject,
   serializeProject,
   serializeTask,
+  sortByOrder,
   validateKey,
   type Project,
   type Task,
@@ -126,4 +128,21 @@ test('entityForPath: task and project files, either separator, not temp files', 
   assert.equal(entityForPath('tasks/a-1.md.123.tmp'), undefined);
   assert.equal(entityForPath('settings.yaml'), undefined);
   assert.equal(entityForPath('tasks'), undefined);
+});
+
+test('sortByOrder puts listed keys first in list order, then unlisted by key, ignoring stale keys', () => {
+  const p = (key: string): Project => ({ key, name: key, paths: [], status: 'active', focus: false, body: '' });
+  const projects = ['DDD', 'AAA', 'CCC', 'BBB'].map(p);
+  assert.deepEqual(sortByOrder(projects, ['CCC', 'GONE', 'AAA']).map((x) => x.key), ['CCC', 'AAA', 'BBB', 'DDD']);
+  assert.deepEqual(sortByOrder(projects, []).map((x) => x.key), ['AAA', 'BBB', 'CCC', 'DDD']);
+});
+
+test('loadOrder: missing file is empty, keys are canonicalised, bad shapes throw', () => {
+  assert.deepEqual(loadOrder(dir), []);
+  writeFileSync(join(dir, 'order.yaml'), 'project_order: [elv, " Pix "]');
+  assert.deepEqual(loadOrder(dir), ['ELV', 'PIX']);
+  writeFileSync(join(dir, 'order.yaml'), 'project_order: [1, 2]');
+  assert.throws(() => loadOrder(dir), /order.yaml: 'project_order' must be a list of strings/);
+  writeFileSync(join(dir, 'order.yaml'), '- ELV');
+  assert.throws(() => loadOrder(dir), /order.yaml: not a mapping/);
 });

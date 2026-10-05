@@ -6,7 +6,7 @@ import { claudeDir } from './config.ts';
 import { clip, digestLines } from './digest.ts';
 import { grillDir, grillMatches, loadGrillSessions } from './grill.ts';
 import { attachCommits, duration, localStamp, recentSessions } from './history.ts';
-import { Ctx, addProject, addTask, deleteTask, editProject, editTask, idList, oneOf, rekeyProject, setStatus } from './ops.ts';
+import { Ctx, addProject, addTask, deleteTask, editProject, editTask, idList, moveProject, oneOf, rekeyProject, setStatus, type MoveTarget } from './ops.ts';
 import { isReady, next, openBlockers, projectCounts, projectForCwd } from './query.ts';
 import { TASK_STATUSES, normalizeStoredPath, taskFile, type Task, type TaskStatus } from './store.ts';
 import { serve } from './web.ts';
@@ -37,6 +37,8 @@ const HELP = `tracker — what should I work on?
                                     the name when omitted (3 letters, 4 on a clash)
   project list [--all]              --all includes archived
   project set <key> [--status active|paused|archived] [--focus|--no-focus] [--name <n>] [--group <g>]
+  project move <key> (--before <key> | --after <key> | --top | --bottom)
+                                    rearrange the order projects are listed in (here and the sidebar)
   project rekey <key> <new-key>     rename the key and every task ID in the project, fixing blockers
   project which [<dir>]             key of the project containing <dir> (default cwd); prints nothing if none
 
@@ -315,9 +317,10 @@ function cmdProject(argv: string[]): void {
   if (sub === 'add') return projectAdd(rest);
   if (sub === 'list') return projectList(rest);
   if (sub === 'set') return projectSet(rest);
+  if (sub === 'move') return projectMove(rest);
   if (sub === 'rekey') return projectRekey(rest);
   if (sub === 'which') return projectWhich(rest);
-  throw new Error(`unknown 'project ${sub ?? ''}' — expected add, list, set, rekey or which`);
+  throw new Error(`unknown 'project ${sub ?? ''}' — expected add, list, set, move, rekey or which`);
 }
 
 function projectAdd(argv: string[]): void {
@@ -345,6 +348,27 @@ function projectAdd(argv: string[]): void {
   print(`added project ${project.key} — tasks will be ${project.key}-1, ${project.key}-2, …`);
 }
 
+function projectMove(argv: string[]): void {
+  const { values, positionals } = args(
+    argv,
+    { before: { type: 'string' }, after: { type: 'string' }, top: { type: 'boolean' }, bottom: { type: 'boolean' } },
+    1,
+  );
+  const given = [values.before !== undefined, values.after !== undefined, !!values.top, !!values.bottom].filter(Boolean).length;
+  if (given !== 1) throw new Error('pass exactly one of --before, --after, --top or --bottom');
+  const where: MoveTarget =
+    values.before !== undefined
+      ? { before: values.before }
+      : values.after !== undefined
+        ? { after: values.after }
+        : values.top
+          ? 'top'
+          : 'bottom';
+  const ctx = new Ctx();
+  const key = ctx.project(positionals[0]).key;
+  print(`moved ${key}: ${moveProject(ctx, key, where).join(' ')}`);
+}
+
 function projectRekey(argv: string[]): void {
   const { positionals } = args(argv, {}, 2);
   const ctx = new Ctx();
@@ -358,7 +382,7 @@ function projectList(argv: string[]): void {
   const ctx = new Ctx();
   const projects = ctx.projects
     .filter((p) => values.all || p.status !== 'archived')
-    .sort((a, b) => (a.group ?? '').localeCompare(b.group ?? '') || a.key.localeCompare(b.key));
+    .sort((a, b) => (a.group ?? '').localeCompare(b.group ?? ''));
   if (!projects.length) return print("no projects — 'tracker project add'");
   const keyW = Math.max(...projects.map((p) => p.key.length));
   const nameW = Math.max(...projects.map((p) => p.name.length));
