@@ -57,7 +57,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
   const empty = !board.idea.length && !board.todo.length && !board.doing.length && !board.done.length && !board.olderDone;
 
   return (
-    <div className={ui.page}>
+    <div className={panel.page}>
       <div className={panel.layout}>
         <div className={panel.main}>
           <div className={styles.titleRow}>
