@@ -39,6 +39,7 @@ const issue = (over: Partial<Issue> = {}): Omit<Issue, 'id'> => ({
   source: 'user',
   created: '2026-10-01',
   updated: '2026-10-01',
+  comments: [],
   body: '',
   ...over,
 });
@@ -54,8 +55,41 @@ test('issue frontmatter round-trips, including optional fields and body', () => 
 
 test('serialized issue omits unset optional fields', () => {
   const src = serializeIssue({ id: 'PIX-1', ...issue() });
-  assert.doesNotMatch(src, /priority|grill|plan/);
+  assert.doesNotMatch(src, /priority|grill|plan|comments/);
   assert.match(src, /^blocked_by: \[\]$/m);
+});
+
+test('comments round-trip after updated, with multi-line text as a block scalar', () => {
+  const t: Issue = {
+    id: 'PIX-1',
+    ...issue({
+      comments: [
+        { at: '2026-10-04T09:05', by: 'claude', session: 'abc-123', text: 'Phase 1 done.\n\n- left: docs\n- key: value' },
+        { at: '2026-10-04T10:00', by: 'user', text: 'ok: thanks' },
+      ],
+    }),
+    body: 'desc',
+  };
+  const src = serializeIssue(t);
+  assert.deepEqual(parseIssue(src, 'x').comments, t.comments);
+  assert.match(src, /^updated: 2026-10-01\ncomments:\n {2}- at: 2026-10-04T09:05\n/m);
+  assert.match(src, /^ {4}text: \|-\n {6}Phase 1 done\.\n\n {6}- left: docs$/m);
+});
+
+test('a file without comments re-serializes byte-identical', () => {
+  const src = '---\nid: PIX-1\ntitle: x\nproject: PIX\nstatus: todo\nblocked_by: []\nsource: user\ncreated: 2026-10-01\nupdated: 2026-10-01\n---\n\nbody\n';
+  assert.equal(serializeIssue(parseIssue(src, 'x')), src);
+});
+
+test('parse rejects bad comments with the file and comment number', () => {
+  const head = '---\nid: pi-1\nproject: pi\ntitle: x\nstatus: todo\ncreated: a\nupdated: a\n';
+  const bad = (comments: string) => () => parseIssue(`${head}comments: ${comments}\n---\n`, 'issues/pi-1.md');
+  assert.throws(bad('nope'), /issues\/pi-1\.md: 'comments' must be a list/);
+  assert.throws(bad('[x]'), /issues\/pi-1\.md comment #1: not a mapping/);
+  assert.throws(bad('[{at: 2026-10-04, by: user, text: t}]'), /comment #1: 'at' must be YYYY-MM-DDTHH:MM/);
+  assert.throws(bad('[{at: "2026-10-04T09:00", by: system, text: t}]'), /comment #1: 'by' must be one of user\|claude/);
+  assert.throws(bad('[{at: "2026-10-04T09:00", by: user, text: t}, {at: "2026-10-04T09:00", by: user, text: " "}]'), /comment #2: 'text' must be a non-empty string/);
+  assert.throws(bad('[{at: "2026-10-04T09:00", by: user}]'), /comment #1: 'text'/);
 });
 
 test('project round-trips', () => {

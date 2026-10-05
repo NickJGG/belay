@@ -22,6 +22,7 @@ const issue = (id: string, over: Partial<Issue> = {}): Issue => ({
   source: 'user',
   created: '2026-10-01',
   updated: '2026-10-01',
+  comments: [],
   body: '',
   ...over,
 });

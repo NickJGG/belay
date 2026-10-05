@@ -25,8 +25,10 @@ import {
   saveProject,
   saveIssue,
   sortByOrder,
+  now,
   today,
   validateKey,
+  type Comment,
   type Project,
   type Issue,
   type IssueStatus,
@@ -39,10 +41,6 @@ export function oneOf<T extends string>(value: string, allowed: readonly T[], wh
 
 export function idList(values: string[] | undefined): string[] {
   return (values ?? []).flatMap((v) => v.split(',')).map((s) => s.trim()).filter(Boolean);
-}
-
-export function appendNote(body: string, note: string): string {
-  return `${body.trim()}\n- ${today()}: ${note.trim()}`.trim();
 }
 
 export class Ctx {
@@ -102,8 +100,6 @@ export interface NewIssue {
   grill?: string;
   plan?: string;
   body?: string;
-  /** Appended after `body`. */
-  note?: string;
 }
 
 export function addIssue(ctx: Ctx, t: NewIssue): Issue {
@@ -123,7 +119,8 @@ export function addIssue(ctx: Ctx, t: NewIssue): Issue {
     plan: t.plan,
     created: date,
     updated: date,
-    body: t.note ? appendNote(t.body ?? '', t.note) : (t.body ?? '').trim(),
+    comments: [],
+    body: (t.body ?? '').trim(),
   });
 }
 
@@ -142,8 +139,7 @@ export interface IssuePatch {
   grill?: string;
   /** Empty clears. */
   plan?: string;
-  note?: string;
-  /** Replaces the body; `note` is appended after it. */
+  /** Replaces the body. */
   body?: string;
 }
 
@@ -162,7 +158,6 @@ export function editIssue(ctx: Ctx, id: string, patch: IssuePatch): Issue {
   if (patch.grill !== undefined) issue.grill = patch.grill || undefined;
   if (patch.plan !== undefined) issue.plan = patch.plan || undefined;
   if (patch.body !== undefined) issue.body = patch.body.trim();
-  if (patch.note !== undefined) issue.body = appendNote(issue.body, patch.note);
   issue.updated = today();
   saveIssue(ctx.dir, issue);
   return issue;
@@ -190,18 +185,79 @@ export function replaceBody(ctx: Ctx, id: string, body: string, expectedHash?: s
   return editIssue(ctx, id, { body });
 }
 
+/** Who a comment is credited to. */
+export type Author = Pick<Comment, 'by' | 'session'>;
+
+/** The CLI's author: `claude` inside Claude Code (`CLAUDECODE`), with its session, else `user`. `as` overrides. */
+export function commentAuthor(env: Record<string, string | undefined>, as?: string): Author {
+  const by = as === undefined ? (env.CLAUDECODE ? 'claude' : 'user') : oneOf(as, SOURCES, '--as');
+  const session = by === 'claude' && env.CLAUDE_CODE_SESSION_ID;
+  return session ? { by, session } : { by };
+}
+
+/** LF only: a `\r` would make YAML write the text as an escaped quoted string instead of a block. */
+function commentText(text: string): string {
+  const trimmed = text.replaceAll('\r\n', '\n').trim();
+  if (!trimmed) throw new Error('comment is empty');
+  return trimmed;
+}
+
+/** Comment `#n` changed on disk since it was loaded: its `at` no longer matches. */
+export class CommentConflictError extends Error {
+  constructor(id: string, n: number) {
+    super(`${id} #${n} changed on disk since it was loaded`);
+    this.name = 'CommentConflictError';
+  }
+}
+
+/** Returns the new comment's number. */
+export function addComment(ctx: Ctx, id: string, text: string, author: Author): { issue: Issue; n: number } {
+  const current = ctx.issue(id);
+  const comment = { at: now(), ...author, text: commentText(text) };
+  const issue = { ...current, comments: [...current.comments, comment], updated: today() };
+  saveIssue(ctx.dir, issue);
+  return { issue, n: issue.comments.length };
+}
+
+/** `n` is 1-based, as `show` numbers them. With `expectAt`, refuses when `#n` isn't the comment that was loaded. */
+function commentIndex(issue: Issue, n: number, expectAt: string | undefined): number {
+  if (!Number.isInteger(n) || n < 1 || n > issue.comments.length) {
+    throw new Error(`${issue.id} has no comment #${n} (it has ${issue.comments.length})`);
+  }
+  if (expectAt !== undefined && issue.comments[n - 1].at !== expectAt) throw new CommentConflictError(issue.id, n);
+  return n - 1;
+}
+
+export function editComment(ctx: Ctx, id: string, n: number, text: string, expectAt?: string): Issue {
+  const current = ctx.issue(id);
+  const i = commentIndex(current, n, expectAt);
+  const comments = current.comments.map((c, j) => (j === i ? { ...c, text: commentText(text) } : c));
+  const issue = { ...current, comments, updated: today() };
+  saveIssue(ctx.dir, issue);
+  return issue;
+}
+
+export function deleteComment(ctx: Ctx, id: string, n: number, expectAt?: string): Issue {
+  const current = ctx.issue(id);
+  const i = commentIndex(current, n, expectAt);
+  const issue = { ...current, comments: current.comments.filter((_, j) => j !== i), updated: today() };
+  saveIssue(ctx.dir, issue);
+  return issue;
+}
+
 /**
- * Strips `id` from every dependent's `blocked_by` (with a note) before removing the file, so a
- * crash midway leaves an orphaned issue rather than a dangling reference. Returns the dependents.
+ * Strips `id` from every dependent's `blocked_by` (with a comment by `author`) before removing the file,
+ * so a crash midway leaves an orphaned issue rather than a dangling reference. Returns the dependents.
  */
-export function deleteIssue(ctx: Ctx, typed: string): Issue[] {
+export function deleteIssue(ctx: Ctx, typed: string, author: Author): Issue[] {
   const { id } = ctx.issue(typed);
+  const at = now();
   const dependents = ctx.issues
     .filter((t) => t.blocked_by.includes(id))
     .map((t) => ({
       ...t,
       blocked_by: t.blocked_by.filter((b) => b !== id),
-      body: appendNote(t.body, `blocker ${id} deleted`),
+      comments: [...t.comments, { at, ...author, text: `blocker ${id} deleted` }],
       updated: today(),
     }));
   for (const t of dependents) saveIssue(ctx.dir, t);

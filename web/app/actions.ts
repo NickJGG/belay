@@ -69,7 +69,7 @@ export async function removeIssue(id: unknown): Promise<Result> {
   const r = await run((ctx) => {
     const t = ctx.issue(str(id, 'id'));
     project = t.project;
-    deleteIssue(ctx, t.id);
+    deleteIssue(ctx, t.id, { by: 'user' });
   });
   if (r.error) return r;
   redirect(`/p/${encodeURIComponent(project)}`);

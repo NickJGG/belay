@@ -6,7 +6,24 @@ import { claudeDir } from './config.ts';
 import { clip, digestLines } from './digest.ts';
 import { grillDir, grillMatches, loadGrillSessions } from './grill.ts';
 import { attachCommits, duration, localStamp, recentSessions } from './history.ts';
-import { Ctx, addProject, addIssue, deleteIssue, editProject, editIssue, idList, moveProject, oneOf, rekeyProject, setStatus, type MoveTarget } from './ops.ts';
+import {
+  Ctx,
+  addComment,
+  addIssue,
+  addProject,
+  commentAuthor,
+  deleteComment,
+  deleteIssue,
+  editComment,
+  editIssue,
+  editProject,
+  idList,
+  moveProject,
+  oneOf,
+  rekeyProject,
+  setStatus,
+  type MoveTarget,
+} from './ops.ts';
 import { isReady, next, openBlockers, projectCounts, projectForCwd } from './query.ts';
 import { ISSUE_STATUSES, normalizeStoredPath, issueFile, type Issue, type IssueStatus } from './store.ts';
 import { serve } from './web.ts';
@@ -15,19 +32,23 @@ const HELP = `tracker — what should I work on?
 
   next [--all]                      doing, high-priority, then ready issues in focus projects
   add "<title>" [--project <key>] [--status idea|todo] [--blocked-by <id>...]
-                [--priority high] [--source user|claude] [--grill <slug>] [--plan <path>] [--note <text>]
+                [--priority high] [--source user|claude] [--grill <slug>] [--plan <path>]
                 [--body <text> | --body-file <path|->]
   set <id> <status>                 idea|todo|doing|done|dropped
   edit <id> [--title <t>] [--blocked-by <id>...] [--priority high|none]
-            [--grill <slug>] [--plan <path>] [--note <text>] [--body <text> | --body-file <path|->]
+            [--grill <slug>] [--plan <path>] [--body <text> | --body-file <path|->]
                                     --body/--body-file set the description (- reads stdin)
+  comment <id> <text|-> [--as user|claude]
+  comment <id> --edit <n> <text|->  |  comment <id> --delete <n>
+                                    log an entry on the issue (- reads stdin); #n as numbered in show.
+                                    Author is claude inside Claude Code, else user
   delete <id>                       erase an issue for good; strips it from its dependents' blockers
   show <id>
   list [--project <key>] [--status <s,...>|all]   default hides done and dropped
 
   history [<project>] [-n <count>] [-v]
                                     recent Claude sessions and their commits, newest first
-  search <words>...                 issues (title, description) and grill sessions (slug, topic, project) with every word
+  search <words>...                 issues (title, description, comments) and grill sessions (slug, topic, project) with every word
   serve [--port <n>] [--no-open]    dashboard at http://127.0.0.1:4747/ (Ctrl+C to stop); builds web/
                                     first when it or src/ changed (needs 'npm install' in web/)
   digest                            SessionStart hook: reads the hook JSON on stdin, prints a summary
@@ -118,7 +139,6 @@ function cmdAdd(argv: string[]): void {
       source: { type: 'string' },
       grill: { type: 'string' },
       plan: { type: 'string' },
-      note: { type: 'string' },
       body: { type: 'string' },
       'body-file': { type: 'string' },
     },
@@ -136,7 +156,6 @@ function cmdAdd(argv: string[]): void {
     source: values.source,
     grill: values.grill,
     plan: values.plan,
-    note: values.note,
     body: bodyArg(values.body, values['body-file']),
   });
   print(`added ${issue.id} (${issue.status}): ${issue.title}`);
@@ -160,7 +179,6 @@ function cmdEdit(argv: string[]): void {
       priority: { type: 'string' },
       grill: { type: 'string' },
       plan: { type: 'string' },
-      note: { type: 'string' },
       body: { type: 'string' },
       'body-file': { type: 'string' },
     },
@@ -172,17 +190,43 @@ function cmdEdit(argv: string[]): void {
     priority: values.priority,
     grill: values.grill,
     plan: values.plan,
-    note: values.note,
     body: bodyArg(values.body, values['body-file']),
   });
   print(`updated ${issue.id}`);
+}
+
+function commentNumber(value: string): number {
+  const n = Number(value.replace(/^#/, ''));
+  if (!Number.isInteger(n) || n < 1) throw new Error(`comment number must be a positive integer (got '${value}')`);
+  return n;
+}
+
+function cmdComment(argv: string[]): void {
+  const { values, positionals } = args(argv, { edit: { type: 'string' }, delete: { type: 'string' }, as: { type: 'string' } }, 1, 2);
+  if (values.edit !== undefined && values.delete !== undefined) throw new Error('pass --edit or --delete, not both');
+  if (values.as !== undefined && (values.edit ?? values.delete) !== undefined) throw new Error('--as only applies to a new comment');
+  const [id, text] = positionals;
+  const ctx = new Ctx();
+  if (values.delete !== undefined) {
+    if (text !== undefined) throw new Error('--delete takes no text');
+    const n = commentNumber(values.delete);
+    return print(`deleted ${deleteComment(ctx, id, n).id} #${n}`);
+  }
+  if (text === undefined) throw new Error('comment text is required (- reads stdin)');
+  const body = text === '-' ? readFileSync(0, 'utf8') : text;
+  if (values.edit !== undefined) {
+    const n = commentNumber(values.edit);
+    return print(`edited ${editComment(ctx, id, n, body).id} #${n}`);
+  }
+  const { issue, n } = addComment(ctx, id, body, commentAuthor(process.env, values.as));
+  print(`commented on ${issue.id} (#${n})`);
 }
 
 function cmdDelete(argv: string[]): void {
   const { positionals } = args(argv, {}, 1);
   const ctx = new Ctx();
   const { id } = ctx.issue(positionals[0]);
-  const dependents = deleteIssue(ctx, id);
+  const dependents = deleteIssue(ctx, id, commentAuthor(process.env));
   print(`deleted ${id}`);
   if (dependents.length) print(`  no longer blocked by it: ${dependents.map((t) => t.id).join(', ')}`);
 }
@@ -210,6 +254,13 @@ function cmdShow(argv: string[]): void {
     `file:       ${normalizeStoredPath(issueFile(ctx.dir, t.id))}`,
   ].filter(Boolean);
   if (t.body) out.push('', t.body);
+  if (t.comments.length) {
+    out.push('', 'comments');
+    t.comments.forEach((c, i) => {
+      out.push(`  #${i + 1}  ${c.at.slice(5).replace('T', ' ')}  ${c.by}`);
+      for (const line of c.text.split('\n')) out.push(`      ${line}`.trimEnd());
+    });
+  }
   print(out);
 }
 
@@ -261,7 +312,7 @@ function cmdSearch(argv: string[]): void {
   const words = positionals.map((w) => w.toLowerCase());
   const ctx = new Ctx();
   const issues = ctx.issues.filter((t) => {
-    const hay = `${t.title}\n${t.body}`.toLowerCase();
+    const hay = [t.title, t.body, ...t.comments.map((c) => c.text)].join('\n').toLowerCase();
     return words.every((w) => hay.includes(w));
   });
   const claude = claudeDir();
@@ -433,6 +484,7 @@ const COMMANDS: Record<string, (argv: string[]) => void> = {
   add: cmdAdd,
   set: cmdSet,
   edit: cmdEdit,
+  comment: cmdComment,
   delete: cmdDelete,
   show: cmdShow,
   list: cmdList,

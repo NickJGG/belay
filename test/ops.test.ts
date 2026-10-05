@@ -4,12 +4,17 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
 import {
+  CommentConflictError,
   ConflictError,
   Ctx,
+  addComment,
   addProject,
   addIssue,
   bodyHash,
+  commentAuthor,
+  deleteComment,
   deleteIssue,
+  editComment,
   editProject,
   editIssue,
   moveProject,
@@ -33,6 +38,8 @@ beforeEach(() => {
 
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
+const USER = { by: 'user' } as const;
+
 const issue = (over: Partial<Issue> = {}): Omit<Issue, 'id'> => ({
   title: 'Do the thing',
   project: 'PIX',
@@ -41,15 +48,16 @@ const issue = (over: Partial<Issue> = {}): Omit<Issue, 'id'> => ({
   source: 'user',
   created: '2026-10-01',
   updated: '2026-10-01',
+  comments: [],
   body: '',
   ...over,
 });
 
-test('setStatus re-reads: a note appended after an earlier load survives', () => {
+test('setStatus re-reads: a body line appended after an earlier load survives', () => {
   createIssue(dir, issue());
   const stale = new Ctx(dir);
   const file = join(dir, 'issues', 'pix-1.md');
-  writeFileSync(file, `${readFileSync(file, 'utf8')}\n- 2026-10-02: claude was here\n`);
+  writeFileSync(file, `${readFileSync(file, 'utf8')}\nclaude was here\n`);
   assert.equal(stale.issue('PIX-1').body, '');
   const { before, issue: t } = setStatus(new Ctx(dir), 'PIX-1', 'doing');
   assert.equal(before, 'todo');
@@ -71,16 +79,14 @@ test('addIssue validates title, project, status and blockers', () => {
   assert.throws(() => addIssue(ctx, { title: 'x', project: 'nope' }), /no project 'nope'/);
   assert.throws(() => addIssue(ctx, { title: 'x', project: 'PIX', status: 'doing' }), /status must be one of idea\|todo/);
   assert.throws(() => addIssue(ctx, { title: 'x', project: 'PIX', blockers: ['PIX-7'] }), /no issue 'PIX-7'/);
-  const t = addIssue(ctx, { title: ' x ', project: 'PIX', status: 'idea', source: 'claude', note: 'why' });
+  const t = addIssue(ctx, { title: ' x ', project: 'PIX', status: 'idea', source: 'claude' });
   assert.equal(t.id, 'PIX-1');
   assert.equal(t.title, 'x');
-  assert.match(t.body, /^- \d{4}-\d{2}-\d{2}: why$/);
+  assert.deepEqual(t.comments, []);
 });
 
-test('addIssue takes a body and appends the note after it', () => {
-  const ctx = new Ctx(dir);
-  assert.equal(addIssue(ctx, { title: 'a', project: 'PIX', body: ' hi \n' }).body, 'hi');
-  assert.match(addIssue(new Ctx(dir), { title: 'b', project: 'PIX', body: 'hi', note: 'n' }).body, /^hi\n- \d{4}-\d{2}-\d{2}: n$/);
+test('addIssue trims the body', () => {
+  assert.equal(addIssue(new Ctx(dir), { title: 'a', project: 'PIX', body: ' hi \n' }).body, 'hi');
   assert.equal(addIssue(new Ctx(dir), { title: 'c', project: 'PIX' }).body, '');
 });
 
@@ -106,7 +112,7 @@ test('setPriority and setFocus round-trip', () => {
 test('editIssue sets, clears and validates fields like the old cmdEdit', () => {
   createIssue(dir, issue({ title: 'blocker' }));
   createIssue(dir, issue({ grill: 'g', plan: 'p.md' }));
-  const t = editIssue(new Ctx(dir), 'PIX-2', { title: ' New ', blockers: ['PIX-1'], priority: 'high', grill: '', note: 'n' });
+  const t = editIssue(new Ctx(dir), 'PIX-2', { title: ' New ', blockers: ['PIX-1'], priority: 'high', grill: '' });
   assert.deepEqual(loadIssues(dir)[1], t);
   assert.equal(t.title, 'New');
   assert.deepEqual(t.blocked_by, ['PIX-1']);
@@ -114,7 +120,6 @@ test('editIssue sets, clears and validates fields like the old cmdEdit', () => {
   assert.equal(t.grill, undefined);
   assert.equal(t.plan, 'p.md');
   assert.equal(t.updated, today());
-  assert.match(t.body, /^- \d{4}-\d{2}-\d{2}: n$/);
 
   assert.equal(editIssue(new Ctx(dir), 'PIX-2', { priority: 'none' }).priority, undefined);
   assert.throws(() => editIssue(new Ctx(dir), 'PIX-2', { title: ' ' }), /title is empty/);
@@ -123,10 +128,59 @@ test('editIssue sets, clears and validates fields like the old cmdEdit', () => {
   assert.throws(() => editIssue(new Ctx(dir), 'PIX-2', { blockers: ['PIX-9'] }), /no issue 'PIX-9'/);
 });
 
-test('editIssue replaces the body, then appends the note', () => {
+test('editIssue replaces the body', () => {
   createIssue(dir, issue({ body: 'old' }));
-  const t = editIssue(new Ctx(dir), 'PIX-1', { body: '  fresh\n', note: 'later' });
-  assert.match(t.body, /^fresh\n- \d{4}-\d{2}-\d{2}: later$/);
+  assert.equal(editIssue(new Ctx(dir), 'PIX-1', { body: '  fresh\n' }).body, 'fresh');
+});
+
+test('addComment appends a trimmed, timestamped comment, bumps updated and leaves the body alone', () => {
+  createIssue(dir, issue({ body: 'desc' }));
+  const { issue: t, n } = addComment(new Ctx(dir), 'pix-1', ' first\r\nline two\n', { by: 'claude', session: 's1' });
+  assert.equal(n, 1);
+  assert.deepEqual(loadIssues(dir)[0], t);
+  assert.equal(t.body, 'desc');
+  assert.equal(t.updated, today());
+  assert.match(t.comments[0].at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+  assert.deepEqual({ ...t.comments[0], at: '' }, { at: '', by: 'claude', session: 's1', text: 'first\nline two' });
+  assert.equal(addComment(new Ctx(dir), 'PIX-1', 'second', { by: 'user' }).n, 2);
+  assert.throws(() => addComment(new Ctx(dir), 'PIX-1', '  ', { by: 'user' }), /comment is empty/);
+});
+
+test('editComment and deleteComment address #n, bump updated and leave the body alone', () => {
+  const comments = ['a', 'b', 'c'].map((text) => ({ at: '2026-10-01T09:00', by: 'user' as const, text }));
+  createIssue(dir, issue({ body: 'desc', comments }));
+  let t = editComment(new Ctx(dir), 'PIX-1', 2, ' B ');
+  assert.deepEqual(t.comments.map((c) => c.text), ['a', 'B', 'c']);
+  assert.equal(t.comments[1].at, '2026-10-01T09:00');
+  assert.equal(t.updated, today());
+  t = deleteComment(new Ctx(dir), 'PIX-1', 1);
+  assert.deepEqual(loadIssues(dir)[0].comments.map((c) => c.text), ['B', 'c']);
+  assert.equal(t.body, 'desc');
+
+  for (const n of [0, 3, 1.5]) {
+    assert.throws(() => editComment(new Ctx(dir), 'PIX-1', n, 'x'), /PIX-1 has no comment #.* \(it has 2\)/);
+    assert.throws(() => deleteComment(new Ctx(dir), 'PIX-1', n), /has no comment/);
+  }
+  assert.throws(() => editComment(new Ctx(dir), 'PIX-1', 1, ''), /comment is empty/);
+});
+
+test('editComment and deleteComment refuse when #n no longer has the expected time', () => {
+  createIssue(dir, issue({ comments: [{ at: '2026-10-01T09:00', by: 'user', text: 'a' }, { at: '2026-10-02T09:00', by: 'claude', text: 'b' }] }));
+  assert.throws(() => editComment(new Ctx(dir), 'PIX-1', 1, 'x', '2026-10-02T09:00'), CommentConflictError);
+  assert.throws(() => deleteComment(new Ctx(dir), 'PIX-1', 2, '2026-10-01T09:00'), /PIX-1 #2 changed on disk/);
+  assert.deepEqual(loadIssues(dir)[0].comments.map((c) => c.text), ['a', 'b']);
+  deleteComment(new Ctx(dir), 'PIX-1', 2, '2026-10-02T09:00');
+  editComment(new Ctx(dir), 'PIX-1', 1, 'x', '2026-10-01T09:00');
+  assert.deepEqual(loadIssues(dir)[0].comments.map((c) => c.text), ['x']);
+});
+
+test('commentAuthor: claude inside Claude Code with its session, user outside, --as overrides', () => {
+  assert.deepEqual(commentAuthor({}), { by: 'user' });
+  assert.deepEqual(commentAuthor({ CLAUDECODE: '1', CLAUDE_CODE_SESSION_ID: 'abc' }), { by: 'claude', session: 'abc' });
+  assert.deepEqual(commentAuthor({ CLAUDECODE: '1' }), { by: 'claude' });
+  assert.deepEqual(commentAuthor({ CLAUDECODE: '1', CLAUDE_CODE_SESSION_ID: 'abc' }, 'user'), { by: 'user' });
+  assert.deepEqual(commentAuthor({}, 'claude'), { by: 'claude' });
+  assert.throws(() => commentAuthor({}, 'system'), /--as must be one of user\|claude/);
 });
 
 test('replaceBody saves on a matching hash and conflicts on a stale one', () => {
@@ -144,22 +198,28 @@ test('replaceBody saves on a matching hash and conflicts on a stale one', () => 
   assert.equal(loadIssues(dir)[0].body, 'v4');
 });
 
-test('deleteIssue strips the id from dependents, notes it, and makes them ready', () => {
+test('deleteIssue strips the id from dependents, comments on them as the caller, and makes them ready', () => {
   saveProject(dir, { key: 'PIX', name: 'Pixel Imperium', paths: [], status: 'active', focus: true, body: '' });
   createIssue(dir, issue({ title: 'doomed' }));
   createIssue(dir, issue({ title: 'other' }));
   createIssue(dir, issue({ title: 'dependent', blocked_by: ['PIX-1', 'PIX-2'] }));
   createIssue(dir, issue({ title: 'solo', blocked_by: ['PIX-1'] }));
 
-  const dependents = deleteIssue(new Ctx(dir), 'PIX-1');
+  const dependents = deleteIssue(new Ctx(dir), 'PIX-1', { by: 'claude', session: 's1' });
   assert.deepEqual(dependents.map((t) => t.id), ['PIX-3', 'PIX-4']);
   assert.equal(existsSync(join(dir, 'issues', 'pix-1.md')), false);
   const issues = loadIssues(dir);
   assert.deepEqual(issues.map((t) => [t.id, t.blocked_by]), [['PIX-2', []], ['PIX-3', ['PIX-2']], ['PIX-4', []]]);
-  assert.match(issues[2].body, /^- \d{4}-\d{2}-\d{2}: blocker PIX-1 deleted$/);
-  assert.equal(issues[0].body, '');
+  for (const t of issues.slice(1)) {
+    assert.deepEqual(
+      t.comments.map(({ by, session, text }) => ({ by, session, text })),
+      [{ by: 'claude', session: 's1', text: 'blocker PIX-1 deleted' }],
+    );
+    assert.equal(t.body, '');
+  }
+  assert.deepEqual(issues[0].comments, []);
   assert.ok(next(loadProjects(dir), issues).focus.some((t) => t.id === 'PIX-4'));
-  assert.throws(() => deleteIssue(new Ctx(dir), 'PIX-1'), /no issue 'PIX-1'/);
+  assert.throws(() => deleteIssue(new Ctx(dir), 'PIX-1', USER), /no issue 'PIX-1'/);
 });
 
 test('deleteIssue writes dependents before removing the file', () => {
@@ -167,7 +227,7 @@ test('deleteIssue writes dependents before removing the file', () => {
   createIssue(dir, issue({ blocked_by: ['PIX-1'] }));
   // A directory where the atomic write's temp file goes makes the dependent's save fail.
   mkdirSync(join(dir, 'issues', `pix-2.md.${process.pid}.tmp`));
-  assert.throws(() => deleteIssue(new Ctx(dir), 'PIX-1'));
+  assert.throws(() => deleteIssue(new Ctx(dir), 'PIX-1', USER));
   assert.ok(existsSync(join(dir, 'issues', 'pix-1.md')));
 });
 
@@ -187,7 +247,7 @@ test('keys and IDs are case-insensitive and stored uppercase', () => {
   assert.deepEqual([t.id, t.project, t.blocked_by], ['PIX-2', 'PIX', ['PIX-1']]);
   assert.equal(setStatus(new Ctx(dir), 'Pix-2', 'doing').issue.id, 'PIX-2');
   assert.throws(() => editIssue(new Ctx(dir), 'pix-2', { blockers: ['PIX-2'] }), /cannot block itself/);
-  assert.deepEqual(deleteIssue(new Ctx(dir), 'pix-1').map((d) => d.blocked_by), [[]]);
+  assert.deepEqual(deleteIssue(new Ctx(dir), 'pix-1', USER).map((d) => d.blocked_by), [[]]);
 });
 
 test('addProject derives a 3-letter key, 4 on a clash, or takes one', () => {

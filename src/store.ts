@@ -28,6 +28,15 @@ export interface Project {
   body: string;
 }
 
+export interface Comment {
+  /** Local time to the minute, `YYYY-MM-DDTHH:MM`. */
+  at: string;
+  by: Source;
+  /** The Claude Code session it came from; only when `by` is `claude`. */
+  session?: string;
+  text: string;
+}
+
 export interface Issue {
   id: string;
   title: string;
@@ -40,6 +49,8 @@ export interface Issue {
   plan?: string;
   created: string;
   updated: string;
+  /** Oldest first. */
+  comments: Comment[];
   body: string;
 }
 
@@ -66,10 +77,15 @@ export function compareIds(a: string, b: string): number {
   return pa.key.localeCompare(pb.key) || pa.n - pb.n;
 }
 
-export function today(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
+const pad = (n: number) => String(n).padStart(2, '0');
+
+export function today(d = new Date()): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Local time to the minute, the form a comment's `at` takes. */
+export function now(d = new Date()): string {
+  return `${today(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /** Forward slashes, no trailing slash: the form paths are stored in. */
@@ -116,6 +132,21 @@ function textList(d: Data, k: string, where: string): string[] {
   const v = d[k] ?? [];
   if (Array.isArray(v) && v.every((x) => typeof x === 'string')) return v;
   throw new Error(`${where}: '${k}' must be a list of strings`);
+}
+
+const AT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+
+function commentList(d: Data, where: string): Comment[] {
+  const v = d.comments ?? [];
+  if (!Array.isArray(v)) throw new Error(`${where}: 'comments' must be a list`);
+  return v.map((c, i) => {
+    const loc = `${where} comment #${i + 1}`;
+    if (typeof c !== 'object' || c === null || Array.isArray(c)) throw new Error(`${loc}: not a mapping`);
+    if (typeof c.at !== 'string' || !AT_RE.test(c.at)) throw new Error(`${loc}: 'at' must be YYYY-MM-DDTHH:MM (got ${JSON.stringify(c.at)})`);
+    if (typeof c.text !== 'string' || !c.text.trim()) throw new Error(`${loc}: 'text' must be a non-empty string`);
+    const session = optText(c, 'session', loc);
+    return { at: c.at, by: oneOf(c, 'by', SOURCES, loc), ...(session && { session }), text: c.text };
+  });
 }
 
 export function validateKey(key: string): void {
@@ -169,13 +200,17 @@ export function parseIssue(src: string, where: string): Issue {
     plan: optText(d, 'plan', where),
     created: text(d, 'created', where),
     updated: text(d, 'updated', where),
+    comments: commentList(d, where),
     body,
   };
 }
 
 export function serializeIssue(t: Issue): string {
-  const { id, title, project, status, blocked_by, priority, source, grill, plan, created, updated, body } = t;
-  return joinFrontmatter({ id, title, project, status, blocked_by, priority, source, grill, plan, created, updated }, body);
+  const { id, title, project, status, blocked_by, priority, source, grill, plan, created, updated, comments, body } = t;
+  return joinFrontmatter(
+    { id, title, project, status, blocked_by, priority, source, grill, plan, created, updated, comments: comments.length ? comments : undefined },
+    body,
+  );
 }
 
 // --- disk ---
