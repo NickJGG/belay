@@ -34,7 +34,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
   const project = projects.find((p) => p.key === key);
   if (!project) notFound();
 
-  const logsTab = view.tab === 'logs';
+  const tab = view.tab === 'logs' || view.tab === 'ideas' ? view.tab : 'issues';
   const showDropped = view.dropped === '1';
   const showOlder = view.older === '1';
   const board = projectBoard(project.key, issues, { today: today(), older: showOlder });
@@ -56,12 +56,11 @@ export default async function ProjectPage({ params, searchParams }: Props) {
       </StatusGroup>
     );
   const counts = projectCounts(project, issues, byId);
-  const issuesHref = (filter: string) => `/issues?project=${encodeURIComponent(project.key)}&${filter}`;
-  const tabHref = (logs: boolean) => `${projectHref(project.key)}${logs ? '?tab=logs' : ''}`;
+  const tabHref = (t: typeof tab) => `${projectHref(project.key)}${t === 'issues' ? '' : `?tab=${t}`}`;
   const day = workDay();
-  const allLogs = logsTab ? data.logs('0000-01-01', day).filter((e) => e.project === project.key) : [];
+  const allLogs = tab === 'logs' ? data.logs('0000-01-01', day).filter((e) => e.project === project.key) : [];
   const logs = view.all === '1' ? allLogs : allLogs.filter((e) => e.day > addDays(day, -28));
-  const empty = !board.idea.length && !board.todo.length && !board.doing.length && !board.done.length && !board.olderDone;
+  const empty = !board.todo.length && !board.doing.length && !board.done.length && !board.olderDone;
 
   return (
     <>
@@ -70,19 +69,19 @@ export default async function ProjectPage({ params, searchParams }: Props) {
         <div className={panel.layout}>
           <div className={panel.main}>
             <nav className={styles.tabs} aria-label="View">
-              <Link className={styles.tab} href={tabHref(false)} aria-current={logsTab ? undefined : 'page'}>
-                Issues
-              </Link>
-              <Link className={styles.tab} href={tabHref(true)} aria-current={logsTab ? 'page' : undefined}>
-                Logs
-              </Link>
+              {(['issues', 'ideas', 'logs'] as const).map((t) => (
+                <Link key={t} className={styles.tab} href={tabHref(t)} aria-current={tab === t ? 'page' : undefined}>
+                  {t[0].toUpperCase() + t.slice(1)}
+                </Link>
+              ))}
             </nav>
-            {logsTab ? (
-              <Logs entries={logs} today={day} older={allLogs.length - logs.length} moreHref={`${tabHref(true)}&all=1`} />
+            {tab === 'logs' ? (
+              <Logs entries={logs} today={day} older={allLogs.length - logs.length} moreHref={`${tabHref('logs')}&all=1`} />
+            ) : tab === 'ideas' ? (
+              board.idea.length ? section('idea', board.idea) : <p className={ui.empty}>No ideas.</p>
             ) : (
               <>
               {empty && <p className={ui.empty}>No issues.</p>}
-              {section('idea', board.idea)}
               {section('todo', board.todo)}
               {section('doing', board.doing)}
               {section(
@@ -150,24 +149,6 @@ export default async function ProjectPage({ params, searchParams }: Props) {
               <dt>Last touched</dt>
               <dd>{counts.lastTouched ?? <span className={ui.muted}>Never</span>}</dd>
             </dl>
-            <div className={panel.counts}>
-              <Link className={panel.count} href={issuesHref('status=doing')}>
-                <strong>{counts.doing}</strong>
-                <span>doing</span>
-              </Link>
-              <Link className={panel.count} href={issuesHref('ready=1')}>
-                <strong>{counts.ready}</strong>
-                <span>ready</span>
-              </Link>
-              <div className={panel.count} title="Todo with open blockers">
-                <strong>{counts.blocked}</strong>
-                <span>blocked</span>
-              </div>
-              <Link className={panel.count} href={issuesHref('status=idea')}>
-                <strong>{counts.ideas}</strong>
-                <span>ideas</span>
-              </Link>
-            </div>
           </aside>
         </div>
       </div>
