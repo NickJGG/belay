@@ -8,12 +8,14 @@ import {
   ConflictError,
   Ctx,
   addComment,
+  addLog,
   addProject,
   addIssue,
   bodyHash,
   commentAuthor,
   deleteComment,
   deleteIssue,
+  deleteLog,
   editComment,
   editProject,
   editIssue,
@@ -24,6 +26,7 @@ import {
   setPriority,
   setStatus,
 } from '../src/ops.ts';
+import { loadLog } from '../src/logs.ts';
 import { next } from '../src/query.ts';
 import { createIssue, loadOrder, loadProjects, loadIssues, saveOrder, saveProject, today, type Issue } from '../src/store.ts';
 
@@ -318,4 +321,97 @@ test('rekeyProject renames the key in order.yaml', () => {
 test('rekeyProject leaves order.yaml alone when the project is unlisted', () => {
   rekeyProject(new Ctx(dir), 'pix', 'pxl');
   assert.equal(existsSync(join(dir, 'order.yaml')), false);
+});
+
+test('addIssue and setStatus record transitions with their author; a no-op set adds none', () => {
+  const claude = { by: 'claude', session: 's1' } as const;
+  const t = addIssue(new Ctx(dir), { title: 'x', project: 'PIX', status: 'idea' }, claude);
+  assert.deepEqual(t.transitions?.map(({ at, ...rest }) => rest), [{ to: 'idea', by: 'claude', session: 's1' }]);
+  setStatus(new Ctx(dir), t.id, 'todo', USER);
+  setStatus(new Ctx(dir), t.id, 'todo', USER);
+  setStatus(new Ctx(dir), t.id, 'done');
+  const saved = loadIssues(dir)[0].transitions!;
+  assert.deepEqual(saved.map(({ at, ...rest }) => rest), [
+    { to: 'idea', by: 'claude', session: 's1' },
+    { from: 'idea', to: 'todo', by: 'user' },
+    { from: 'todo', to: 'done', by: 'user' },
+  ]);
+  assert.match(saved[2].at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+});
+
+test('setStatus starts a transitions list on an issue from before they were recorded', () => {
+  createIssue(dir, issue());
+  setStatus(new Ctx(dir), 'PIX-1', 'todo');
+  assert.equal(loadIssues(dir)[0].transitions, undefined);
+  setStatus(new Ctx(dir), 'PIX-1', 'doing');
+  assert.deepEqual(loadIssues(dir)[0].transitions?.map((x) => [x.from, x.to]), [['todo', 'doing']]);
+});
+
+test('editProject sets kinds and goals, stamping a target with the work day it was set', () => {
+  const clock = new Date(2026, 9, 6, 2, 0);
+  const ctx = () => new Ctx(dir);
+  assert.deepEqual(editProject(ctx(), 'PIX', { kinds: [' Applied', 'outreach', 'applied', ''] }).kinds, ['applied', 'outreach']);
+  assert.deepEqual(editProject(ctx(), 'PIX', { goal: { quantity: 10, kind: 'APPLIED' } }).goal, { quantity: 10, kind: 'applied' });
+  assert.throws(() => editProject(ctx(), 'PIX', { kinds: ['outreach'] }), /quantity goal counts 'applied'/);
+  assert.deepEqual(editProject(ctx(), 'PIX', { goal: { habit: 5 } }).goal, { habit: 5 });
+  assert.deepEqual(editProject(ctx(), 'PIX', { goal: { target: '2026-10-19' } }, clock).goal, { target: '2026-10-19', set: '2026-10-05' });
+  assert.deepEqual(editProject(ctx(), 'PIX', { goal: { target: '2026-10-26' } }).goal, { target: '2026-10-26', set: '2026-10-05' });
+  assert.equal(editProject(ctx(), 'PIX', { goal: null }).goal, undefined);
+  assert.equal(editProject(ctx(), 'PIX', { kinds: [] }).kinds, undefined);
+  assert.deepEqual(loadProjects(dir)[0], { key: 'PIX', name: 'Pixel Imperium', paths: ['C:/x'], status: 'active', focus: false, group: undefined, body: '' });
+});
+
+test('editProject rejects bad goals and kinds', () => {
+  const edit = (patch: Parameters<typeof editProject>[2]) => () => editProject(new Ctx(dir), 'PIX', patch, new Date(2026, 9, 5, 12));
+  assert.throws(edit({ kinds: ['two words'] }), /kind 'two words' must be/);
+  assert.throws(edit({ goal: { quantity: 10, kind: 'applied' } }), /PIX declares no kinds/);
+  editProject(new Ctx(dir), 'PIX', { kinds: ['applied', 'interview'] });
+  assert.throws(edit({ goal: { quantity: 10, kind: 'aplied' } }), /PIX has no kind 'aplied' — did you mean 'applied'\?/);
+  assert.throws(edit({ goal: { quantity: 0, kind: 'applied' } }), /quantity must be a whole number/);
+  assert.throws(edit({ goal: { habit: 8 } }), /habit days per week must be a whole number from 1 to 7/);
+  assert.throws(edit({ goal: { target: '2026-02-30' } }), /target must be a YYYY-MM-DD date/);
+  assert.throws(edit({ goal: { target: '2026-10-04' } }), /target 2026-10-04 is in the past/);
+});
+
+test('addLog validates and appends to the work day file; deleteLog removes by address', () => {
+  editProject(new Ctx(dir), 'PIX', { kinds: ['applied'] });
+  saveProject(dir, { key: 'JOB', name: 'Job', paths: [], status: 'active', focus: true, body: '' });
+  createIssue(dir, issue());
+  createIssue(dir, issue({ project: 'JOB' }));
+  const clock = new Date(2026, 9, 6, 1, 30);
+  const add = (n: Partial<Parameters<typeof addLog>[1]>) => addLog(new Ctx(dir), { project: 'PIX', text: 'x', ...n }, USER, clock);
+
+  const a = add({ text: ' sent CV\r\n', kind: 'Applied', count: 2, minutes: 30, issue: 'pix-1' });
+  assert.deepEqual([a.day, a.n], ['2026-10-05', 1]);
+  assert.deepEqual(a.entry, { project: 'PIX', at: '2026-10-06T01:30', by: 'user', text: 'sent CV', kind: 'applied', count: 2, minutes: 30, issue: 'PIX-1' });
+  assert.equal(add({ text: 'note' }).n, 2);
+  assert.equal(add({ day: 'yesterday' }).day, '2026-10-04');
+  assert.equal(add({ day: '2026-09-28' }).day, '2026-09-28');
+  assert.deepEqual(loadLog(dir, '2026-10-05').map((e) => e.text), ['sent CV', 'note']);
+
+  assert.throws(() => add({ text: ' ' }), /text is empty/);
+  assert.throws(() => add({ kind: 'aplied' }), /did you mean 'applied'/);
+  assert.throws(() => add({ count: 2 }), /a count needs a kind/);
+  assert.throws(() => add({ kind: 'applied', count: 0 }), /count must be a whole number/);
+  assert.throws(() => add({ issue: 'JOB-1' }), /JOB-1 is not in PIX/);
+  assert.throws(() => add({ issue: 'PIX-9' }), /no issue 'PIX-9'/);
+  assert.throws(() => add({ day: '2026-10-06' }), /2026-10-06 is in the future/);
+  assert.throws(() => add({ day: '2026-09-27' }), /more than 7 days back/);
+  assert.throws(() => add({ project: 'JOB', kind: 'applied' }), /JOB declares no kinds/);
+
+  assert.equal(deleteLog(new Ctx(dir), '2026-10-05/1').text, 'sent CV');
+  assert.deepEqual(loadLog(dir, '2026-10-05').map((e) => e.text), ['note']);
+  assert.throws(() => deleteLog(new Ctx(dir), '2026-10-05/2'), /2026-10-05 has no log entry #2 \(it has 1\)/);
+  assert.throws(() => deleteLog(new Ctx(dir), '2026-10-05/1', '2026-10-05T09:00'), /changed on disk/);
+  deleteLog(new Ctx(dir), '2026-10-05/1', '2026-10-06T01:30');
+  assert.equal(existsSync(join(dir, 'log', '2026-10-05.yaml')), false);
+});
+
+test('Ctx.logs reads the range once and only on demand', () => {
+  const ctx = new Ctx(dir);
+  addLog(ctx, { project: 'PIX', text: 'a' }, USER, new Date(2026, 9, 5, 12));
+  assert.deepEqual(ctx.logs('2026-10-01', '2026-10-07').map((e) => e.text), ['a']);
+  addLog(ctx, { project: 'PIX', text: 'b' }, USER, new Date(2026, 9, 5, 12));
+  assert.equal(ctx.logs('2026-10-01', '2026-10-07').length, 1);
+  assert.equal(new Ctx(dir).logs('2026-10-01', '2026-10-07').length, 2);
 });

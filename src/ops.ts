@@ -5,6 +5,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, unlinkSync } from 'node:fs';
 import { dataDir } from './config.ts';
+import { loadLog, loadLogs, parseLogAddress, saveLog, type DatedEntry, type LogEntry } from './logs.ts';
 import { suggestKey } from './projectkey.ts';
 import { indexIssues, openBlockers } from './query.ts';
 import { reorder, type MoveTarget } from './sidebar.ts';
@@ -29,10 +30,12 @@ import {
   today,
   validateKey,
   type Comment,
+  type Goal,
   type Project,
   type Issue,
   type IssueStatus,
 } from './store.ts';
+import { addDays, isDay, parseDay, workDay } from './workday.ts';
 
 export function oneOf<T extends string>(value: string, allowed: readonly T[], what: string): T {
   if (allowed.includes(value as T)) return value as T;
@@ -51,6 +54,7 @@ export class Ctx {
   readonly projects: Project[];
   readonly issues: Issue[];
   readonly byId: Map<string, Issue>;
+  readonly #logs = new Map<string, DatedEntry[]>();
 
   constructor(dir = dataDir()) {
     this.dir = dir;
@@ -72,6 +76,14 @@ export class Ctx {
     return t;
   }
 
+  /** Log entries on work days `from`..`to`, read on first use: most callers never need them. */
+  logs(from: string, to: string): DatedEntry[] {
+    const k = `${from}..${to}`;
+    let entries = this.#logs.get(k);
+    if (!entries) this.#logs.set(k, (entries = loadLogs(this.dir, from, to)));
+    return entries;
+  }
+
   /** Returns the blockers in their stored form. */
   checkBlockers(id: string | undefined, blockers: string[]): string[] {
     return blockers.map((b) => {
@@ -82,10 +94,14 @@ export class Ctx {
   }
 }
 
-export function setStatus(ctx: Ctx, id: string, value: string): { before: IssueStatus; issue: Issue; open: Issue[] } {
+const USER: Author = { by: 'user' };
+
+export function setStatus(ctx: Ctx, id: string, value: string, author = USER): { before: IssueStatus; issue: Issue; open: Issue[] } {
   const current = ctx.issue(id);
   const status = oneOf(value, ISSUE_STATUSES, 'status');
-  const issue = { ...current, status, updated: today() };
+  const transitions =
+    status === current.status ? current.transitions : [...(current.transitions ?? []), { at: now(), from: current.status, to: status, ...author }];
+  const issue = { ...current, status, updated: today(), ...(transitions && { transitions }) };
   saveIssue(ctx.dir, issue);
   return { before: current.status, issue, open: openBlockers(current, ctx.byId) };
 }
@@ -102,16 +118,17 @@ export interface NewIssue {
   body?: string;
 }
 
-export function addIssue(ctx: Ctx, t: NewIssue): Issue {
+export function addIssue(ctx: Ctx, t: NewIssue, author = USER): Issue {
   const title = t.title.trim();
   if (!title) throw new Error('title is empty');
   const project = ctx.project(t.project);
   const blockers = ctx.checkBlockers(undefined, t.blockers ?? []);
   const date = today();
+  const status = oneOf(t.status ?? 'todo', ['idea', 'todo'] as const, 'status');
   return createIssue(ctx.dir, {
     title,
     project: project.key,
-    status: oneOf(t.status ?? 'todo', ['idea', 'todo'] as const, 'status'),
+    status,
     blocked_by: blockers,
     priority: t.priority ? oneOf(t.priority, ['high'] as const, 'priority') : undefined,
     source: oneOf(t.source ?? 'user', SOURCES, 'source'),
@@ -120,6 +137,7 @@ export function addIssue(ctx: Ctx, t: NewIssue): Issue {
     created: date,
     updated: date,
     comments: [],
+    transitions: [{ at: now(), to: status, ...author }],
     body: (t.body ?? '').trim(),
   });
 }
@@ -265,15 +283,76 @@ export function deleteIssue(ctx: Ctx, typed: string, author: Author): Issue[] {
   return dependents;
 }
 
+/** A target's `set` is stamped by `editProject`. */
+export type GoalInput = { habit: number } | { quantity: number; kind: string } | { target: string };
+
 export interface ProjectPatch {
   name?: string;
   /** Empty clears. */
   group?: string;
   status?: string;
   focus?: boolean;
+  /** Empty clears. */
+  kinds?: string[];
+  /** `null` clears. */
+  goal?: GoalInput | null;
 }
 
-export function editProject(ctx: Ctx, key: string, patch: ProjectPatch): Project {
+const KIND_RE = /^[a-z0-9][a-z0-9_-]*$/;
+
+function positiveInt(n: number, what: string, max: number): number {
+  if (!Number.isInteger(n) || n < 1 || n > max) throw new Error(`${what} must be a whole number from 1 to ${max} (got ${n})`);
+  return n;
+}
+
+function kindList(kinds: string[]): string[] | undefined {
+  const list = [...new Set(kinds.map((k) => k.trim().toLowerCase()).filter(Boolean))];
+  for (const k of list) if (!KIND_RE.test(k)) throw new Error(`kind '${k}' must be lowercase letters, digits, - or _`);
+  return list.length ? list : undefined;
+}
+
+/** A kind the project declares, or an error naming the closest one. */
+function declaredKind(p: Project, kind: string): string {
+  const k = kind.trim().toLowerCase();
+  const kinds = p.kinds ?? [];
+  if (kinds.includes(k)) return k;
+  if (!kinds.length) throw new Error(`${p.key} declares no kinds ('tracker project set ${p.key} --kinds a,b')`);
+  const near = closest(k, kinds);
+  throw new Error(`${p.key} has no kind '${kind}'${near ? ` — did you mean '${near}'?` : ''} (kinds: ${kinds.join(', ')})`);
+}
+
+/** The nearest option by edit distance, if it's within about a third of the word. */
+export function closest(word: string, options: string[]): string | undefined {
+  let best: string | undefined;
+  let bestD = Math.max(2, Math.ceil(word.length / 3)) + 1;
+  for (const o of options) {
+    const d = editDistance(word, o);
+    if (d < bestD) [best, bestD] = [o, d];
+  }
+  return best;
+}
+
+function editDistance(a: string, b: string): number {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = row;
+  }
+  return prev[b.length];
+}
+
+/** Moving an existing target's date keeps its `set`, so its scope and pace keep their start. */
+function goalFor(p: Project, g: GoalInput, clock: Date): Goal {
+  if ('habit' in g) return { habit: positiveInt(g.habit, 'habit days per week', 7) };
+  if ('quantity' in g) return { quantity: positiveInt(g.quantity, 'quantity', 1000), kind: declaredKind(p, g.kind) };
+  if (!isDay(g.target)) throw new Error(`target must be a YYYY-MM-DD date (got '${g.target}')`);
+  const day = workDay(clock);
+  if (g.target < day) throw new Error(`target ${g.target} is in the past`);
+  return { target: g.target, set: p.goal && 'target' in p.goal ? p.goal.set : day };
+}
+
+export function editProject(ctx: Ctx, key: string, patch: ProjectPatch, clock = new Date()): Project {
   const p = { ...ctx.project(key) };
   if (patch.name !== undefined) {
     if (!patch.name.trim()) throw new Error('name is empty');
@@ -282,6 +361,11 @@ export function editProject(ctx: Ctx, key: string, patch: ProjectPatch): Project
   if (patch.group !== undefined) p.group = patch.group.trim() || undefined;
   if (patch.status !== undefined) p.status = oneOf(patch.status, PROJECT_STATUSES, 'status');
   if (patch.focus !== undefined) p.focus = patch.focus;
+  if (patch.kinds !== undefined) p.kinds = kindList(patch.kinds);
+  if (patch.goal !== undefined) p.goal = patch.goal === null ? undefined : goalFor(p, patch.goal, clock);
+  else if (patch.kinds !== undefined && p.goal && 'kind' in p.goal && !p.kinds?.includes(p.goal.kind)) {
+    throw new Error(`${p.key}'s quantity goal counts '${p.goal.kind}': keep that kind or change the goal`);
+  }
   saveProject(ctx.dir, p);
   return p;
 }
@@ -346,4 +430,61 @@ export function rekeyProject(ctx: Ctx, from: string, to: string): { project: Pro
   unlinkSync(projectFile(ctx.dir, old.key));
   if (ctx.order.includes(old.key)) saveOrder(ctx.dir, ctx.order.map((k) => (k === old.key ? key : k)));
   return { project, renamed };
+}
+
+export interface NewLog {
+  project: string;
+  text: string;
+  kind?: string;
+  count?: number;
+  minutes?: number;
+  issue?: string;
+  /** The work day it counts toward: `today`, `yesterday` or `YYYY-MM-DD`. Default today. */
+  day?: string;
+}
+
+export const LOG_BACKDATE_DAYS = 7;
+
+export function addLog(ctx: Ctx, n: NewLog, author: Author, clock = new Date()): { entry: LogEntry; day: string; n: number } {
+  const project = ctx.project(n.project);
+  const text = n.text.replaceAll('\r\n', '\n').trim();
+  if (!text) throw new Error('log entry text is empty');
+  const kind = n.kind === undefined ? undefined : declaredKind(project, n.kind);
+  if (n.count !== undefined && !kind) throw new Error('a count needs a kind');
+  const count = n.count === undefined ? undefined : positiveInt(n.count, 'count', 1000);
+  const minutes = n.minutes === undefined ? undefined : positiveInt(n.minutes, 'minutes', 24 * 60);
+  let issue: string | undefined;
+  if (n.issue !== undefined) {
+    const t = ctx.issue(n.issue);
+    if (t.project !== project.key) throw new Error(`${t.id} is not in ${project.key}`);
+    issue = t.id;
+  }
+  const current = workDay(clock);
+  const day = n.day === undefined ? current : parseDay(n.day, clock);
+  if (day > current) throw new Error(`${day} is in the future`);
+  if (day < addDays(current, -LOG_BACKDATE_DAYS)) throw new Error(`${day} is more than ${LOG_BACKDATE_DAYS} days back`);
+  const entry: LogEntry = {
+    project: project.key,
+    at: now(clock),
+    ...author,
+    text,
+    ...(kind && { kind }),
+    ...(count && { count }),
+    ...(minutes && { minutes }),
+    ...(issue && { issue }),
+  };
+  const entries = [...loadLog(ctx.dir, day), entry];
+  saveLog(ctx.dir, day, entries);
+  return { entry, day, n: entries.length };
+}
+
+/** `addr` is `<day>/<n>`. With `expectAt`, refuses when the entry there isn't the one that was loaded. */
+export function deleteLog(ctx: Ctx, addr: string, expectAt?: string): LogEntry {
+  const { day, n } = parseLogAddress(addr);
+  const entries = loadLog(ctx.dir, day);
+  if (n > entries.length) throw new Error(`${day} has no log entry #${n} (it has ${entries.length})`);
+  const entry = entries[n - 1];
+  if (expectAt !== undefined && entry.at !== expectAt) throw new Error(`log entry ${day}/${n} changed on disk since it was loaded`);
+  saveLog(ctx.dir, day, entries.filter((_, i) => i !== n - 1));
+  return entry;
 }

@@ -1,12 +1,20 @@
 # Glossary
 
-**Project** — An explicitly registered unit of work (`projects/<key>.md`). It has a `key` of 3–4 letters that is also the issue-ID prefix, Linear/JIRA style (`ELV` → `ELV-12`). `project add` derives it from the name (3 letters, 4 only on a clash) unless one is given, and `project rekey` renames it along with every issue ID. Keys and IDs are uppercase in the data, lowercase in file names, and case-insensitive when typed. A project also has a name, one or more absolute `paths` used to map a working directory to the project, and a status: `active`, `paused` or `archived`. Repos that aren't registered don't exist as far as the tracker is concerned.
+**Project** — An explicitly registered unit of work (`projects/<key>.md`). It has a `key` of 3–4 letters that is also the issue-ID prefix, Linear/JIRA style (`ELV` → `ELV-12`). `project add` derives it from the name (3 letters, 4 only on a clash) unless one is given, and `project rekey` renames it along with every issue ID. Keys and IDs are uppercase in the data, lowercase in file names, and case-insensitive when typed. A project also has a name, one or more absolute `paths` used to map a working directory to the project, and a status: `active`, `paused` or `archived`. It may declare the `kinds` its log entries can carry, and hold a Goal. Repos that aren't registered don't exist as far as the tracker is concerned.
 
 **Group** — An optional label that clusters related projects for display, e.g. "PZ Mods". It's only a label: each mod in the group is still its own project with its own issues.
 
-**Focus** — A flag on active projects marking what this week is about. There is no cap on how many. `tracker next` lists ready issues from focus projects only, unless you pass `--all`.
+**Focus** — A flag on active projects marking what this period is about. There is no cap on how many. `tracker next` lists ready issues from focus projects only, unless you pass `--all`.
 
-**Issue** — One deliverable in a project (`issues/<key>-<n>.md`). Its lifecycle is `idea → todo → doing → done`, plus `dropped` for deliberate abandonment. Deleting an issue is different: it erases junk that shouldn't stay on record. Blocking is a field (`blocked_by`), not a status. An issue may link to the grill session (`grill`) and plan (`plan`) it came from. _Avoid_: task.
+**Goal** — An optional expectation on a focus project: a _habit goal_ (move on N days per week), a _quantity goal_ (N log-entry counts of a kind per week, e.g. 10 `applied`), or a _target goal_ (finish the committed issues, `todo`/`doing` plus those done since the goal was set, by a date). Weeks run Monday–Sunday. Ignored while the project is out of focus. A focus project without one is pinned but never nudged.
+
+**Log entry** — A dated record of work done on a project, optionally linked to an issue and carrying a kind, count or minutes. Time-first, like a journal; a Comment is context on one issue. Its kind must be one the project declares. _Avoid_: activity, did-entry.
+
+**Work day** — The day activity counts toward, ending at 4am local rather than midnight, so late-night work belongs to the day it felt like. Goals, Moved and log entries use it; stored timestamps stay real local time.
+
+**Moved** — Derived, never stored: a project moved on a work day if it had an issue transition, a comment, a commit under its paths, or a log entry. A session alone doesn't count.
+
+**Issue** — One deliverable in a project (`issues/<key>-<n>.md`). Its lifecycle is `idea → todo → doing → done`, plus `dropped` for deliberate abandonment. Deleting an issue is different: it erases junk that shouldn't stay on record. Blocking is a field (`blocked_by`), not a status. An issue may link to the grill session (`grill`) and plan (`plan`) it came from. Each status change is recorded in a hidden `transitions` list (time, from, to, author), which Moved and target goals read. _Avoid_: task.
 
 **Description** — An issue's Markdown body, below its frontmatter (`body` in code, `--body` on the CLI). _Avoid_: notes.
 

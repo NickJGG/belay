@@ -25,8 +25,14 @@ export interface Project {
   status: ProjectStatus;
   focus: boolean;
   group?: string;
+  /** Log-entry kinds the project declares; absent when none. */
+  kinds?: string[];
+  goal?: Goal;
   body: string;
 }
+
+/** Days are `YYYY-MM-DD` work days. A target's `set` is when it was set, the start of its scope and pace. */
+export type Goal = { habit: number } | { quantity: number; kind: string } | { target: string; set: string };
 
 export interface Comment {
   /** Local time to the minute, `YYYY-MM-DDTHH:MM`. */
@@ -51,7 +57,18 @@ export interface Issue {
   updated: string;
   /** Oldest first. */
   comments: Comment[];
+  /** Oldest first; absent on issues from before transitions were recorded. */
+  transitions?: Transition[];
   body: string;
+}
+
+export interface Transition {
+  at: string;
+  /** Absent on the creation record. */
+  from?: IssueStatus;
+  to: IssueStatus;
+  by: Source;
+  session?: string;
 }
 
 /** What a new key must be: 3–4 letters, like Linear's team keys and JIRA's project keys. */
@@ -112,36 +129,89 @@ function joinFrontmatter(data: Data, body: string): string {
 
 // --- validation ---
 
-function text(d: Data, k: string, where: string): string {
+export function text(d: Data, k: string, where: string): string {
   const v = d[k];
   if ((typeof v === 'string' && v.trim()) || typeof v === 'number') return String(v);
   throw new Error(`${where}: '${k}' must be a non-empty string`);
 }
 
-function optText(d: Data, k: string, where: string): string | undefined {
+export function optText(d: Data, k: string, where: string): string | undefined {
   return d[k] == null ? undefined : text(d, k, where);
 }
 
-function oneOf<T extends string>(d: Data, k: string, allowed: readonly T[], where: string, fallback?: T): T {
+export function oneOf<T extends string>(d: Data, k: string, allowed: readonly T[], where: string, fallback?: T): T {
   const v = d[k] ?? fallback;
   if (allowed.includes(v as T)) return v as T;
   throw new Error(`${where}: '${k}' must be one of ${allowed.join('|')} (got ${JSON.stringify(d[k])})`);
 }
 
-function textList(d: Data, k: string, where: string): string[] {
+export function textList(d: Data, k: string, where: string): string[] {
   const v = d[k] ?? [];
   if (Array.isArray(v) && v.every((x) => typeof x === 'string')) return v;
   throw new Error(`${where}: '${k}' must be a list of strings`);
 }
 
-const AT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+export function optPositiveInt(d: Data, k: string, where: string): number | undefined {
+  const v = d[k];
+  if (v == null) return undefined;
+  if (Number.isInteger(v) && (v as number) > 0) return v as number;
+  throw new Error(`${where}: '${k}' must be a positive integer (got ${JSON.stringify(v)})`);
+}
+
+export function isMapping(v: unknown): v is Data {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+export const AT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+export const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function day(d: Data, k: string, where: string): string {
+  const v = d[k];
+  if (typeof v === 'string' && DAY_RE.test(v)) return v;
+  throw new Error(`${where}: '${k}' must be YYYY-MM-DD (got ${JSON.stringify(v)})`);
+}
+
+function goal(d: Data, where: string): Goal | undefined {
+  const g = d.goal;
+  if (g == null) return undefined;
+  const loc = `${where} goal`;
+  if (!isMapping(g)) throw new Error(`${loc}: not a mapping`);
+  const forms = ['habit', 'quantity', 'target'].filter((k) => g[k] != null);
+  if (forms.length !== 1) throw new Error(`${loc}: must have exactly one of habit, quantity or target`);
+  if (forms[0] === 'habit') {
+    const habit = optPositiveInt(g, 'habit', loc)!;
+    if (habit > 7) throw new Error(`${loc}: 'habit' is days per week, at most 7 (got ${habit})`);
+    return { habit };
+  }
+  if (forms[0] === 'quantity') return { quantity: optPositiveInt(g, 'quantity', loc)!, kind: text(g, 'kind', loc) };
+  return { target: day(g, 'target', loc), set: day(g, 'set', loc) };
+}
+
+function transitionList(d: Data, where: string): Transition[] | undefined {
+  const v = d.transitions;
+  if (v == null) return undefined;
+  if (!Array.isArray(v)) throw new Error(`${where}: 'transitions' must be a list`);
+  return v.map((t, i) => {
+    const loc = `${where} transition #${i + 1}`;
+    if (!isMapping(t)) throw new Error(`${loc}: not a mapping`);
+    if (typeof t.at !== 'string' || !AT_RE.test(t.at)) throw new Error(`${loc}: 'at' must be YYYY-MM-DDTHH:MM (got ${JSON.stringify(t.at)})`);
+    const session = optText(t, 'session', loc);
+    return {
+      at: t.at,
+      ...(t.from != null && { from: oneOf(t, 'from', ISSUE_STATUSES, loc) }),
+      to: oneOf(t, 'to', ISSUE_STATUSES, loc),
+      by: oneOf(t, 'by', SOURCES, loc),
+      ...(session && { session }),
+    };
+  });
+}
 
 function commentList(d: Data, where: string): Comment[] {
   const v = d.comments ?? [];
   if (!Array.isArray(v)) throw new Error(`${where}: 'comments' must be a list`);
   return v.map((c, i) => {
     const loc = `${where} comment #${i + 1}`;
-    if (typeof c !== 'object' || c === null || Array.isArray(c)) throw new Error(`${loc}: not a mapping`);
+    if (!isMapping(c)) throw new Error(`${loc}: not a mapping`);
     if (typeof c.at !== 'string' || !AT_RE.test(c.at)) throw new Error(`${loc}: 'at' must be YYYY-MM-DDTHH:MM (got ${JSON.stringify(c.at)})`);
     if (typeof c.text !== 'string' || !c.text.trim()) throw new Error(`${loc}: 'text' must be a non-empty string`);
     const session = optText(c, 'session', loc);
@@ -164,6 +234,7 @@ export function parseProject(src: string, where: string): Project {
   const key = canon(text(d, 'key', where));
   validateStoredKey(key, where);
   if (typeof (d.focus ?? false) !== 'boolean') throw new Error(`${where}: 'focus' must be true or false`);
+  const kinds = textList(d, 'kinds', where);
   return {
     key,
     name: text(d, 'name', where),
@@ -171,13 +242,15 @@ export function parseProject(src: string, where: string): Project {
     status: oneOf(d, 'status', PROJECT_STATUSES, where, 'active'),
     focus: (d.focus as boolean | undefined) ?? false,
     group: optText(d, 'group', where),
+    ...(kinds.length && { kinds }),
+    ...(d.goal != null && { goal: goal(d, where) }),
     body,
   };
 }
 
 export function serializeProject(p: Project): string {
-  const { key, name, paths, status, focus, group, body } = p;
-  return joinFrontmatter({ key, name, paths, status, focus, group }, body);
+  const { key, name, paths, status, focus, group, kinds, goal, body } = p;
+  return joinFrontmatter({ key, name, paths, status, focus, group, kinds: kinds?.length ? kinds : undefined, goal }, body);
 }
 
 // --- issues ---
@@ -201,14 +274,15 @@ export function parseIssue(src: string, where: string): Issue {
     created: text(d, 'created', where),
     updated: text(d, 'updated', where),
     comments: commentList(d, where),
+    ...(d.transitions != null && { transitions: transitionList(d, where) }),
     body,
   };
 }
 
 export function serializeIssue(t: Issue): string {
-  const { id, title, project, status, blocked_by, priority, source, grill, plan, created, updated, comments, body } = t;
+  const { id, title, project, status, blocked_by, priority, source, grill, plan, created, updated, comments, transitions, body } = t;
   return joinFrontmatter(
-    { id, title, project, status, blocked_by, priority, source, grill, plan, created, updated, comments: comments.length ? comments : undefined },
+    { id, title, project, status, blocked_by, priority, source, grill, plan, created, updated, comments: comments.length ? comments : undefined, transitions },
     body,
   );
 }

@@ -10,10 +10,12 @@ import {
   Ctx,
   addComment,
   addIssue,
+  addLog,
   addProject,
   commentAuthor,
   deleteComment,
   deleteIssue,
+  deleteLog,
   editComment,
   editIssue,
   editProject,
@@ -22,12 +24,16 @@ import {
   oneOf,
   rekeyProject,
   setStatus,
+  type GoalInput,
   type MoveTarget,
 } from './ops.ts';
+import { goalSpec } from './goals.ts';
+import { type DatedEntry } from './logs.ts';
 import { isReady, next, openBlockers, projectCounts, projectForCwd } from './query.ts';
 import { statusLine } from './statusline.ts';
 import { ISSUE_STATUSES, normalizeStoredPath, issueFile, type Issue, type IssueStatus } from './store.ts';
 import { serve } from './web.ts';
+import { addDays, isDay, workDay, workDayOf } from './workday.ts';
 
 const HELP = `tracker — what should I work on?
 
@@ -45,6 +51,12 @@ const HELP = `tracker — what should I work on?
                                     Author is claude inside Claude Code, else user
   delete <id>                       erase an issue for good; strips it from its dependents' blockers
   show <id>
+  did <key> "<text>" [--kind <k>] [--count <n>] [--minutes <n>] [--issue <id>] [--date yesterday|YYYY-MM-DD]
+                                    log work done on a project (up to 7 days back); --kind must be one the
+                                    project declares, --count needs it (default 1)
+  log [<key>] [--since 7d|YYYY-MM-DD]
+                                    log entries, newest first, addressed <day>/<n>
+  log delete <day>/<n>
   list [--project <key>] [--status <s,...>|all]   default hides done and dropped
 
   history [<project>] [-n <count>] [-v]
@@ -62,6 +74,10 @@ const HELP = `tracker — what should I work on?
                                     the name when omitted (3 letters, 4 on a clash)
   project list [--all]              --all includes archived
   project set <key> [--status active|paused|archived] [--focus|--no-focus] [--name <n>] [--group <g>]
+                    [--kinds a,b] [--habit <days> | --quantity "<n> <kind>" | --target YYYY-MM-DD | --no-goal]
+                                    kinds: log-entry kinds (empty clears). A goal counts per Mon–Sun week while
+                                    the project is in focus: habit = moved on N days, quantity = N log counts of
+                                    a kind, target = finish the open issues by a date
   project move <key> (--before <key> | --after <key> | --top | --bottom)
                                     rearrange the order projects are listed in (here and the sidebar)
   project rekey <key> <new-key>     rename the key and every issue ID in the project, fixing blockers
@@ -150,23 +166,27 @@ function cmdAdd(argv: string[]): void {
   const ctx = new Ctx();
   const project = values.project ? ctx.project(values.project) : projectForCwd(ctx.projects, process.cwd());
   if (!project) throw new Error(`cwd is not inside a registered project; pass --project <key>`);
-  const issue = addIssue(ctx, {
-    title: positionals[0],
-    project: project.key,
-    status: values.status,
-    blockers: idList(values['blocked-by']),
-    priority: values.priority,
-    source: values.source,
-    grill: values.grill,
-    plan: values.plan,
-    body: bodyArg(values.body, values['body-file']),
-  });
+  const issue = addIssue(
+    ctx,
+    {
+      title: positionals[0],
+      project: project.key,
+      status: values.status,
+      blockers: idList(values['blocked-by']),
+      priority: values.priority,
+      source: values.source,
+      grill: values.grill,
+      plan: values.plan,
+      body: bodyArg(values.body, values['body-file']),
+    },
+    commentAuthor(process.env),
+  );
   print(`added ${issue.id} (${issue.status}): ${issue.title}`);
 }
 
 function cmdSet(argv: string[]): void {
   const { positionals } = args(argv, {}, 2);
-  const { before, issue, open } = setStatus(new Ctx(), positionals[0], positionals[1]);
+  const { before, issue, open } = setStatus(new Ctx(), positionals[0], positionals[1], commentAuthor(process.env));
   print(`${issue.id}: ${before} → ${issue.status}`);
   if ((issue.status === 'doing' || issue.status === 'todo') && open.length) {
     print(`  note: still blocked by ${open.map((b) => `${b.id} (${b.status})`).join(', ')}`);
@@ -279,6 +299,80 @@ function cmdList(argv: string[]): void {
         : ['idea', 'todo', 'doing'];
   const issues = ctx.issues.filter((t) => statuses.includes(t.status) && (!project || t.project === project));
   print(issues.length ? lines(issues, ctx, true) : 'no issues');
+}
+
+function intArg(value: string | undefined, flag: string): number | undefined {
+  if (value === undefined) return undefined;
+  const n = Number(value);
+  if (!/^\d+$/.test(value.trim()) || !Number.isInteger(n)) throw new Error(`${flag} must be a whole number (got '${value}')`);
+  return n;
+}
+
+function entryTags(e: { kind?: string; count?: number; minutes?: number; issue?: string }): string {
+  return [e.kind && `${e.kind}${(e.count ?? 1) > 1 ? ` ×${e.count}` : ''}`, e.minutes && `${e.minutes}m`, e.issue].filter(Boolean).join(' ');
+}
+
+function cmdDid(argv: string[]): void {
+  const { values, positionals } = args(
+    argv,
+    {
+      kind: { type: 'string', short: 'k' },
+      count: { type: 'string', short: 'n' },
+      minutes: { type: 'string', short: 'm' },
+      issue: { type: 'string', short: 'i' },
+      date: { type: 'string', short: 'd' },
+    },
+    2,
+  );
+  const [key, text] = positionals;
+  const { entry, day, n } = addLog(
+    new Ctx(),
+    {
+      project: key,
+      text: text === '-' ? readFileSync(0, 'utf8') : text,
+      kind: values.kind,
+      count: intArg(values.count, '--count'),
+      minutes: intArg(values.minutes, '--minutes'),
+      issue: values.issue,
+      day: values.date,
+    },
+    commentAuthor(process.env),
+  );
+  const tags = entryTags(entry);
+  print(`logged ${entry.project} ${day}/${n}${tags ? ` (${tags})` : ''}`);
+}
+
+function cmdLog(argv: string[]): void {
+  if (argv[0] === 'delete') {
+    const { positionals } = args(argv.slice(1), {}, 1);
+    const e = deleteLog(new Ctx(), positionals[0]);
+    return print(`deleted ${positionals[0]} (${e.project}: ${clip(e.text, 60)})`);
+  }
+  const { values, positionals } = args(argv, { since: { type: 'string', short: 's' } }, 0, 1);
+  const ctx = new Ctx();
+  const key = positionals[0] ? ctx.project(positionals[0]).key : undefined;
+  const to = workDay();
+  const since = values.since ?? '7d';
+  const days = /^(\d+)d$/.exec(since);
+  const from = days && Number(days[1]) > 0 ? addDays(to, 1 - Number(days[1])) : isDay(since) ? since : undefined;
+  if (!from) throw new Error(`--since must be <n>d or YYYY-MM-DD (got '${since}')`);
+  const entries = ctx
+    .logs(from, to)
+    .filter((e) => !key || e.project === key)
+    .reverse();
+  if (!entries.length) return print('no log entries');
+  const addr = (e: DatedEntry) => `${e.day}/${e.n}`;
+  const addrW = Math.max(...entries.map((e) => addr(e).length));
+  const keyW = Math.max(...entries.map((e) => e.project.length));
+  const out: string[] = [];
+  for (const e of entries) {
+    const late = workDayOf(e.at) === e.day ? '' : ` (logged ${e.at.slice(5).replace('T', ' ')})`;
+    const tags = entryTags(e);
+    const [first, ...more] = e.text.split('\n');
+    out.push(`  ${addr(e).padEnd(addrW)}  ${e.at.slice(11)}  ${e.project.padEnd(keyW)}  ${tags ? `[${tags}] ` : ''}${first}${late}`);
+    for (const line of more) out.push(`${' '.repeat(addrW + keyW + 13)}${line}`.trimEnd());
+  }
+  print(out);
 }
 
 function cmdHistory(argv: string[]): void {
@@ -483,7 +577,8 @@ function projectList(argv: string[]): void {
         .map(([n, label]) => `${n} ${label}${label === 'idea' && n !== 1 ? 's' : ''}`)
         .join(', ');
       const group = p.group ? `[${p.group}]` : '';
-      return `${p.focus ? '*' : ' '} ${p.key.padEnd(keyW)}  ${p.status.padEnd(statusW)}  ${p.name.padEnd(nameW)}  ${[group, counts].filter(Boolean).join('  ')}`.trimEnd();
+      const goal = p.goal ? `(goal ${goalSpec(p.goal)})` : '';
+      return `${p.focus ? '*' : ' '} ${p.key.padEnd(keyW)}  ${p.status.padEnd(statusW)}  ${p.name.padEnd(nameW)}  ${[group, goal, counts].filter(Boolean).join('  ')}`.trimEnd();
     }),
   );
 }
@@ -498,11 +593,36 @@ function projectWhich(argv: string[]): void {
 function projectSet(argv: string[]): void {
   const { values, positionals } = args(
     argv,
-    { status: { type: 'string' }, focus: { type: 'boolean' }, name: { type: 'string' }, group: { type: 'string' } },
+    {
+      status: { type: 'string' },
+      focus: { type: 'boolean' },
+      name: { type: 'string' },
+      group: { type: 'string' },
+      kinds: { type: 'string' },
+      habit: { type: 'string' },
+      quantity: { type: 'string' },
+      target: { type: 'string' },
+      goal: { type: 'boolean' },
+    },
     1,
   );
-  const p = editProject(new Ctx(), positionals[0], values);
-  print(`updated project ${p.key}: ${p.status}${p.focus ? ', focus' : ''}`);
+  const { kinds, habit, quantity, target, goal: keepGoal, ...rest } = values;
+  if (keepGoal === true) throw new Error('--goal takes no value: use --habit, --quantity or --target (or --no-goal)');
+  if ([habit, quantity, target, keepGoal].filter((v) => v !== undefined).length > 1) {
+    throw new Error('pass one of --habit, --quantity, --target or --no-goal');
+  }
+  let goal: GoalInput | null | undefined;
+  if (keepGoal === false) goal = null;
+  else if (habit !== undefined) goal = { habit: intArg(habit, '--habit')! };
+  else if (target !== undefined) goal = { target };
+  else if (quantity !== undefined) {
+    const m = /^\s*(\d+)\s+(\S+)\s*$/.exec(quantity);
+    if (!m) throw new Error(`--quantity must be "<n> <kind>", e.g. "10 applied" (got '${quantity}')`);
+    goal = { quantity: Number(m[1]), kind: m[2] };
+  }
+  const p = editProject(new Ctx(), positionals[0], { ...rest, kinds: kinds === undefined ? undefined : idList([kinds]), goal });
+  const parts = [p.status, p.focus && 'focus', p.goal && `goal ${goalSpec(p.goal)}`, p.kinds && `kinds ${p.kinds.join(', ')}`];
+  print(`updated project ${p.key}: ${parts.filter(Boolean).join(', ')}`);
 }
 
 const COMMANDS: Record<string, (argv: string[]) => void> = {
@@ -514,6 +634,8 @@ const COMMANDS: Record<string, (argv: string[]) => void> = {
   delete: cmdDelete,
   show: cmdShow,
   list: cmdList,
+  did: cmdDid,
+  log: cmdLog,
   history: cmdHistory,
   search: cmdSearch,
   serve: cmdServe,
