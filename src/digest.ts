@@ -1,7 +1,7 @@
 /** The SessionStart digest: a few lines of re-entry context when a session opens inside a registered project. */
 import { grillForProject, projectTerms, type GrillSession } from './grill.ts';
 import { localStamp, type Session } from './history.ts';
-import { indexIssues, isReady, oldestFirst } from './query.ts';
+import { highFirst, indexIssues, isReady, oldestFirst } from './query.ts';
 import type { Project, Issue } from './store.ts';
 
 export function clip(text: string, max: number): string {
@@ -21,9 +21,7 @@ export function digestLines(project: Project, issues: Issue[], sessions: Session
   const own = issues.filter((t) => t.project === project.key);
   const label = (t: Issue) => `${t.id} ${clip(t.title, 60)}`;
   const doing = own.filter((t) => t.status === 'doing').sort(oldestFirst);
-  const ready = own
-    .filter((t) => isReady(t, byId))
-    .sort((a, b) => Number(b.priority === 'high') - Number(a.priority === 'high') || oldestFirst(a, b));
+  const ready = own.filter((t) => isReady(t, byId)).sort(highFirst);
   const ideas = own.filter((t) => t.status === 'idea').length;
 
   const tags = [project.focus ? 'focus' : '', project.status !== 'active' ? project.status : ''].filter(Boolean);

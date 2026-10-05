@@ -18,6 +18,8 @@
 
 **Digest** — The ~5-line summary `tracker digest` prints from the SessionStart hook when a session opens inside a registered project: its `doing` issues, its ready issues, its last 3 sessions, and its grill sessions not yet linked to an issue: those tagged with the project (in-progress ones by slug), plus untagged older ones that mention the project's distinctive words. Outside a registered project it prints nothing.
 
+**Status line** — The row `tracker statusline` adds under Claude Code's status line when the cwd is in a registered project: the project's most recently updated `doing` issue (oldest on a tie; `+n` for more, and ⛔ if it has open blockers), or else its next ready issue. Outside a registered project, or with nothing doing or ready, it prints nothing.
+
 **Session** — One Claude Code transcript (`~/.claude/projects/<encoded cwd>/<id>.jsonl`). It belongs to the project its *launch* cwd maps to. Its commits are those committed under the project's paths between its first and last timestamps. Read only, never stored.
 
 **Grill session** — A persisted `/grill` interview (`~/.claude/skills/grill/sessions/<slug>.md`). New sessions are tagged with the cwd's project (`project: <key>`, via `tracker project which`); older ones are untagged. Accepting a grill's plan creates linked `todo` issues (`grill`, `plan`). The tracker only reads these files.

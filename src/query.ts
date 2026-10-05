@@ -51,6 +51,10 @@ export interface Next {
 
 export const oldestFirst = (a: Issue, b: Issue) => a.created.localeCompare(b.created) || compareIds(a.id, b.id);
 
+export const recentFirst = (a: Issue, b: Issue) => b.updated.localeCompare(a.updated) || oldestFirst(a, b);
+
+export const highFirst = (a: Issue, b: Issue) => Number(b.priority === 'high') - Number(a.priority === 'high') || oldestFirst(a, b);
+
 export function next(projects: Project[], issues: Issue[]): Next {
   const byId = indexIssues(issues);
   const byKey = new Map(projects.map((p) => [p.key, p]));
@@ -87,10 +91,9 @@ const DONE_WINDOW_DAYS = 14;
 export function projectBoard(key: string, issues: Issue[], opts: { today: string; older?: boolean }): Board {
   const byId = indexIssues(issues);
   const own = issues.filter((t) => t.project === key);
-  const high = (a: Issue, b: Issue) => Number(b.priority === 'high') - Number(a.priority === 'high') || oldestFirst(a, b);
-  const of = (s: Issue['status']) => own.filter((t) => t.status === s).sort(high);
+  const of = (s: Issue['status']) => own.filter((t) => t.status === s).sort(highFirst);
   const todo = of('todo');
-  const done = of('done').sort((a, b) => b.updated.localeCompare(a.updated) || oldestFirst(a, b));
+  const done = of('done').sort(recentFirst);
   const days = (t: Issue) => Math.round((Date.parse(opts.today) - Date.parse(t.updated)) / 86_400_000);
   const recent = done.filter((t) => days(t) <= DONE_WINDOW_DAYS);
   return {

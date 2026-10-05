@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { claudeDir } from './config.ts';
+import { claudeDir, DEFAULT_PORT } from './config.ts';
 import { clip, digestLines } from './digest.ts';
 import { grillDir, grillMatches, loadGrillSessions } from './grill.ts';
 import { attachCommits, duration, localStamp, recentSessions } from './history.ts';
@@ -25,6 +25,7 @@ import {
   type MoveTarget,
 } from './ops.ts';
 import { isReady, next, openBlockers, projectCounts, projectForCwd } from './query.ts';
+import { statusLine } from './statusline.ts';
 import { ISSUE_STATUSES, normalizeStoredPath, issueFile, type Issue, type IssueStatus } from './store.ts';
 import { serve } from './web.ts';
 
@@ -53,6 +54,8 @@ const HELP = `tracker — what should I work on?
                                     first when it or src/ changed (needs 'npm install' in web/)
   digest                            SessionStart hook: reads the hook JSON on stdin, prints a summary
                                     if its cwd is in a registered project, else nothing
+  statusline                        status line command: reads Claude Code's status JSON on stdin, prints
+                                    the project's doing issue (or next ready one), else nothing
 
   project add [<key>] --name <name> --path <dir>... [--group <g>] [--focus]
                                     key: 3–4 letters, the issue-ID prefix (ELV-12); derived from
@@ -336,7 +339,7 @@ function cmdSearch(argv: string[]): void {
 
 function cmdServe(argv: string[]): void {
   const { values } = args(argv, { port: { type: 'string' }, open: { type: 'boolean' } }, 0);
-  const port = Number(values.port ?? 4747);
+  const port = Number(values.port ?? DEFAULT_PORT);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`--port must be 1–65535 (got '${values.port}')`);
   serve({ port, open: values.open ?? true }).catch((e: Error) => {
     console.error(`tracker: ${e.message}`);
@@ -367,6 +370,29 @@ function cmdDigest(argv: string[]): void {
     print(digestLines(project, ctx.issues, sessions, loadGrillSessions(claude)));
   } catch (e) {
     console.error(`tracker digest: ${(e as Error).message}`);
+  }
+}
+
+/** Like digest, never fails: the status line just goes without the tracker's line. */
+function cmdStatusline(argv: string[]): void {
+  args(argv, {}, 0);
+  try {
+    let input: { cwd?: unknown; workspace?: { current_dir?: unknown } } = {};
+    if (!process.stdin.isTTY) {
+      try {
+        input = JSON.parse(readFileSync(0, 'utf8'));
+      } catch {
+        // no payload: fall back to the process cwd
+      }
+    }
+    const dir = input.workspace?.current_dir ?? input.cwd;
+    const ctx = new Ctx();
+    const project = projectForCwd(ctx.projects, typeof dir === 'string' ? dir : process.cwd());
+    if (!project) return;
+    const line = statusLine(project, ctx.issues);
+    if (line) print(line);
+  } catch (e) {
+    console.error(`tracker statusline: ${(e as Error).message}`);
   }
 }
 
@@ -492,6 +518,7 @@ const COMMANDS: Record<string, (argv: string[]) => void> = {
   search: cmdSearch,
   serve: cmdServe,
   digest: cmdDigest,
+  statusline: cmdStatusline,
   project: cmdProject,
 };
 

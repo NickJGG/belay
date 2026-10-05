@@ -8,7 +8,7 @@ Never run `tracker serve`, `npm run dev`, `next dev` or `next start`. The user s
 
 ## Layout
 
-- `src/` is the CLI. It runs on Node 24 type-stripping (no build step) with TS 7, and `yaml` is its only runtime dependency. `tracker digest` runs in every SessionStart hook, so a heavier dependency or a build step slows every session.
+- `src/` is the CLI. It runs on Node 24 type-stripping (no build step) with TS 7, and `yaml` is its only runtime dependency. `tracker digest` runs in every SessionStart hook and `tracker statusline` after nearly every message, so a heavier dependency or a build step slows every session.
 - `web/` is a separate Next 16 package with its own `package.json` and TS 5. It imports `../src/*.ts` directly. `web/AGENTS.md` is managed by Next: read the docs it points to before writing Next code, because this Next version differs from what you know.
 
 ## Rules

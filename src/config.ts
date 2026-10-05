@@ -18,3 +18,6 @@ export function dataDir(): string {
 export function claudeDir(): string {
   return resolve(/*turbopackIgnore: true*/ process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'));
 }
+
+/** `tracker serve`'s port unless `--port` overrides it. */
+export const DEFAULT_PORT = 4747;
