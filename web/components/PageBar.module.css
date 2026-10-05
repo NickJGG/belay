@@ -1,0 +1,80 @@
+/* Spans the whole main column, outside ui.page's width cap. */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--bar-h);
+  padding: 0 28px;
+  background: var(--bg);
+}
+
+@media (max-width: 760px) {
+  .bar {
+    position: static;
+  }
+}
+
+.crumbs {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  /* Pulls the first crumb's text into line with the page content below. */
+  margin-left: -9px;
+  color: var(--muted);
+}
+
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  margin: 0;
+  padding: 0 9px;
+  border-radius: 5px;
+  color: var(--fg);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+/* Segoe sets its glyphs ~1px below the line box's center, so icons follow them down. */
+.crumb > svg,
+.crumb > i {
+  flex: none;
+  translate: 0 1px;
+}
+
+.text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parent {
+  flex: none;
+  max-width: 30%;
+}
+
+.button {
+  transition: background var(--fade);
+}
+
+.button:hover {
+  background: var(--hover);
+}
+
+/* Centered on the lowercase letters rather than the caps, a little lower than the icons. */
+.sep {
+  flex: none;
+  margin-inline: 2px;
+  translate: 0 2px;
+}
+
+.current {
+  min-width: 0;
+}

@@ -1,6 +1,6 @@
 /* Unlike ui.page, not width-capped, so the properties panel sits at the window's right edge. */
 .page {
-  padding: 20px 28px 48px;
+  padding: 16px 28px 48px;
 }
 
 /* The two-column page with a properties panel on the right, shared by issue and project pages. */
@@ -23,7 +23,7 @@
 
 .props {
   position: sticky;
-  top: 14px;
+  top: calc(var(--bar-h) + 14px);
   padding: 12px;
   border: 1px solid var(--line-soft);
   border-radius: 8px;

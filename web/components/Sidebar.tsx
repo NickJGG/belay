@@ -1,5 +1,6 @@
-import { Archive, Inbox, Layers, Settings } from 'lucide-react';
+import { Archive, FolderKanban, Inbox, Layers, Settings } from 'lucide-react';
 import { ctx } from '@/lib/data';
+import { Logo } from './bits';
 import { NavLink } from './NavLink';
 import { NewIssueButton, SearchButton, ShortcutsButton } from './SidebarKeys';
 import { SidebarProjects } from './SidebarProjects';
@@ -13,7 +14,7 @@ export function Sidebar() {
   return (
     <nav className={styles.side} aria-label="Main">
       <NavLink href="/" className={styles.ws} activeClassName={styles.wsOn}>
-        <i className={styles.logo} aria-hidden />
+        <Logo />
         Tracker
       </NavLink>
       <NewIssueButton />
@@ -26,6 +27,10 @@ export function Sidebar() {
         <Inbox size={14} aria-hidden />
         <span className={styles.label}>Ideas</span>
         {ideas > 0 && <span className={styles.count}>{ideas}</span>}
+      </NavLink>
+      <NavLink href="/projects" className={styles.item} activeClassName={styles.on}>
+        <FolderKanban size={14} aria-hidden />
+        <span className={styles.label}>Projects</span>
       </NavLink>
 
       <SidebarProjects

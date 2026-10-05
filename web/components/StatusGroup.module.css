@@ -1,7 +1,5 @@
-/* The head's 14px top margin matches the space above the divider. */
 .group + .group {
   margin-top: 14px;
-  border-top: 1px solid var(--line-soft);
 }
 
 .head {

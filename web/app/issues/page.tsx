@@ -1,4 +1,6 @@
+import { Inbox, Layers } from 'lucide-react';
 import { IssueRow } from '@/components/controls';
+import { PageBar } from '@/components/PageBar';
 import { StatusGroup } from '@/components/StatusGroup';
 import ui from '@/components/ui.module.css';
 import { ctx, filterIssues, oldestFirst, parseIssueFilter } from '@/lib/data';
@@ -21,27 +23,27 @@ export default async function Issues({ searchParams }: { searchParams: Promise<Q
   const filter = parseIssueFilter(q);
   const { projects, issues, byId } = ctx();
   const shown = filterIssues(issues, filter, byId).sort(oldestFirst);
+  const title = heading(q);
   return (
-    <div className={ui.page}>
-      <header className={ui.header}>
-        <h1 className={ui.title}>{heading(q)}</h1>
-        <span className={ui.muted}>{shown.length}</span>
-      </header>
-      <IssueFilters projects={projects.map((p) => p.key).sort()} />
-      {!shown.length && <p className={ui.empty}>No matching issues.</p>}
-      {filter.statuses.map((s) => {
-        const list = shown.filter((t) => t.status === s);
-        if (!list.length) return null;
-        return (
-          <StatusGroup key={s} status={s} count={list.length}>
-            <ul className={ui.rows}>
-              {list.map((t) => (
-                <IssueRow key={t.id} issue={t} />
-              ))}
-            </ul>
-          </StatusGroup>
-        );
-      })}
-    </div>
+    <>
+      <PageBar crumbs={[{ label: title, icon: title === 'Ideas' ? <Inbox size={14} aria-hidden /> : <Layers size={14} aria-hidden /> }]} after={<span className={ui.muted}>{shown.length}</span>} />
+      <div className={ui.page}>
+        <IssueFilters projects={projects.map((p) => p.key).sort()} />
+        {!shown.length && <p className={ui.empty}>No matching issues.</p>}
+        {filter.statuses.map((s) => {
+          const list = shown.filter((t) => t.status === s);
+          if (!list.length) return null;
+          return (
+            <StatusGroup key={s} status={s} count={list.length}>
+              <ul className={ui.rows}>
+                {list.map((t) => (
+                  <IssueRow key={t.id} issue={t} />
+                ))}
+              </ul>
+            </StatusGroup>
+          );
+        })}
+      </div>
+    </>
   );
 }

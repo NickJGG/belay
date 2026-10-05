@@ -1,13 +1,5 @@
 .page {
-  padding: 14px 28px 48px;
-}
-
-.crumbs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  color: var(--muted);
+  padding: 16px 28px 48px;
 }
 
 .body {

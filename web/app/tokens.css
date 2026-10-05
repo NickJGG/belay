@@ -63,6 +63,7 @@
   --ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   --row: 32px;
+  --bar-h: 44px;
   --radius: 6px;
   --fade: 120ms ease-out;
 }

@@ -28,3 +28,7 @@ export function IssueLink({ id, stretch }: { id: string; stretch?: boolean }) {
     </Link>
   );
 }
+
+export function Logo() {
+  return <i className={ui.logo} aria-hidden />;
+}

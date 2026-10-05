@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { claudeDir } from '../../../../src/config.ts';
 import { bodyHash } from '../../../../src/ops.ts';
@@ -9,7 +8,9 @@ import { Flags, projectHref } from '@/components/bits';
 import { Chip, type Ref } from '@/components/Chip';
 import { PrioritySelect, StatusSelect } from '@/components/controls';
 import { TitleEdit } from '@/components/InlineEdit';
+import { PageBar, projectsCrumb } from '@/components/PageBar';
 import panel from '@/components/PropsPanel.module.css';
+import { StatusIcon } from '@/components/StatusIcon';
 import ui from '@/components/ui.module.css';
 import { ctx, openBlockers } from '@/lib/data';
 import type { Issue } from '@/lib/types';
@@ -50,81 +51,79 @@ export default async function IssuePage({ params }: Props) {
   const candidates =issues.filter((t) => t.id !== issue.id && (t.status === 'idea' || t.status === 'todo' || t.status === 'doing')).map(ref);
 
   return (
-    <div className={styles.page}>
-      <nav className={styles.crumbs} aria-label="Breadcrumb">
-        <Link className={ui.link} href={projectHref(issue.project)}>
-          {project?.name ?? issue.project}
-        </Link>
-        <span aria-hidden>›</span>
-        <span className={ui.mono}>{issue.id}</span>
-        <Flags issue={issue} />
-      </nav>
-      <div className={panel.layout}>
-        <article className={panel.main}>
-          <TitleEdit key={issue.title} value={issue.title} label="Title" save={setIssueTitle.bind(null, issue.id)} />
-          {open.length > 0 && (
-            <p className={ui.warn}>
-              Waiting on {open.map((b) => b.id).join(', ')}
-            </p>
-          )}
-          <BodyEditor id={issue.id} body={issue.body} hash={bodyHash(issue.body)} />
-          <Activity id={issue.id} comments={issue.comments} />
-        </article>
+    <>
+      <PageBar
+        crumbs={[projectsCrumb, { label: project?.name ?? issue.project, href: projectHref(issue.project) }, { label: issue.id, icon: <StatusIcon status={issue.status} /> }]}
+        after={<Flags issue={issue} />}
+      />
+      <div className={styles.page}>
+        <div className={panel.layout}>
+          <article className={panel.main}>
+            <TitleEdit key={issue.title} value={issue.title} label="Title" save={setIssueTitle.bind(null, issue.id)} />
+            {open.length > 0 && (
+              <p className={ui.warn}>
+                Waiting on {open.map((b) => b.id).join(', ')}
+              </p>
+            )}
+            <BodyEditor id={issue.id} body={issue.body} hash={bodyHash(issue.body)} />
+            <Activity id={issue.id} comments={issue.comments} />
+          </article>
 
-        <aside className={panel.props} aria-label="Properties">
-          <dl className={panel.propList}>
-            <dt>Status</dt>
-            <dd>
-              <StatusSelect issue={issue} className={styles.select} />
-            </dd>
-            <dt>Priority</dt>
-            <dd>
-              <PrioritySelect issue={issue} className={styles.select} />
-            </dd>
-            <dt>Blocked by</dt>
-            <dd>
-              <Blockers id={issue.id} project={issue.project} blockers={blockers} candidates={candidates} />
-            </dd>
-            {dependents.length > 0 && (
-              <>
-                <dt>Blocks</dt>
-                <dd className={styles.blockers}>
-                  {dependents.map((d) => (
-                    <Chip key={d.id} r={ref(d)} />
-                  ))}
-                </dd>
-              </>
-            )}
-            <dt>Source</dt>
-            <dd>{issue.source}</dd>
-            <dt>Created</dt>
-            <dd>{issue.created}</dd>
-            <dt>Updated</dt>
-            <dd>{issue.updated}</dd>
-            {grillPath && (
-              <>
-                <dt>Grill</dt>
-                <dd>
-                  <OpenFile id={issue.id} kind="grill" path={grillPath} />
-                </dd>
-              </>
-            )}
-            {planPath && (
-              <>
-                <dt>Plan</dt>
-                <dd>
-                  <OpenFile id={issue.id} kind="plan" path={planPath} />
-                </dd>
-              </>
-            )}
-            <dt>File</dt>
-            <dd>
-              <OpenFile id={issue.id} kind="file" path={linkedPath(issue, 'file', dirs)!} />
-            </dd>
-          </dl>
-          <DeleteIssue id={issue.id} dependents={dependents.map((d) => ({ id: d.id, title: d.title }))} />
-        </aside>
+          <aside className={panel.props} aria-label="Properties">
+            <dl className={panel.propList}>
+              <dt>Status</dt>
+              <dd>
+                <StatusSelect issue={issue} className={styles.select} />
+              </dd>
+              <dt>Priority</dt>
+              <dd>
+                <PrioritySelect issue={issue} className={styles.select} />
+              </dd>
+              <dt>Blocked by</dt>
+              <dd>
+                <Blockers id={issue.id} project={issue.project} blockers={blockers} candidates={candidates} />
+              </dd>
+              {dependents.length > 0 && (
+                <>
+                  <dt>Blocks</dt>
+                  <dd className={styles.blockers}>
+                    {dependents.map((d) => (
+                      <Chip key={d.id} r={ref(d)} />
+                    ))}
+                  </dd>
+                </>
+              )}
+              <dt>Source</dt>
+              <dd>{issue.source}</dd>
+              <dt>Created</dt>
+              <dd>{issue.created}</dd>
+              <dt>Updated</dt>
+              <dd>{issue.updated}</dd>
+              {grillPath && (
+                <>
+                  <dt>Grill</dt>
+                  <dd>
+                    <OpenFile id={issue.id} kind="grill" path={grillPath} />
+                  </dd>
+                </>
+              )}
+              {planPath && (
+                <>
+                  <dt>Plan</dt>
+                  <dd>
+                    <OpenFile id={issue.id} kind="plan" path={planPath} />
+                  </dd>
+                </>
+              )}
+              <dt>File</dt>
+              <dd>
+                <OpenFile id={issue.id} kind="file" path={linkedPath(issue, 'file', dirs)!} />
+              </dd>
+            </dl>
+            <DeleteIssue id={issue.id} dependents={dependents.map((d) => ({ id: d.id, title: d.title }))} />
+          </aside>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -1,20 +1,6 @@
 .page {
   max-width: 1180px;
-  padding: 20px 28px 48px;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 32px;
-  margin-bottom: 4px;
-}
-
-.title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  padding: 16px 28px 48px;
 }
 
 .h2 {
@@ -227,4 +213,12 @@
 
 .disclosure[open] > summary::before {
   content: '▾ ';
+}
+
+.logo {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--accent);
 }
