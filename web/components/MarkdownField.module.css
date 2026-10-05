@@ -30,7 +30,7 @@
   border-radius: var(--radius);
   background: var(--bg-raised);
   max-height: var(--field-max, none);
-  font: 12.5px/1.55 var(--mono);
+  line-height: 1.55;
   resize: vertical;
 }
 

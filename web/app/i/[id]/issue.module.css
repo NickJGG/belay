@@ -203,3 +203,67 @@
   border-color: transparent;
   background: color-mix(in oklch, var(--danger) 85%, #000);
 }
+
+.activity {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.activity > h2 {
+  margin-bottom: 0;
+}
+
+.comments {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comment {
+  display: grid;
+  gap: 4px;
+  padding: 8px 12px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.commentHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+  font-size: 12px;
+}
+
+.author {
+  font-weight: 600;
+}
+
+.commentActions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--fade);
+}
+
+.comment:hover .commentActions,
+.commentActions:focus-within {
+  opacity: 1;
+}
+
+.confirmDelete {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.confirmDelete button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}

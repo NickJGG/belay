@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { dataDir } from '../../src/config.ts';
-import { ConflictError, Ctx, addIssue, bodyHash, deleteIssue, editProject, editIssue, moveProject, replaceBody, setFocus, setPriority, setStatus } from '../../src/ops.ts';
+import { ConflictError, Ctx, addComment, addIssue, bodyHash, deleteComment, deleteIssue, editComment, editProject, editIssue, moveProject, replaceBody, setFocus, setPriority, setStatus } from '../../src/ops.ts';
 import type { DropPatch, MoveTarget } from '../../src/sidebar.ts';
 import { THEMES, saveSettings, type Theme } from '../../src/settings.ts';
 import { isAccent } from '@/lib/accents';
@@ -14,6 +14,11 @@ export interface Result {
 
 function str(v: unknown, what: string): string {
   if (typeof v !== 'string') throw new Error(`${what} must be a string`);
+  return v;
+}
+
+function num(v: unknown, what: string): number {
+  if (typeof v !== 'number') throw new Error(`${what} must be a number`);
   return v;
 }
 
@@ -61,6 +66,19 @@ export async function saveIssueBody(id: unknown, body: unknown, expectedHash: un
   }
   revalidatePath('/', 'layout');
   return { hash: bodyHash(saved) };
+}
+
+export async function addIssueComment(id: unknown, text: unknown): Promise<Result> {
+  return run((ctx) => void addComment(ctx, str(id, 'id'), str(text, 'text'), { by: 'user' }));
+}
+
+/** `at` is comment `#n`'s `at` as loaded: the op refuses if `#n` is no longer that comment. */
+export async function editIssueComment(id: unknown, n: unknown, at: unknown, text: unknown): Promise<Result> {
+  return run((ctx) => void editComment(ctx, str(id, 'id'), num(n, 'n'), str(text, 'text'), str(at, 'at')));
+}
+
+export async function deleteIssueComment(id: unknown, n: unknown, at: unknown): Promise<Result> {
+  return run((ctx) => void deleteComment(ctx, str(id, 'id'), num(n, 'n'), str(at, 'at')));
 }
 
 /** On success, navigates to the issue's project, since its own page no longer exists. */
