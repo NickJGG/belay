@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { Logo } from '@/components/bits';
 import { IssueRow } from '@/components/controls';
 import { PageBar } from '@/components/PageBar';
+import { Group } from '@/components/StatusGroup';
+import { StatusIcon } from '@/components/StatusIcon';
 import ui from '@/components/ui.module.css';
 import { ctx, next } from '@/lib/data';
 import type { Issue } from '@/lib/types';
@@ -18,13 +20,12 @@ function IssueRows({ issues }: { issues: Issue[] }) {
   );
 }
 
-function Section({ title, issues }: { title: string; issues: Issue[] }) {
+function Section({ id, icon, label, issues, defaultOpen }: { id: string; icon: React.ReactNode; label: string; issues: Issue[]; defaultOpen?: boolean }) {
   if (!issues.length) return null;
   return (
-    <>
-      <h3 className={ui.h3}>{title}</h3>
+    <Group id={id} icon={icon} label={label} count={issues.length} defaultOpen={defaultOpen}>
       <IssueRows issues={issues} />
-    </>
+    </Group>
   );
 }
 
@@ -50,9 +51,9 @@ export default function Home() {
     <>
       <PageBar crumbs={[{ label: 'Home', icon: <Logo /> }]} />
       <div className={ui.page}>
-        <Section title="Doing" issues={n.doing} />
-        <Section title="High priority" issues={n.high} />
-        <Section title={`Ready — focus: ${focusKeys.join(', ') || 'none'}`} issues={n.focus} />
+        <Section id="doing" icon={<StatusIcon status="doing" />} label="Doing" issues={n.doing} />
+        <Section id="high" icon={<span className={ui.high}>!!</span>} label="High priority" issues={n.high} />
+        <Section id="focus" icon={<StatusIcon status="todo" />} label={`Ready — focus: ${focusKeys.join(', ') || 'none'}`} issues={n.focus} />
         {!n.doing.length && !n.high.length && !n.focus.length && (
           <p className={ui.empty}>
             {focusKeys.length ? (
@@ -68,12 +69,7 @@ export default function Home() {
             )}
           </p>
         )}
-        {n.other.length > 0 && (
-          <details className={ui.disclosure}>
-            <summary>Ready elsewhere ({n.other.length})</summary>
-            <IssueRows issues={n.other} />
-          </details>
-        )}
+        <Section id="elsewhere" icon={<StatusIcon status="todo" />} label="Ready elsewhere" issues={n.other} defaultOpen={false} />
       </div>
     </>
   );
