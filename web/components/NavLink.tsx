@@ -8,7 +8,7 @@ export function NavLink({ href, className, activeClassName, children }: { href: 
   const search = useSearchParams();
   const url = new URL(href, 'http://x');
   const params = [...url.searchParams];
-  // A bare link (All issues) yields to a filtered sibling (Ideas) on the same path.
+  // A bare link (Issues) yields to a filtered sibling (Ideas) on the same path.
   const active = url.pathname === pathname && (params.length ? params.every(([k, v]) => search.get(k) === v) : !search.has('status'));
   return (
     <Link href={href} className={active ? `${className} ${activeClassName}` : className} aria-current={active ? 'page' : undefined}>

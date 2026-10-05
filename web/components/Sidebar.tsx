@@ -1,4 +1,4 @@
-import { Archive, FolderKanban, Inbox, Layers, Settings } from 'lucide-react';
+import { Archive, FolderKanban, House, Inbox, Layers, Settings } from 'lucide-react';
 import { ctx } from '@/lib/data';
 import { Logo } from './bits';
 import { NavLink } from './NavLink';
@@ -17,11 +17,16 @@ export function Sidebar() {
         <Logo />
         Tracker
       </NavLink>
-      <NewIssueButton />
       <SearchButton />
+      <NewIssueButton />
+      <div className={styles.gap} />
+      <NavLink href="/" className={styles.item} activeClassName={styles.on}>
+        <House size={14} aria-hidden />
+        <span className={styles.label}>Home</span>
+      </NavLink>
       <NavLink href="/issues" className={styles.item} activeClassName={styles.on}>
         <Layers size={14} aria-hidden />
-        <span className={styles.label}>All issues</span>
+        <span className={styles.label}>Issues</span>
       </NavLink>
       <NavLink href="/issues?status=idea" className={styles.item} activeClassName={styles.on}>
         <Inbox size={14} aria-hidden />

@@ -47,7 +47,7 @@ interface Props {
 const VIEWS: [string, string][] = [
   ['Home', '/'],
   ['Projects', '/projects'],
-  ['All issues', '/issues'],
+  ['Issues', '/issues'],
   ['Ideas', '/issues?status=idea'],
   ['Archived', '/archived'],
   ['Settings', '/settings'],

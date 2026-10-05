@@ -21,6 +21,11 @@
   color: var(--fg);
 }
 
+.gap {
+  height: 10px;
+  flex-shrink: 0;
+}
+
 .heading {
   padding: 14px 6px 4px;
   font-size: 11px;
