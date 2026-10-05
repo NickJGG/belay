@@ -1,0 +1,61 @@
+/* The head's 14px top margin matches the space above the divider. */
+.group + .group {
+  margin-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 14px 0 2px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  list-style: none;
+  cursor: pointer;
+  transition: color var(--fade);
+}
+
+.head::-webkit-details-marker {
+  display: none;
+}
+
+.head:hover {
+  color: var(--fg);
+}
+
+.label {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* The status icon and chevron share one slot; hovering the head swaps them. */
+.icon {
+  display: inline-grid;
+  place-items: center;
+}
+
+.icon > * {
+  grid-area: 1 / 1;
+}
+
+.chevron {
+  visibility: hidden;
+  transition: transform var(--fade);
+}
+
+.group[open] > .head .chevron {
+  transform: rotate(90deg);
+}
+
+.head:hover .icon > :not(.chevron),
+.head:focus-visible .icon > :not(.chevron) {
+  visibility: hidden;
+}
+
+.head:hover .chevron,
+.head:focus-visible .chevron {
+  visibility: visible;
+}

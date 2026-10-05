@@ -7,8 +7,6 @@
   height: 100vh;
   padding: 10px 8px;
   overflow-y: auto;
-  border-right: 1px solid var(--line);
-  background: var(--bg-side);
 }
 
 .ws {
@@ -99,8 +97,6 @@
   .side {
     position: static;
     height: auto;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
   }
 }
 

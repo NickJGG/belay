@@ -38,7 +38,11 @@ export const useKeys = () => useContext(ApiCtx);
 export function useSelectable(id: string) {
   const api = useContext(ApiCtx);
   const selected = useContext(SelectedCtx) === id;
-  return { 'data-task-id': id, 'data-selected': selected || undefined, onClick: () => api?.select(id) };
+  const onClick = (e: React.MouseEvent) => {
+    // A click that follows a link is navigation, not selection.
+    if (!(e.target as Element).closest('a')) api?.select(id);
+  };
+  return { 'data-task-id': id, 'data-selected': selected || undefined, onClick };
 }
 
 export function useTaskKeys(id: string, handlers: TaskHandlers) {
@@ -186,6 +190,14 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
     window.addEventListener('keydown', listener);
     return () => window.removeEventListener('keydown', listener);
   }, []);
+
+  useEffect(() => {
+    const listener = (e: MouseEvent) => {
+      if (!(e.target as Element).closest('[data-task-id], dialog')) api.select(undefined);
+    };
+    document.addEventListener('click', listener);
+    return () => document.removeEventListener('click', listener);
+  }, [api]);
 
   const targetTask = target ? data.tasks.find((t) => t.id === target) : undefined;
 

@@ -1,10 +1,11 @@
 'use client';
+import { Check, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import ui from '@/components/ui.module.css';
+import { Dropdown, type Option } from '@/components/Dropdown';
 import styles from './issues.module.css';
 
-const STATUS_OPTIONS: [string, string][] = [
+const STATUS_OPTIONS: Option[] = [
   ['', 'Open'],
   ['idea', 'Idea'],
   ['todo', 'Todo'],
@@ -25,28 +26,25 @@ export function IssueFilters({ projects }: { projects: string[] }) {
     else q.delete(key);
     router.push(q.size ? `${pathname}?${q}` : pathname);
   };
-  const select = (key: string, label: string, options: [string, string][]) => (
-    <select className={ui.input} aria-label={label} value={search.get(key) ?? ''} onChange={(e) => set(key, e.target.value)}>
-      {options.map(([v, l]) => (
-        <option key={v} value={v}>
-          {l}
-        </option>
-      ))}
-    </select>
-  );
+  const select = (key: string, label: string, options: Option[]) => {
+    const value = search.get(key) ?? '';
+    return <Dropdown label={label} value={value} options={options} onChange={(v) => set(key, v)} className={value ? styles.chipOn : styles.chip} />;
+  };
+  const ready = search.get('ready') === '1';
 
   return (
     <div className={styles.filters}>
       {select('status', 'Status', STATUS_OPTIONS)}
-      {select('project', 'Project', [['', 'Any project'], ...projects.map((p): [string, string] => [p, p])])}
+      {select('project', 'Project', [['', 'Any project'], ...projects.map((p): Option => [p, p])])}
       {select('priority', 'Priority', [['', 'Any priority'], ['high', 'High']])}
       {select('source', 'Source', [['', 'Any source'], ['claude', 'Claude'], ['user', 'User']])}
-      <label className={styles.check}>
-        <input type="checkbox" checked={search.get('ready') === '1'} onChange={(e) => set('ready', e.target.checked ? '1' : '')} />
+      <button type="button" className={ready ? styles.chipOn : styles.chip} aria-pressed={ready} onClick={() => set('ready', ready ? '' : '1')}>
+        {ready && <Check size={12} aria-hidden />}
         Ready only
-      </label>
+      </button>
       {search.size > 0 && (
-        <Link className={ui.link} href={pathname}>
+        <Link className={styles.clear} href={pathname}>
+          <X size={12} aria-hidden />
           Clear
         </Link>
       )}

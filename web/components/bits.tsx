@@ -20,9 +20,10 @@ export const projectHref = (key: string) => `/p/${encodeURIComponent(key)}`;
 
 export const taskHref = (id: string) => `/t/${encodeURIComponent(id)}`;
 
-export function TaskLink({ id }: { id: string }) {
+/** `stretch` makes the link cover its whole `ui.row`. */
+export function TaskLink({ id, stretch }: { id: string; stretch?: boolean }) {
   return (
-    <Link className={`${ui.mono} ${ui.muted}`} href={taskHref(id)}>
+    <Link className={`${ui.mono} ${ui.muted} ${stretch ? ui.stretch : ''}`} href={taskHref(id)}>
       {id}
     </Link>
   );

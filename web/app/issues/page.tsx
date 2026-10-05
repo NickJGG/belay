@@ -1,5 +1,5 @@
 import { TaskRow } from '@/components/controls';
-import { StatusIcon } from '@/components/StatusIcon';
+import { StatusGroup } from '@/components/StatusGroup';
 import ui from '@/components/ui.module.css';
 import { ctx, filterTasks, oldestFirst, parseTaskFilter } from '@/lib/data';
 import { IssueFilters } from './IssueFilters';
@@ -33,17 +33,13 @@ export default async function Issues({ searchParams }: { searchParams: Promise<Q
         const list = shown.filter((t) => t.status === s);
         if (!list.length) return null;
         return (
-          <section key={s}>
-            <h3 className={ui.h3}>
-              <StatusIcon status={s} />
-              {s} <span>{list.length}</span>
-            </h3>
+          <StatusGroup key={s} status={s} count={list.length}>
             <ul className={ui.rows}>
               {list.map((t) => (
                 <TaskRow key={t.id} task={t} />
               ))}
             </ul>
-          </section>
+          </StatusGroup>
         );
       })}
     </div>

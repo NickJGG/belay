@@ -3,15 +3,17 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { bodyHash } from '../../../../src/ops.ts';
 import { normalizeStoredPath, taskFile } from '../../../../src/store.ts';
+import { setTaskTitle } from '@/app/actions';
 import { Flags, projectHref } from '@/components/bits';
 import { PrioritySelect, StatusSelect } from '@/components/controls';
+import { TitleEdit } from '@/components/InlineEdit';
+import panel from '@/components/PropsPanel.module.css';
 import ui from '@/components/ui.module.css';
 import { ctx, openBlockers } from '@/lib/data';
 import type { Task } from '@/lib/types';
 import { BodyEditor } from './BodyEditor';
 import { Blockers, Chip, type Ref } from './Blockers';
 import { DeleteTask } from './DeleteTask';
-import { TitleEdit } from './TitleEdit';
 import styles from './task.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -50,9 +52,9 @@ export default async function TaskPage({ params }: Props) {
         <span className={ui.mono}>{task.id}</span>
         <Flags task={task} />
       </nav>
-      <div className={styles.layout}>
-        <article className={styles.main}>
-          <TitleEdit key={task.title} id={task.id} title={task.title} />
+      <div className={panel.layout}>
+        <article className={panel.main}>
+          <TitleEdit key={task.title} value={task.title} label="Title" save={setTaskTitle.bind(null, task.id)} />
           {open.length > 0 && (
             <p className={ui.warn}>
               Waiting on {open.map((b) => b.id).join(', ')}
@@ -61,8 +63,8 @@ export default async function TaskPage({ params }: Props) {
           <BodyEditor id={task.id} body={task.body} hash={bodyHash(task.body)} />
         </article>
 
-        <aside className={styles.props} aria-label="Properties">
-          <dl className={styles.propList}>
+        <aside className={panel.props} aria-label="Properties">
+          <dl className={panel.propList}>
             <dt>Status</dt>
             <dd>
               <StatusSelect task={task} className={styles.select} />

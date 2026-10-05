@@ -3,9 +3,10 @@
 import { useOptimistic, useTransition } from 'react';
 import { Star } from 'lucide-react';
 import { STATUS_KEYS as STATUSES } from '../../src/keys.ts';
-import { setProjectFocus, setTaskPriority, setTaskStatus, type Result } from '@/app/actions';
-import type { Project, Task, TaskStatus } from '@/lib/types';
+import { setProjectFocus, setProjectStatus, setTaskPriority, setTaskStatus, type Result } from '@/app/actions';
+import type { Project, ProjectStatus, Task, TaskStatus } from '@/lib/types';
 import { Flags, TaskLink } from './bits';
+import { Dropdown } from './Dropdown';
 import { useSelectable, useTaskKeys } from './Keys';
 import { StatusIcon } from './StatusIcon';
 import { toastError } from './Toaster';
@@ -26,22 +27,6 @@ function useOptimisticAction<T>(value: T, action: (v: T) => Promise<Result>): [T
 export const useStatus = (task: Task) => useOptimisticAction(task.status, (s) => setTaskStatus(task.id, s));
 export const usePriority = (task: Task) => useOptimisticAction(task.priority === 'high', (high) => setTaskPriority(task.id, high));
 
-const STATUS_ACTIONS: Record<TaskStatus, [string, TaskStatus][]> = {
-  idea: [['todo', 'todo'], ['drop', 'dropped']],
-  todo: [['start', 'doing'], ['drop', 'dropped']],
-  doing: [['done', 'done'], ['back to todo', 'todo']],
-  done: [['reopen', 'todo']],
-  dropped: [['reopen', 'todo']],
-};
-
-export function StatusButtons({ status, set }: { status: TaskStatus; set: (s: TaskStatus) => void }) {
-  return STATUS_ACTIONS[status].map(([label, to]) => (
-    <button key={to} type="button" className={ui.btn} title={`Set status to ${to} (${STATUSES.indexOf(to) + 1})`} onClick={() => set(to)}>
-      {label}
-    </button>
-  ));
-}
-
 export function TaskRow({ task }: { task: Task }) {
   const [status, setStatus] = useStatus(task);
   const [high, setHigh] = usePriority(task);
@@ -49,12 +34,9 @@ export function TaskRow({ task }: { task: Task }) {
   return (
     <li className={ui.row} {...useSelectable(task.id)}>
       <StatusIcon status={status} />
-      <TaskLink id={task.id} />
+      <TaskLink id={task.id} stretch />
       <span className={ui.grow}>{task.title}</span>
       <Flags task={{ ...task, priority: high ? 'high' : undefined }} />
-      <span className={ui.actions}>
-        <StatusButtons status={status} set={setStatus} />
-      </span>
     </li>
   );
 }
@@ -65,6 +47,22 @@ export function FocusToggle({ project }: { project: Project }) {
     <button type="button" className={focus ? ui.starOn : ui.icon} title={focus ? 'Remove focus' : 'Focus'} aria-label={focus ? 'Remove focus' : 'Focus'} aria-pressed={focus} onClick={() => setFocus(!focus)}>
       <Star size={14} fill={focus ? 'currentColor' : 'none'} />
     </button>
+  );
+}
+
+// src/store.ts holds the canonical list but imports node:fs; `satisfies` keeps this one complete.
+const PROJECT_STATUSES = { active: 'Active', paused: 'Paused', archived: 'Archived' } satisfies Record<ProjectStatus, string>;
+
+export function ProjectStatusSelect({ project, className }: { project: Project; className: string }) {
+  const [status, setStatus] = useOptimisticAction(project.status, (s) => setProjectStatus(project.key, s));
+  return (
+    <Dropdown
+      label="Status"
+      value={status}
+      options={Object.entries(PROJECT_STATUSES)}
+      onChange={(s) => setStatus(s as ProjectStatus)}
+      className={className}
+    />
   );
 }
 

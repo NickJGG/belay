@@ -86,8 +86,16 @@ export async function quickAdd(key: unknown, title: unknown, status: unknown): P
   return { ...r, id };
 }
 
-export async function updateProject(key: unknown, name: unknown, group: unknown, status: unknown): Promise<Result> {
-  return run((ctx) => void editProject(ctx, str(key, 'key'), { name: str(name, 'name'), group: str(group, 'group'), status: str(status, 'status') }));
+export async function setProjectName(key: unknown, name: unknown): Promise<Result> {
+  return run((ctx) => void editProject(ctx, str(key, 'key'), { name: str(name, 'name') }));
+}
+
+export async function setProjectGroup(key: unknown, group: unknown): Promise<Result> {
+  return run((ctx) => void editProject(ctx, str(key, 'key'), { group: str(group, 'group') }));
+}
+
+export async function setProjectStatus(key: unknown, status: unknown): Promise<Result> {
+  return run((ctx) => void editProject(ctx, str(key, 'key'), { status: str(status, 'status') }));
 }
 
 export async function updateSettings(accent: unknown, theme: unknown): Promise<Result> {
