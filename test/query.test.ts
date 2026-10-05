@@ -132,3 +132,11 @@ test('filterIssues combines every filter', () => {
   assert.deepEqual(ids({ project: 'b', status: 'all' }), ['B-1']);
   assert.deepEqual(ids({ project: 'b' }), []);
 });
+
+test('next: focus issues ordered by their project goal urgency, then oldest first', () => {
+  const projects = [project('a', { focus: true }), project('b', { focus: true }), project('c', { focus: true })];
+  const issues = [issue('a-1', { created: '2026-09-01' }), issue('b-1', { created: '2026-09-02' }), issue('c-1'), issue('b-2')];
+  const ids = (u?: Map<string, number>) => next(projects, issues, u).focus.map((t) => t.id);
+  assert.deepEqual(ids(), ['a-1', 'b-1', 'b-2', 'c-1']);
+  assert.deepEqual(ids(new Map([['b', 0], ['c', 1]])), ['b-1', 'b-2', 'c-1', 'a-1']);
+});

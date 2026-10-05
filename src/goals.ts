@@ -3,6 +3,7 @@
  * active and in focus. Wording stays neutral: behind is shown, never scolded.
  */
 import type { DatedEntry } from './logs.ts';
+import { movedDays } from './moved.ts';
 import type { Goal, Issue, Project } from './store.ts';
 import { daysBetween, weekStart, workDayOf } from './workday.ts';
 
@@ -59,6 +60,21 @@ export function goalProgress(project: Project, issues: Issue[], logs: DatedEntry
   return { project: project.key, urgency, form: 'target', date: goal.target, state, scope, left, daysLeft };
 }
 
+/** Progress of every goal that counts, in project order. `commits` maps project keys to their commit work days. */
+export function goalsProgress(
+  projects: Project[],
+  issues: Issue[],
+  logs: DatedEntry[],
+  commits: Record<string, string[]>,
+  day: string,
+): GoalProgress[] {
+  return projects.flatMap((p) => goalProgress(p, issues, logs, movedDays(p, issues, logs, commits[p.key] ?? []), day) ?? []);
+}
+
+export function urgencies(goals: GoalProgress[]): Map<string, Urgency> {
+  return new Map(goals.map((g) => [g.project, g.urgency]));
+}
+
 /** Compact progress for the status line: `JOB 3/5 ✓`, `JOB 6/10 applied`, `PORT 6 left ▲10d`. */
 export function goalLabel(g: GoalProgress): string {
   const met = (m: boolean) => (m ? ' ✓' : '');
@@ -69,6 +85,10 @@ export function goalLabel(g: GoalProgress): string {
   if (g.state === 'overdue') return `${g.project} ${g.left} left, overdue ${-g.daysLeft}d`;
   const due = g.daysLeft ? `▲${g.daysLeft}d` : '▲today';
   return `${g.project} ${g.left} left ${due}${g.state === 'behind' ? ', behind' : ''}`;
+}
+
+export function goalStrip(goals: GoalProgress[]): string {
+  return goals.map(goalLabel).join(' · ');
 }
 
 /** The goal itself, for listings: `5 days/wk`, `10 applied/wk`, `by 2026-10-19`. */

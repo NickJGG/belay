@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
-import { duration, encodeCwd, parseTranscript, recentSessions } from '../src/history.ts';
+import { commitCacheFile, duration, encodeCwd, parseTranscript, readCommitDays, recentSessions, writeCommitDays } from '../src/history.ts';
 import type { Project } from '../src/store.ts';
 
 const jsonl = (...entries: object[]) => entries.map((e) => JSON.stringify(e)).join('\n') + '\n';
@@ -83,4 +83,18 @@ test('recentSessions: newest first, mapped by launch cwd, filtered and limited',
   assert.deepEqual(pi.map((s) => s.id), ['b', 'a']);
   assert.deepEqual(recentSessions(claude, projects, { project: projects[0], limit: 1 }).map((s) => s.id), ['b']);
   assert.deepEqual(recentSessions(claude, projects, { project: projects[0], limit: 5, exclude: 'b' }).map((s) => s.id), ['a']);
+});
+
+test('commit-day cache: read back for its own week only', () => {
+  const data = mkdtempSync(join(tmpdir(), 'tracker-cache-'));
+  try {
+    assert.deepEqual(readCommitDays(data, '2026-10-05'), {});
+    writeCommitDays(data, { week: '2026-10-05', projects: { JOB: ['2026-10-06'] } });
+    assert.deepEqual(readCommitDays(data, '2026-10-05'), { JOB: ['2026-10-06'] });
+    assert.deepEqual(readCommitDays(data, '2026-10-12'), {});
+    writeFileSync(commitCacheFile(data), '{not json');
+    assert.deepEqual(readCommitDays(data, '2026-10-05'), {});
+  } finally {
+    rmSync(data, { recursive: true, force: true });
+  }
 });

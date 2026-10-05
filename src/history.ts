@@ -3,10 +3,11 @@
  * mapped to projects by launch cwd, plus the git commits made inside each session's time window.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectForCwd } from './query.ts';
-import type { Project } from './store.ts';
+import { writeAtomic, type Project } from './store.ts';
+import { addDays } from './workday.ts';
 
 export interface Commit {
   hash: string;
@@ -143,6 +144,40 @@ export function commitsBetween(project: Project, since: string, until: string): 
     }
   }
   return [...byHash.values()].sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
+}
+
+/** Commits during the Mon–Sun week starting `week`, by work day (each starts at 4am). */
+export function weekCommits(project: Project, week: string): Commit[] {
+  return commitsBetween(project, `${week} 04:00`, `${addDays(week, 7)} 04:00`);
+}
+
+/**
+ * Commit work days of goal projects for the current week, written by the digest so the status line can
+ * count commits without running git after every message. Derived data: safe to delete.
+ */
+export interface CommitDayCache {
+  week: string;
+  projects: Record<string, string[]>;
+}
+
+export function commitCacheFile(dataDir: string): string {
+  return join(dataDir, 'cache', 'commit-days.json');
+}
+
+/** Empty when the cache is missing, unreadable or from another week. */
+export function readCommitDays(dataDir: string, week: string): Record<string, string[]> {
+  try {
+    const c = JSON.parse(readFileSync(commitCacheFile(dataDir), 'utf8')) as CommitDayCache;
+    return c.week === week && c.projects && typeof c.projects === 'object' ? c.projects : {};
+  } catch {
+    return {};
+  }
+}
+
+export function writeCommitDays(dataDir: string, cache: CommitDayCache): void {
+  mkdirSync(join(dataDir, 'cache'), { recursive: true });
+  writeAtomic(commitCacheFile(dataDir), `${JSON.stringify(cache, null, 2)}
+`);
 }
 
 /** Fills `commits` on each session that maps to a project, with one `git log` per repo. */

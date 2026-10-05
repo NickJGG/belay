@@ -5,7 +5,7 @@ import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { claudeDir, DEFAULT_PORT } from './config.ts';
 import { clip, digestLines } from './digest.ts';
 import { grillDir, grillMatches, loadGrillSessions } from './grill.ts';
-import { attachCommits, duration, localStamp, recentSessions } from './history.ts';
+import { attachCommits, duration, localStamp, readCommitDays, recentSessions, weekCommits, writeCommitDays } from './history.ts';
 import {
   Ctx,
   addComment,
@@ -27,17 +27,20 @@ import {
   type GoalInput,
   type MoveTarget,
 } from './ops.ts';
-import { goalSpec } from './goals.ts';
+import { goalOf, goalSpec, goalStrip, goalsProgress, urgencies } from './goals.ts';
 import { type DatedEntry } from './logs.ts';
+import { commitDays, movedDays } from './moved.ts';
 import { isReady, next, openBlockers, projectCounts, projectForCwd } from './query.ts';
-import { statusLine } from './statusline.ts';
+import { statusLine, withGoals } from './statusline.ts';
 import { ISSUE_STATUSES, normalizeStoredPath, issueFile, type Issue, type IssueStatus } from './store.ts';
 import { serve } from './web.ts';
-import { addDays, isDay, workDay, workDayOf } from './workday.ts';
+import { weekLines, weekSummary } from './week.ts';
+import { addDays, isDay, weekStart, workDay, workDayOf } from './workday.ts';
 
 const HELP = `tracker — what should I work on?
 
-  next [--all]                      doing, high-priority, then ready issues in focus projects
+  next [--all]                      doing, high-priority, then ready issues in focus projects (those
+                                    with a goal behind or not yet met today first)
   add "<title>" [--project <key>] [--status idea|todo] [--blocked-by <id>...]
                 [--priority high] [--source user|claude] [--grill <slug>] [--plan <path>]
                 [--body <text> | --body-file <path|->]
@@ -58,6 +61,8 @@ const HELP = `tracker — what should I work on?
                                     log entries, newest first, addressed <day>/<n>
   log delete <day>/<n>
   list [--project <key>] [--status <s,...>|all]   default hides done and dropped
+  week [--last]                     this (or last) Mon–Sun week per project: days moved, goal, issues
+                                    done, commits and log entries
 
   history [<project>] [-n <count>] [-v]
                                     recent Claude sessions and their commits, newest first
@@ -67,7 +72,7 @@ const HELP = `tracker — what should I work on?
   digest                            SessionStart hook: reads the hook JSON on stdin, prints a summary
                                     if its cwd is in a registered project, else nothing
   statusline                        status line command: reads Claude Code's status JSON on stdin, prints
-                                    the project's doing issue (or next ready one), else nothing
+                                    the project's doing issue (or next ready one) and the goal strip
 
   project add [<key>] --name <name> --path <dir>... [--group <g>] [--focus]
                                     key: 3–4 letters, the issue-ID prefix (ELV-12); derived from
@@ -124,13 +129,27 @@ function bodyArg(body: string | undefined, file: string | undefined): string | u
   return file === undefined ? body : readFileSync(file === '-' ? 0 : file, 'utf8');
 }
 
+// --- goals ---
+
+/** How far back the digest looks for a quiet goal project's latest note. */
+const LOOKBACK_DAYS = 28;
+
+/** Commit work days this week for projects whose goal counts; runs git. */
+function goalCommitDays(ctx: Ctx, week: string): Record<string, string[]> {
+  return Object.fromEntries(
+    ctx.projects.filter((p) => goalOf(p)).map((p) => [p.key, commitDays(weekCommits(p, week).map((c) => c.time))]),
+  );
+}
+
 // --- commands ---
 
 function cmdNext(argv: string[]): void {
   const { values } = args(argv, { all: { type: 'boolean' } }, 0);
   const ctx = new Ctx();
-  const n = next(ctx.projects, ctx.issues);
-  const out: string[] = [];
+  const day = workDay();
+  const goals = goalsProgress(ctx.projects, ctx.issues, ctx.logs(weekStart(day), day), goalCommitDays(ctx, weekStart(day)), day);
+  const n = next(ctx.projects, ctx.issues, urgencies(goals));
+  const out: string[] = goals.length ? [`goals: ${goalStrip(goals)}`] : [];
   const section = (title: string, issues: Issue[]) => {
     if (issues.length) out.push(title, ...lines(issues, ctx));
   };
@@ -375,6 +394,16 @@ function cmdLog(argv: string[]): void {
   print(out);
 }
 
+function cmdWeek(argv: string[]): void {
+  const { values } = args(argv, { last: { type: 'boolean' } }, 0);
+  const ctx = new Ctx();
+  const day = workDay();
+  const week = values.last ? addDays(weekStart(day), -7) : weekStart(day);
+  const projects = ctx.projects.filter((p) => p.status !== 'archived');
+  const commits = Object.fromEntries(projects.map((p) => [p.key, weekCommits(p, week).map((c) => c.time)]));
+  print(weekLines(weekSummary(projects, ctx.issues, ctx.logs(week, addDays(week, 6)), commits, week, day), week));
+}
+
 function cmdHistory(argv: string[]): void {
   const { values, positionals } = args(
     argv,
@@ -455,19 +484,34 @@ function cmdDigest(argv: string[]): void {
     }
     const cwd = typeof input.cwd === 'string' ? input.cwd : process.cwd();
     const ctx = new Ctx();
+    const day = workDay();
+    const week = weekStart(day);
+    const commits = goalCommitDays(ctx, week);
+    try {
+      writeCommitDays(ctx.dir, { week, projects: commits });
+    } catch (e) {
+      console.error(`tracker digest: commit cache: ${(e as Error).message}`);
+    }
     const project = projectForCwd(ctx.projects, cwd);
     if (!project) return;
     const claude = claudeDir();
     const exclude = typeof input.session_id === 'string' ? input.session_id : undefined;
     const sessions = recentSessions(claude, ctx.projects, { project, limit: 3, exclude });
     attachCommits(sessions, ctx.projects);
-    print(digestLines(project, ctx.issues, sessions, loadGrillSessions(claude)));
+    const logs = ctx.logs(addDays(day, -LOOKBACK_DAYS), day);
+    const goals = {
+      day,
+      progress: goalsProgress(ctx.projects, ctx.issues, logs, commits, day),
+      moved: movedDays(project, ctx.issues, logs, commits[project.key] ?? []),
+      logs,
+    };
+    print(digestLines(project, ctx.issues, sessions, loadGrillSessions(claude), goals));
   } catch (e) {
     console.error(`tracker digest: ${(e as Error).message}`);
   }
 }
 
-/** Like digest, never fails: the status line just goes without the tracker's line. */
+/** Like digest, never fails: the status line just goes without the tracker's line. Reads files only, no git. */
 function cmdStatusline(argv: string[]): void {
   args(argv, {}, 0);
   try {
@@ -482,8 +526,10 @@ function cmdStatusline(argv: string[]): void {
     const dir = input.workspace?.current_dir ?? input.cwd;
     const ctx = new Ctx();
     const project = projectForCwd(ctx.projects, typeof dir === 'string' ? dir : process.cwd());
-    if (!project) return;
-    const line = statusLine(project, ctx.issues);
+    const day = workDay();
+    const week = weekStart(day);
+    const goals = goalsProgress(ctx.projects, ctx.issues, ctx.logs(week, day), readCommitDays(ctx.dir, week), day);
+    const line = withGoals(project ? statusLine(project, ctx.issues) : '', goals);
     if (line) print(line);
   } catch (e) {
     console.error(`tracker statusline: ${(e as Error).message}`);
@@ -636,6 +682,7 @@ const COMMANDS: Record<string, (argv: string[]) => void> = {
   list: cmdList,
   did: cmdDid,
   log: cmdLog,
+  week: cmdWeek,
   history: cmdHistory,
   search: cmdSearch,
   serve: cmdServe,

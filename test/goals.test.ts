@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { goalLabel, goalProgress, goalSpec } from '../src/goals.ts';
+import { goalLabel, goalProgress, goalSpec, goalStrip, goalsProgress, urgencies } from '../src/goals.ts';
 import type { DatedEntry } from '../src/logs.ts';
 import type { Goal, Issue, Project, Transition } from '../src/store.ts';
 
@@ -137,4 +137,19 @@ test('goalSpec describes the goal itself', () => {
   assert.equal(goalSpec({ habit: 5 }), '5 days/wk');
   assert.equal(goalSpec({ quantity: 10, kind: 'applied' }), '10 applied/wk');
   assert.equal(goalSpec({ target: '2026-10-19', set: '2026-10-05' }), 'by 2026-10-19');
+});
+
+test('goalsProgress: every counting goal in project order, commits moving habits', () => {
+  const projects = [
+    project({ habit: 2 }),
+    project({ habit: 1 }, { key: 'OFF', focus: false }),
+    project({ quantity: 10, kind: 'applied' }, { key: 'APP' }),
+    project({ target: '2026-10-19', set: '2026-10-05' }, { key: 'PORT' }),
+  ];
+  const issues = [issue('todo', { project: 'PORT', id: 'PORT-1' })];
+  const logs = [log(THU, { project: 'APP', kind: 'applied', count: 6 })];
+  const goals = goalsProgress(projects, issues, logs, { JOB: [THU] }, THU);
+  assert.equal(goalStrip(goals), 'JOB 1/2 ✓ · APP 6/10 applied ✓ · PORT 1 left ▲11d');
+  assert.deepEqual([...urgencies(goals)], [['JOB', 2], ['APP', 2], ['PORT', 2]]);
+  assert.equal(goalStrip(goalsProgress(projects, issues, [], {}, THU)), 'JOB 0/2 · APP 0/10 applied · PORT 1 left ▲11d');
 });
