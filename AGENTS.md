@@ -1,6 +1,6 @@
 # tracker
 
-A personal task tracker for Claude Code work: a CLI (`src/`) and a local Next.js dashboard (`web/`). Domain terms are defined in `CONTEXT.md`.
+A personal issue tracker for Claude Code work: a CLI (`src/`) and a local Next.js dashboard (`web/`). Domain terms are defined in `CONTEXT.md`.
 
 ## Don't start servers
 

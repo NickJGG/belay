@@ -1,11 +1,11 @@
 'use client';
 import { useEffect, useState, useTransition } from 'react';
-import { saveTaskBody } from '@/app/actions';
-import { useTaskKeys } from '@/components/Keys';
+import { saveIssueBody } from '@/app/actions';
+import { useIssueKeys } from '@/components/Keys';
 import { Markdown } from '@/components/Markdown';
 import { toastError } from '@/components/Toaster';
 import ui from '@/components/ui.module.css';
-import styles from './task.module.css';
+import styles from './issue.module.css';
 
 type Mode = 'view' | 'edit' | 'conflict';
 
@@ -40,7 +40,7 @@ export function BodyEditor({ id, body, hash }: { id: string; body: string; hash:
     setMode('edit');
   };
 
-  useTaskKeys(id, { edit: mode === 'view' ? edit : undefined });
+  useIssueKeys(id, { edit: mode === 'view' ? edit : undefined });
 
   const cancel = () => {
     if (dirty && !window.confirm('Discard your draft?')) return;
@@ -49,7 +49,7 @@ export function BodyEditor({ id, body, hash }: { id: string; body: string; hash:
 
   const save = (expected: string) =>
     start(async () => {
-      const r = await saveTaskBody(id, draft, expected);
+      const r = await saveIssueBody(id, draft, expected);
       if (r.conflict !== undefined) {
         setDisk({ body: r.conflict, hash: r.hash! });
         setMode('conflict');
@@ -91,7 +91,7 @@ export function BodyEditor({ id, body, hash }: { id: string; body: string; hash:
     return (
       <section className={styles.body}>
         <div className={styles.conflictNote} role="alert">
-          The notes changed on disk while you were editing. Merge by hand: your draft is on the left, the file as it is now on the right.
+          The description changed on disk while you were editing. Merge by hand: your draft is on the left, the file as it is now on the right.
           Saving replaces the file with your draft.
         </div>
         <div className={styles.conflict}>
@@ -146,7 +146,7 @@ export function BodyEditor({ id, body, hash }: { id: string; body: string; hash:
       ) : (
         <textarea
           className={styles.textarea}
-          aria-label="Notes"
+          aria-label="Description"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={keys}

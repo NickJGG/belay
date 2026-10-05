@@ -1,27 +1,27 @@
 'use client';
 /**
  * The keyboard layer: the j/k selection, single-key commands, the ⌘K palette and the cheat sheet.
- * A component showing a task registers handlers for it, so a key goes through the same optimistic
+ * A component showing an issue registers handlers for it, so a key goes through the same optimistic
  * path as a click on that component. With none registered, the action is called directly.
  */
 import { createContext, useContext, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { keyCommand, pageProject, pageTask, step, type KeyCommand } from '../../src/keys.ts';
+import { keyCommand, pageProject, pageIssue, step, type KeyCommand } from '../../src/keys.ts';
 import type { MoveTarget } from '../../src/sidebar.ts';
-import { moveProjectTo, quickAdd, setTaskPriority, setTaskStatus, type Result } from '@/app/actions';
-import type { TaskStatus } from '@/lib/types';
-import { taskHref } from './bits';
+import { moveProjectTo, quickAdd, setIssuePriority, setIssueStatus, type Result } from '@/app/actions';
+import type { IssueStatus } from '@/lib/types';
+import { issueHref } from './bits';
 import { Palette, type PaletteData, type PalettePage } from './Palette';
 import { Shortcuts } from './Shortcuts';
 import { toastError } from './Toaster';
 
-export interface TaskHandlers {
-  setStatus?: (s: TaskStatus) => void;
+export interface IssueHandlers {
+  setStatus?: (s: IssueStatus) => void;
   setHigh?: (high: boolean) => void;
   edit?: () => void;
 }
 
-type HandlerRef = { current: TaskHandlers };
+type HandlerRef = { current: IssueHandlers };
 
 interface Api {
   select: (id: string | undefined) => void;
@@ -43,10 +43,10 @@ export function useSelectable(id: string) {
     // A click that follows a link is navigation, not selection.
     if (!(e.target as Element).closest('a')) api?.select(id);
   };
-  return { 'data-task-id': id, 'data-selected': selected || undefined, onClick };
+  return { 'data-issue-id': id, 'data-selected': selected || undefined, onClick };
 }
 
-export function useTaskKeys(id: string, handlers: TaskHandlers) {
+export function useIssueKeys(id: string, handlers: IssueHandlers) {
   const api = useContext(ApiCtx);
   const ref = useRef(handlers);
   useEffect(() => {
@@ -79,7 +79,7 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
 
   // A selection belongs to the page it was made on.
   const selected = sel?.path === pathname ? sel.id : undefined;
-  const target = selected ?? pageTask(pathname);
+  const target = selected ?? pageIssue(pathname);
 
   const api = useMemo<Api>(
     () => ({
@@ -99,7 +99,7 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
     [],
   );
 
-  const handler = <K extends keyof TaskHandlers>(id: string, k: K): TaskHandlers[K] => {
+  const handler = <K extends keyof IssueHandlers>(id: string, k: K): IssueHandlers[K] => {
     for (const h of handlers.current.get(id) ?? []) if (h.current[k]) return h.current[k];
     return undefined;
   };
@@ -111,18 +111,18 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
     });
 
   const act = {
-    setStatus: (id: string, s: TaskStatus) => {
+    setStatus: (id: string, s: IssueStatus) => {
       const h = handler(id, 'setStatus');
       if (h) h(s);
-      else direct(() => setTaskStatus(id, s));
+      else direct(() => setIssueStatus(id, s));
     },
     setHigh: (id: string, high: boolean) => {
       const h = handler(id, 'setHigh');
       if (h) h(high);
-      else direct(() => setTaskPriority(id, high));
+      else direct(() => setIssuePriority(id, high));
     },
     open: (id: string) => {
-      if (pageTask(pathname) !== id) router.push(taskHref(id));
+      if (pageIssue(pathname) !== id) router.push(issueHref(id));
     },
     edit: (id: string) => {
       const h = handler(id, 'edit');
@@ -130,11 +130,11 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
       else act.open(id);
     },
     moveProject: (key: string, move: MoveTarget) => direct(() => moveProjectTo(key, null, move)),
-    create: async (project: string, title: string, status: TaskStatus) => {
+    create: async (project: string, title: string, status: IssueStatus) => {
       const r = await quickAdd(project, title, status);
       if (r.error) return toastError(r.error);
       if (pageProject(pathname) === project) api.select(r.id);
-      else router.push(taskHref(r.id!));
+      else router.push(issueHref(r.id!));
     },
   };
 
@@ -153,11 +153,11 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
         setHelp(true);
         return true;
       case 'move': {
-        const stops = [...document.querySelectorAll<HTMLElement>('[data-task-id]')].filter((el) => el.getClientRects().length > 0);
-        const id = step([...new Set(stops.map((el) => el.dataset.taskId!))], selected, cmd.delta);
+        const stops = [...document.querySelectorAll<HTMLElement>('[data-issue-id]')].filter((el) => el.getClientRects().length > 0);
+        const id = step([...new Set(stops.map((el) => el.dataset.issueId!))], selected, cmd.delta);
         if (!id) return false;
         api.select(id);
-        stops.find((el) => el.dataset.taskId === id)?.scrollIntoView({ block: 'nearest' });
+        stops.find((el) => el.dataset.issueId === id)?.scrollIntoView({ block: 'nearest' });
         return true;
       }
       case 'clear':
@@ -195,13 +195,13 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
 
   useEffect(() => {
     const listener = (e: MouseEvent) => {
-      if (!(e.target as Element).closest('[data-task-id], dialog')) api.select(undefined);
+      if (!(e.target as Element).closest('[data-issue-id], dialog')) api.select(undefined);
     };
     document.addEventListener('click', listener);
     return () => document.removeEventListener('click', listener);
   }, [api]);
 
-  const targetTask = target ? data.tasks.find((t) => t.id === target) : undefined;
+  const targetIssue = target ? data.issues.find((t) => t.id === target) : undefined;
 
   return (
     <ApiCtx value={api}>
@@ -211,8 +211,8 @@ export function KeysProvider({ data, children }: { data: PaletteData; children: 
           data={data}
           page={palette}
           setPage={setPalette}
-          target={targetTask}
-          onTargetPage={target !== undefined && pageTask(pathname) === target}
+          target={targetIssue}
+          onTargetPage={target !== undefined && pageIssue(pathname) === target}
           defaultProject={pageProject(pathname)}
           act={{ ...act, help: () => setHelp(true), go: (href: string) => router.push(href) }}
         />

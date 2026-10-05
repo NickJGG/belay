@@ -11,27 +11,27 @@ export function Shortcuts({ open, onClose }: { open: boolean; onClose: () => voi
       [
         [[mod, 'K'], 'Command palette'],
         [['/'], 'Search'],
-        [['C'], 'Create a task'],
+        [['C'], 'Create an issue'],
         [['?'], 'This cheat sheet'],
       ],
     ],
     [
       'Selection',
       [
-        [['J', 'K'], 'Next / previous task'],
-        [['↵'], 'Open the selected task'],
+        [['J', 'K'], 'Next / previous issue'],
+        [['↵'], 'Open the selected issue'],
         [['Esc'], 'Clear the selection'],
       ],
     ],
     [
-      'Selected task, or this page’s',
+      'Selected issue, or this page’s',
       [
         [['1'], 'Idea'],
         [['2'], 'Todo'],
         [['3'], 'Doing'],
         [['4'], 'Done'],
         [['5'], 'Dropped'],
-        [['E'], 'Edit: open it, or edit its notes on its page'],
+        [['E'], 'Edit: open it, or edit its description on its page'],
       ],
     ],
   ];

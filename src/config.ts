@@ -1,12 +1,16 @@
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-/** Resolves the data dir from `TRACKER_DATA` (default `~/Tracker`) and ensures its subfolders exist. */
+/**
+ * Resolves the data dir from `TRACKER_DATA` (default `~/Tracker`) and ensures its subfolders exist.
+ * Throws on a data dir from before issues were called tasks, rather than starting an empty `issues/`.
+ */
 export function dataDir(): string {
   const dir = resolve(/*turbopackIgnore: true*/ process.env.TRACKER_DATA || join(homedir(), 'Tracker'));
+  if (existsSync(join(dir, 'tasks')) && !existsSync(join(dir, 'issues'))) throw new Error(`rename tasks/ to issues/ in ${dir}`);
   mkdirSync(join(dir, 'projects'), { recursive: true });
-  mkdirSync(join(dir, 'tasks'), { recursive: true });
+  mkdirSync(join(dir, 'issues'), { recursive: true });
   return dir;
 }
 

@@ -103,7 +103,7 @@ textarea {
 }
 
 /* The j/k selection. The tint is an image so it layers over a card's own background. */
-[data-task-id][data-selected] {
+[data-issue-id][data-selected] {
   outline: 1px solid var(--accent);
   outline-offset: -1px;
   --tint: color-mix(in oklch, var(--accent) 8%, transparent);

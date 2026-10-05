@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { STATUS_KEYS, keyCommand, pageProject, pageTask, step, type KeyPress } from '../src/keys.ts';
-import { TASK_STATUSES } from '../src/store.ts';
+import { STATUS_KEYS, keyCommand, pageProject, pageIssue, step, type KeyPress } from '../src/keys.ts';
+import { ISSUE_STATUSES } from '../src/store.ts';
 
 const press = (key: string, o: Partial<KeyPress> = {}): KeyPress => ({ key, ctrl: false, meta: false, alt: false, focus: 'none', ...o });
 
@@ -17,7 +17,7 @@ test('single keys map to commands', () => {
 });
 
 test('1–5 set the status in board order', () => {
-  assert.deepEqual(STATUS_KEYS, TASK_STATUSES);
+  assert.deepEqual(STATUS_KEYS, ISSUE_STATUSES);
   assert.deepEqual(
     ['1', '2', '3', '4', '5'].map((k) => keyCommand(press(k))),
     ['idea', 'todo', 'doing', 'done', 'dropped'].map((status) => ({ kind: 'status', status })),
@@ -55,10 +55,10 @@ test('step walks the list and stops at the ends', () => {
   assert.equal(step([], 'a-1', 1), undefined);
 });
 
-test('pages name their task and project', () => {
-  assert.equal(pageTask('/t/web-app-12'), 'web-app-12');
-  assert.equal(pageTask('/p/web-app'), undefined);
-  assert.equal(pageProject('/t/web-app-12'), 'web-app');
+test('pages name their issue and project', () => {
+  assert.equal(pageIssue('/i/web-app-12'), 'web-app-12');
+  assert.equal(pageIssue('/p/web-app'), undefined);
+  assert.equal(pageProject('/i/web-app-12'), 'web-app');
   assert.equal(pageProject('/p/web-app'), 'web-app');
   assert.equal(pageProject('/issues'), undefined);
   assert.equal(pageProject('/p/'), undefined);

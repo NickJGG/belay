@@ -2,16 +2,16 @@
  * The dashboard's keyboard layer, kept free of the DOM so it can be tested here. The browser bundles
  * this file, so it takes only types from the store, whose runtime pulls in node:fs.
  */
-import type { TaskStatus } from './store.ts';
+import type { IssueStatus } from './store.ts';
 
-/** `TASK_STATUSES` order, which is the 1–5 order. */
-export const STATUS_KEYS: readonly TaskStatus[] = ['idea', 'todo', 'doing', 'done', 'dropped'];
+/** `ISSUE_STATUSES` order, which is the 1–5 order. */
+export const STATUS_KEYS: readonly IssueStatus[] = ['idea', 'todo', 'doing', 'done', 'dropped'];
 
 export type KeyCommand =
   | { kind: 'palette' }
   | { kind: 'create' }
   | { kind: 'move'; delta: 1 | -1 }
-  | { kind: 'status'; status: TaskStatus }
+  | { kind: 'status'; status: IssueStatus }
   | { kind: 'edit' }
   | { kind: 'open' }
   | { kind: 'help' }
@@ -66,11 +66,11 @@ const segment = (pathname: string, prefix: string): string | undefined => {
   return rest && !rest.includes('/') ? decodeURIComponent(rest) : undefined;
 };
 
-/** The task a page is about, which keys act on when nothing is selected. */
-export const pageTask = (pathname: string): string | undefined => segment(pathname, '/t/');
+/** The issue a page is about, which keys act on when nothing is selected. */
+export const pageIssue = (pathname: string): string | undefined => segment(pathname, '/i/');
 
-/** The project a page belongs to, which a new task defaults to. */
+/** The project a page belongs to, which a new issue defaults to. */
 export function pageProject(pathname: string): string | undefined {
-  const task = pageTask(pathname);
-  return task ? /^(.+)-\d+$/.exec(task)?.[1] : segment(pathname, '/p/');
+  const issue = pageIssue(pathname);
+  return issue ? /^(.+)-\d+$/.exec(issue)?.[1] : segment(pathname, '/p/');
 }

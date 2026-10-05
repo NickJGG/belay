@@ -1,7 +1,7 @@
 'use client';
 import { ChevronRight } from 'lucide-react';
 import { writeCollapsed } from '@/lib/collapsed';
-import type { TaskStatus } from '@/lib/types';
+import type { IssueStatus } from '@/lib/types';
 import { StatusIcon } from './StatusIcon';
 import styles from './StatusGroup.module.css';
 
@@ -9,7 +9,7 @@ import styles from './StatusGroup.module.css';
  * A native <details>, so toggling needs no state here. `open` only changes when a refresh brings the
  * cookie this toggle just wrote, which then matches what's already on screen.
  */
-export function GroupDetails({ status, count, open, children }: { status: TaskStatus; count: number; open: boolean; children: React.ReactNode }) {
+export function GroupDetails({ status, count, open, children }: { status: IssueStatus; count: number; open: boolean; children: React.ReactNode }) {
   return (
     <details className={styles.group} open={open} onToggle={(e) => writeCollapsed(status, !e.currentTarget.open)}>
       <summary className={styles.head}>

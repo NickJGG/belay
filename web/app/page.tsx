@@ -1,35 +1,35 @@
 import Link from 'next/link';
 import { projectHref } from '@/components/bits';
-import { FocusToggle, TaskRow } from '@/components/controls';
+import { FocusToggle, IssueRow } from '@/components/controls';
 import ui from '@/components/ui.module.css';
-import { ctx, indexTasks, next, plural, projectCounts } from '@/lib/data';
-import type { Project, Task } from '@/lib/types';
+import { ctx, indexIssues, next, plural, projectCounts } from '@/lib/data';
+import type { Project, Issue } from '@/lib/types';
 import styles from './page.module.css';
 
 export const dynamic = 'force-dynamic';
 
-function TaskRows({ tasks }: { tasks: Task[] }) {
+function IssueRows({ issues }: { issues: Issue[] }) {
   return (
     <ul className={ui.rows}>
-      {tasks.map((t) => (
-        <TaskRow key={t.id} task={t} />
+      {issues.map((t) => (
+        <IssueRow key={t.id} issue={t} />
       ))}
     </ul>
   );
 }
 
-function Section({ title, tasks }: { title: string; tasks: Task[] }) {
-  if (!tasks.length) return null;
+function Section({ title, issues }: { title: string; issues: Issue[] }) {
+  if (!issues.length) return null;
   return (
     <>
       <h3 className={ui.h3}>{title}</h3>
-      <TaskRows tasks={tasks} />
+      <IssueRows issues={issues} />
     </>
   );
 }
 
 export default function Home() {
-  const { projects, tasks } = ctx();
+  const { projects, issues } = ctx();
   if (!projects.length) {
     return (
       <div className={ui.page}>
@@ -41,8 +41,8 @@ export default function Home() {
     );
   }
 
-  const byId = indexTasks(tasks);
-  const n = next(projects, tasks);
+  const byId = indexIssues(issues);
+  const n = next(projects, issues);
   const focusKeys = projects.filter((p) => p.focus && p.status === 'active').map((p) => p.key);
   const ordered = (list: Project[]) =>
     [...list].sort((a, b) => (a.group ?? '').localeCompare(b.group ?? ''));
@@ -52,7 +52,7 @@ export default function Home() {
   const archived = projects.filter((p) => p.status === 'archived').length;
 
   const projectRow = (p: Project) => {
-    const c = projectCounts(p, tasks, byId);
+    const c = projectCounts(p, issues, byId);
     const counts = [
       c.doing ? `${c.doing} doing` : '',
       c.ready ? `${c.ready} ready` : '',
@@ -77,16 +77,16 @@ export default function Home() {
       <header className={ui.header}>
         <h1 className={ui.title}>Next</h1>
       </header>
-      <Section title="Doing" tasks={n.doing} />
-      <Section title="High priority" tasks={n.high} />
-      <Section title={`Ready — focus: ${focusKeys.join(', ') || 'none'}`} tasks={n.focus} />
+      <Section title="Doing" issues={n.doing} />
+      <Section title="High priority" issues={n.high} />
+      <Section title={`Ready — focus: ${focusKeys.join(', ') || 'none'}`} issues={n.focus} />
       {!n.doing.length && !n.high.length && !n.focus.length && (
         <p className={ui.empty}>{focusKeys.length ? 'Nothing ready in focus projects.' : 'No focus projects — star one below.'}</p>
       )}
       {n.other.length > 0 && (
         <details className={ui.disclosure}>
           <summary>Ready elsewhere ({n.other.length})</summary>
-          <TaskRows tasks={n.other} />
+          <IssueRows issues={n.other} />
         </details>
       )}
 

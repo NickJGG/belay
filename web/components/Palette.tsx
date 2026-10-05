@@ -3,34 +3,34 @@ import { useState } from 'react';
 import { Command } from 'cmdk';
 import { STATUS_KEYS } from '../../src/keys.ts';
 import { sectionNeighbours, sidebarSections, type MoveTarget, type SidebarProject } from '../../src/sidebar.ts';
-import type { TaskStatus } from '@/lib/types';
+import type { IssueStatus } from '@/lib/types';
 import { projectHref } from './bits';
 import { Kbd, useModKey } from './Kbd';
 import { Modal } from './Modal';
 import { StatusIcon } from './StatusIcon';
 import styles from './Keys.module.css';
 
-export interface PaletteTask {
+export interface PaletteIssue {
   id: string;
   title: string;
-  status: TaskStatus;
+  status: IssueStatus;
   project: string;
   high: boolean;
 }
 
 export interface PaletteData {
   projects: SidebarProject[];
-  tasks: PaletteTask[];
+  issues: PaletteIssue[];
 }
 
-/** `project` picks where a new task goes; `title` names it. */
+/** `project` picks where a new issue goes; `title` names it. */
 export type PalettePage = { kind: 'root' } | { kind: 'project' } | { kind: 'title'; project: string };
 
 interface Actions {
-  setStatus: (id: string, s: TaskStatus) => void;
+  setStatus: (id: string, s: IssueStatus) => void;
   setHigh: (id: string, high: boolean) => void;
   open: (id: string) => void;
-  create: (project: string, title: string, status: TaskStatus) => Promise<void>;
+  create: (project: string, title: string, status: IssueStatus) => Promise<void>;
   moveProject: (key: string, move: MoveTarget) => void;
   help: () => void;
   go: (href: string) => void;
@@ -40,8 +40,8 @@ interface Props {
   data: PaletteData;
   page: PalettePage | undefined;
   setPage: (p: PalettePage | undefined) => void;
-  /** The selected task, or the one whose page this is. */
-  target: PaletteTask | undefined;
+  /** The selected issue, or the one whose page this is. */
+  target: PaletteIssue | undefined;
   onTargetPage: boolean;
   defaultProject: string | undefined;
   act: Actions;
@@ -76,7 +76,7 @@ function Body({ data, page, setPage, target, onTargetPage, defaultProject, act }
   const here = defaultProject?.toUpperCase();
   const { prev, next } = here ? sectionNeighbours(sidebarSections(data.projects), here) : {};
 
-  const placeholder = { root: 'Type a command or search…', project: 'Create a task in which project?', title: `New task in ${project?.name ?? ''}` }[page.kind];
+  const placeholder = { root: 'Type a command or search…', project: 'Create an issue in which project?', title: `New issue in ${project?.name ?? ''}` }[page.kind];
 
   const back = (e: React.KeyboardEvent) => {
     if (e.key !== 'Backspace' || search || page.kind === 'root') return;
@@ -135,9 +135,9 @@ function Body({ data, page, setPage, target, onTargetPage, defaultProject, act }
                   <span className={styles.grow}>{target.high ? 'Remove high priority' : 'Set high priority'}</span>
                 </Command.Item>
                 {!onTargetPage && (
-                  <Command.Item value="open task" onSelect={then(() => act.open(target.id))} className={styles.item}>
+                  <Command.Item value="open issue" onSelect={then(() => act.open(target.id))} className={styles.item}>
                     <span className={styles.icon} />
-                    <span className={styles.grow}>Open task</span>
+                    <span className={styles.grow}>Open issue</span>
                     <Kbd>E</Kbd>
                   </Command.Item>
                 )}
@@ -145,18 +145,18 @@ function Body({ data, page, setPage, target, onTargetPage, defaultProject, act }
             )}
             <Command.Group heading="Actions" className={styles.group}>
               <Command.Item
-                value="create task new"
+                value="create issue new"
                 onSelect={() => setPage(defaultProject ? { kind: 'title', project: defaultProject } : { kind: 'project' })}
                 className={styles.item}
               >
                 <span className={styles.icon}>+</span>
-                <span className={styles.grow}>Create task{defaultProject ? ` in ${defaultProject}` : '…'}</span>
+                <span className={styles.grow}>Create issue{defaultProject ? ` in ${defaultProject}` : '…'}</span>
                 <Kbd>C</Kbd>
               </Command.Item>
               {defaultProject && (
-                <Command.Item value="create task in another project" onSelect={() => setPage({ kind: 'project' })} className={styles.item}>
+                <Command.Item value="create issue in another project" onSelect={() => setPage({ kind: 'project' })} className={styles.item}>
                   <span className={styles.icon}>+</span>
-                  <span className={styles.grow}>Create task in another project…</span>
+                  <span className={styles.grow}>Create issue in another project…</span>
                 </Command.Item>
               )}
               {here && prev && (
@@ -194,10 +194,10 @@ function Body({ data, page, setPage, target, onTargetPage, defaultProject, act }
                 </Command.Item>
               ))}
             </Command.Group>
-            {/* Hundreds of tasks would bury everything else, so they appear only once there's a query. */}
+            {/* Hundreds of issues would bury everything else, so they appear only once there's a query. */}
             {search.trim() && (
-              <Command.Group heading="Tasks" className={styles.group}>
-                {data.tasks.map((t) => (
+              <Command.Group heading="Issues" className={styles.group}>
+                {data.issues.map((t) => (
                   <Command.Item key={t.id} value={`${t.id} ${t.title}`} onSelect={then(() => act.open(t.id))} className={styles.item}>
                     <StatusIcon status={t.status} />
                     <span className={styles.id}>{t.id}</span>

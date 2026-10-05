@@ -1,29 +1,29 @@
-/** Small shared pieces for task and project rows. */
+/** Small shared pieces for issue and project rows. */
 import Link from 'next/link';
-import type { Task } from '@/lib/types';
+import type { Issue } from '@/lib/types';
 import ui from './ui.module.css';
 
-export function Flags({ task }: { task: Pick<Task, 'priority' | 'source'> }) {
+export function Flags({ issue }: { issue: Pick<Issue, 'priority' | 'source'> }) {
   return (
     <>
-      {task.priority === 'high' && (
+      {issue.priority === 'high' && (
         <span className={ui.high} title="High priority">
           !!
         </span>
       )}
-      {task.source === 'claude' && <span className={ui.src}>claude</span>}
+      {issue.source === 'claude' && <span className={ui.src}>claude</span>}
     </>
   );
 }
 
 export const projectHref = (key: string) => `/p/${encodeURIComponent(key)}`;
 
-export const taskHref = (id: string) => `/t/${encodeURIComponent(id)}`;
+export const issueHref = (id: string) => `/i/${encodeURIComponent(id)}`;
 
 /** `stretch` makes the link cover its whole `ui.row`. */
-export function TaskLink({ id, stretch }: { id: string; stretch?: boolean }) {
+export function IssueLink({ id, stretch }: { id: string; stretch?: boolean }) {
   return (
-    <Link className={`${ui.mono} ${ui.muted} ${stretch ? ui.stretch : ''}`} href={taskHref(id)}>
+    <Link className={`${ui.mono} ${ui.muted} ${stretch ? ui.stretch : ''}`} href={issueHref(id)}>
       {id}
     </Link>
   );

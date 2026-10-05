@@ -1,4 +1,4 @@
-/** Server-sent events: one message per burst of changes in the data dir, naming the task and project IDs touched. */
+/** Server-sent events: one message per burst of changes in the data dir, naming the issue and project IDs touched. */
 import { watch } from 'node:fs';
 import { dataDir } from '../../../src/config.ts';
 import { entityForPath } from '../../../src/store.ts';
@@ -15,7 +15,7 @@ export function GET(request: Request) {
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const tasks = new Set<string>();
+      const issues = new Set<string>();
       const projects = new Set<string>();
       let timer: ReturnType<typeof setTimeout> | undefined;
       let closed = false;
@@ -29,15 +29,15 @@ export function GET(request: Request) {
       };
       const flush = () => {
         timer = undefined;
-        send(`data: ${JSON.stringify({ tasks: [...tasks], projects: [...projects] })}\n\n`);
-        tasks.clear();
+        send(`data: ${JSON.stringify({ issues: [...issues], projects: [...projects] })}\n\n`);
+        issues.clear();
         projects.clear();
       };
 
       const watcher = watch(dir, { recursive: true }, (_event, file) => {
         const rel = file?.toString();
         const entity = rel ? entityForPath(rel) : undefined;
-        if (entity) (entity.kind === 'task' ? tasks : projects).add(entity.id);
+        if (entity) (entity.kind === 'issue' ? issues : projects).add(entity.id);
         // A null name means the platform couldn't say what changed; settings.yaml carries the theme and accent, order.yaml the sidebar order.
         else if (rel !== undefined && rel !== 'settings.yaml' && rel !== 'order.yaml') return;
         clearTimeout(timer);

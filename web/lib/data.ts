@@ -10,4 +10,4 @@ export const settings = cache(() => loadSettings(dataDir()));
 export { dataDir };
 
 export { plural } from '../../src/digest.ts';
-export { filterTasks, indexTasks, isReady, next, oldestFirst, openBlockers, parseTaskFilter, projectBoard, projectCounts } from '../../src/query.ts';
+export { filterIssues, indexIssues, isReady, next, oldestFirst, openBlockers, parseIssueFilter, projectBoard, projectCounts } from '../../src/query.ts';

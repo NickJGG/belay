@@ -6,8 +6,8 @@ import { SidebarProjects } from './SidebarProjects';
 import styles from './Sidebar.module.css';
 
 export function Sidebar() {
-  const { projects, tasks } = ctx();
-  const ideas = tasks.filter((t) => t.status === 'idea').length;
+  const { projects, issues } = ctx();
+  const ideas = issues.filter((t) => t.status === 'idea').length;
   const archived = projects.filter((p) => p.status === 'archived').length;
 
   return (

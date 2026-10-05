@@ -1,7 +1,7 @@
-import type { TaskStatus } from '@/lib/types';
+import type { IssueStatus } from '@/lib/types';
 import styles from './StatusIcon.module.css';
 
-const SHAPES: Record<TaskStatus, React.ReactNode> = {
+const SHAPES: Record<IssueStatus, React.ReactNode> = {
   idea: <circle cx="7" cy="7" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeDasharray="2.2 1.9" />,
   todo: <circle cx="7" cy="7" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.4" />,
   doing: (
@@ -24,7 +24,7 @@ const SHAPES: Record<TaskStatus, React.ReactNode> = {
   ),
 };
 
-export function StatusIcon({ status, size = 14 }: { status: TaskStatus; size?: number }) {
+export function StatusIcon({ status, size = 14 }: { status: IssueStatus; size?: number }) {
   return (
     <svg className={`${styles.icon} ${styles[status]}`} width={size} height={size} viewBox="0 0 14 14" role="img" aria-label={status}>
       {SHAPES[status]}

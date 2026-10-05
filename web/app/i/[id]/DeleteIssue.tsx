@@ -1,17 +1,17 @@
 'use client';
 import { useRef, useTransition } from 'react';
 import { Trash2 } from 'lucide-react';
-import { removeTask } from '@/app/actions';
+import { removeIssue } from '@/app/actions';
 import { toastError } from '@/components/Toaster';
 import ui from '@/components/ui.module.css';
-import styles from './task.module.css';
+import styles from './issue.module.css';
 
-export function DeleteTask({ id, dependents }: { id: string; dependents: { id: string; title: string }[] }) {
+export function DeleteIssue({ id, dependents }: { id: string; dependents: { id: string; title: string }[] }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [pending, start] = useTransition();
   const confirm = () =>
     start(async () => {
-      const r = await removeTask(id);
+      const r = await removeIssue(id);
       if (r?.error) {
         dialog.current?.close();
         toastError(r.error);
@@ -21,13 +21,13 @@ export function DeleteTask({ id, dependents }: { id: string; dependents: { id: s
   return (
     <>
       <button type="button" className={styles.deleteBtn} onClick={() => dialog.current?.showModal()}>
-        <Trash2 size={13} aria-hidden /> Delete task
+        <Trash2 size={13} aria-hidden /> Delete issue
       </button>
       <dialog ref={dialog} className={styles.dialog} aria-labelledby="delete-title">
         <h2 id="delete-title" className={styles.dialogTitle}>
           Delete {id}?
         </h2>
-        <p>This erases the task file and can't be undone.</p>
+        <p>This erases the issue file and can't be undone.</p>
         {dependents.length > 0 && (
           <>
             <p>It will be removed as a blocker from:</p>

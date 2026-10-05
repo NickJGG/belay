@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { dataDir } from '../../src/config.ts';
-import { ConflictError, Ctx, addTask, bodyHash, deleteTask, editProject, editTask, moveProject, replaceBody, setFocus, setPriority, setStatus } from '../../src/ops.ts';
+import { ConflictError, Ctx, addIssue, bodyHash, deleteIssue, editProject, editIssue, moveProject, replaceBody, setFocus, setPriority, setStatus } from '../../src/ops.ts';
 import type { DropPatch, MoveTarget } from '../../src/sidebar.ts';
 import { THEMES, saveSettings, type Theme } from '../../src/settings.ts';
 import { isAccent } from '@/lib/accents';
@@ -27,21 +27,21 @@ async function run(op: (ctx: Ctx) => void): Promise<Result> {
   return {};
 }
 
-export async function setTaskStatus(id: unknown, status: unknown): Promise<Result> {
+export async function setIssueStatus(id: unknown, status: unknown): Promise<Result> {
   return run((ctx) => void setStatus(ctx, str(id, 'id'), str(status, 'status')));
 }
 
-export async function setTaskPriority(id: unknown, high: unknown): Promise<Result> {
+export async function setIssuePriority(id: unknown, high: unknown): Promise<Result> {
   return run((ctx) => void setPriority(ctx, str(id, 'id'), high === true));
 }
 
-export async function setTaskTitle(id: unknown, title: unknown): Promise<Result> {
-  return run((ctx) => void editTask(ctx, str(id, 'id'), { title: str(title, 'title') }));
+export async function setIssueTitle(id: unknown, title: unknown): Promise<Result> {
+  return run((ctx) => void editIssue(ctx, str(id, 'id'), { title: str(title, 'title') }));
 }
 
-export async function setTaskBlockers(id: unknown, blockers: unknown): Promise<Result> {
+export async function setIssueBlockers(id: unknown, blockers: unknown): Promise<Result> {
   if (!Array.isArray(blockers)) return { error: 'blockers must be a list' };
-  return run((ctx) => void editTask(ctx, str(id, 'id'), { blockers: blockers.map((b) => str(b, 'blocker')) }));
+  return run((ctx) => void editIssue(ctx, str(id, 'id'), { blockers: blockers.map((b) => str(b, 'blocker')) }));
 }
 
 export type BodyResult = Result & {
@@ -51,7 +51,7 @@ export type BodyResult = Result & {
   conflict?: string;
 };
 
-export async function saveTaskBody(id: unknown, body: unknown, expectedHash: unknown): Promise<BodyResult> {
+export async function saveIssueBody(id: unknown, body: unknown, expectedHash: unknown): Promise<BodyResult> {
   let saved: string;
   try {
     saved = replaceBody(new Ctx(dataDir()), str(id, 'id'), str(body, 'body'), str(expectedHash, 'hash')).body;
@@ -63,13 +63,13 @@ export async function saveTaskBody(id: unknown, body: unknown, expectedHash: unk
   return { hash: bodyHash(saved) };
 }
 
-/** On success, navigates to the task's project, since its own page no longer exists. */
-export async function removeTask(id: unknown): Promise<Result> {
+/** On success, navigates to the issue's project, since its own page no longer exists. */
+export async function removeIssue(id: unknown): Promise<Result> {
   let project = '';
   const r = await run((ctx) => {
-    const t = ctx.task(str(id, 'id'));
+    const t = ctx.issue(str(id, 'id'));
     project = t.project;
-    deleteTask(ctx, t.id);
+    deleteIssue(ctx, t.id);
   });
   if (r.error) return r;
   redirect(`/p/${encodeURIComponent(project)}`);
@@ -82,7 +82,7 @@ export async function setProjectFocus(key: unknown, focus: unknown): Promise<Res
 export async function quickAdd(key: unknown, title: unknown, status: unknown): Promise<Result & { id?: string }> {
   let id: string | undefined;
   const r = await run((ctx) => {
-    id = addTask(ctx, { project: str(key, 'key'), title: str(title, 'title'), status: str(status, 'status') }).id;
+    id = addIssue(ctx, { project: str(key, 'key'), title: str(title, 'title'), status: str(status, 'status') }).id;
   });
   return { ...r, id };
 }

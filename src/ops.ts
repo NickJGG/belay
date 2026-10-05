@@ -6,30 +6,30 @@ import { createHash } from 'node:crypto';
 import { existsSync, unlinkSync } from 'node:fs';
 import { dataDir } from './config.ts';
 import { suggestKey } from './projectkey.ts';
-import { indexTasks, openBlockers } from './query.ts';
+import { indexIssues, openBlockers } from './query.ts';
 import { reorder, type MoveTarget } from './sidebar.ts';
 import {
   PROJECT_STATUSES,
   SOURCES,
-  TASK_STATUSES,
+  ISSUE_STATUSES,
   canon,
-  createTask,
-  deleteTaskFile,
+  createIssue,
+  deleteIssueFile,
   loadOrder,
   loadProjects,
-  loadTasks,
+  loadIssues,
   normalizeStoredPath,
   parseId,
   projectFile,
   saveOrder,
   saveProject,
-  saveTask,
+  saveIssue,
   sortByOrder,
   today,
   validateKey,
   type Project,
-  type Task,
-  type TaskStatus,
+  type Issue,
+  type IssueStatus,
 } from './store.ts';
 
 export function oneOf<T extends string>(value: string, allowed: readonly T[], what: string): T {
@@ -51,15 +51,15 @@ export class Ctx {
   readonly order: string[];
   /** Sorted by `order` (see `sortByOrder`). */
   readonly projects: Project[];
-  readonly tasks: Task[];
-  readonly byId: Map<string, Task>;
+  readonly issues: Issue[];
+  readonly byId: Map<string, Issue>;
 
   constructor(dir = dataDir()) {
     this.dir = dir;
     this.order = loadOrder(dir);
     this.projects = sortByOrder(loadProjects(dir), this.order);
-    this.tasks = loadTasks(dir);
-    this.byId = indexTasks(this.tasks);
+    this.issues = loadIssues(dir);
+    this.byId = indexIssues(this.issues);
   }
 
   project(key: string): Project {
@@ -68,31 +68,31 @@ export class Ctx {
     return p;
   }
 
-  task(id: string): Task {
+  issue(id: string): Issue {
     const t = this.byId.get(canon(id));
-    if (!t) throw new Error(`no task '${id}'`);
+    if (!t) throw new Error(`no issue '${id}'`);
     return t;
   }
 
   /** Returns the blockers in their stored form. */
   checkBlockers(id: string | undefined, blockers: string[]): string[] {
     return blockers.map((b) => {
-      const t = this.task(b);
+      const t = this.issue(b);
       if (t.id === id) throw new Error(`${id} cannot block itself`);
       return t.id;
     });
   }
 }
 
-export function setStatus(ctx: Ctx, id: string, value: string): { before: TaskStatus; task: Task; open: Task[] } {
-  const current = ctx.task(id);
-  const status = oneOf(value, TASK_STATUSES, 'status');
-  const task = { ...current, status, updated: today() };
-  saveTask(ctx.dir, task);
-  return { before: current.status, task, open: openBlockers(current, ctx.byId) };
+export function setStatus(ctx: Ctx, id: string, value: string): { before: IssueStatus; issue: Issue; open: Issue[] } {
+  const current = ctx.issue(id);
+  const status = oneOf(value, ISSUE_STATUSES, 'status');
+  const issue = { ...current, status, updated: today() };
+  saveIssue(ctx.dir, issue);
+  return { before: current.status, issue, open: openBlockers(current, ctx.byId) };
 }
 
-export interface NewTask {
+export interface NewIssue {
   title: string;
   project: string;
   status?: string;
@@ -104,13 +104,13 @@ export interface NewTask {
   note?: string;
 }
 
-export function addTask(ctx: Ctx, t: NewTask): Task {
+export function addIssue(ctx: Ctx, t: NewIssue): Issue {
   const title = t.title.trim();
   if (!title) throw new Error('title is empty');
   const project = ctx.project(t.project);
   const blockers = ctx.checkBlockers(undefined, t.blockers ?? []);
   const date = today();
-  return createTask(ctx.dir, {
+  return createIssue(ctx.dir, {
     title,
     project: project.key,
     status: oneOf(t.status ?? 'todo', ['idea', 'todo'] as const, 'status'),
@@ -125,13 +125,13 @@ export function addTask(ctx: Ctx, t: NewTask): Task {
   });
 }
 
-export function setPriority(ctx: Ctx, id: string, high: boolean): Task {
-  const task = { ...ctx.task(id), priority: high ? ('high' as const) : undefined, updated: today() };
-  saveTask(ctx.dir, task);
-  return task;
+export function setPriority(ctx: Ctx, id: string, high: boolean): Issue {
+  const issue = { ...ctx.issue(id), priority: high ? ('high' as const) : undefined, updated: today() };
+  saveIssue(ctx.dir, issue);
+  return issue;
 }
 
-export interface TaskPatch {
+export interface IssuePatch {
   title?: string;
   blockers?: string[];
   /** `high` or `none`. */
@@ -145,25 +145,25 @@ export interface TaskPatch {
   body?: string;
 }
 
-export function editTask(ctx: Ctx, id: string, patch: TaskPatch): Task {
-  const task = { ...ctx.task(id) };
+export function editIssue(ctx: Ctx, id: string, patch: IssuePatch): Issue {
+  const issue = { ...ctx.issue(id) };
   if (patch.title !== undefined) {
     if (!patch.title.trim()) throw new Error('title is empty');
-    task.title = patch.title.trim();
+    issue.title = patch.title.trim();
   }
   if (patch.blockers !== undefined) {
-    task.blocked_by = ctx.checkBlockers(task.id, patch.blockers);
+    issue.blocked_by = ctx.checkBlockers(issue.id, patch.blockers);
   }
   if (patch.priority !== undefined) {
-    task.priority = oneOf(patch.priority, ['high', 'none'] as const, 'priority') === 'high' ? 'high' : undefined;
+    issue.priority = oneOf(patch.priority, ['high', 'none'] as const, 'priority') === 'high' ? 'high' : undefined;
   }
-  if (patch.grill !== undefined) task.grill = patch.grill || undefined;
-  if (patch.plan !== undefined) task.plan = patch.plan || undefined;
-  if (patch.body !== undefined) task.body = patch.body.trim();
-  if (patch.note !== undefined) task.body = appendNote(task.body, patch.note);
-  task.updated = today();
-  saveTask(ctx.dir, task);
-  return task;
+  if (patch.grill !== undefined) issue.grill = patch.grill || undefined;
+  if (patch.plan !== undefined) issue.plan = patch.plan || undefined;
+  if (patch.body !== undefined) issue.body = patch.body.trim();
+  if (patch.note !== undefined) issue.body = appendNote(issue.body, patch.note);
+  issue.updated = today();
+  saveIssue(ctx.dir, issue);
+  return issue;
 }
 
 export function bodyHash(body: string): string {
@@ -182,19 +182,19 @@ export class ConflictError extends Error {
 }
 
 /** With `expectedHash`, refuses to overwrite a body that no longer hashes to it. */
-export function replaceBody(ctx: Ctx, id: string, body: string, expectedHash?: string): Task {
-  const current = ctx.task(id).body;
+export function replaceBody(ctx: Ctx, id: string, body: string, expectedHash?: string): Issue {
+  const current = ctx.issue(id).body;
   if (expectedHash !== undefined && expectedHash !== bodyHash(current)) throw new ConflictError(id, current);
-  return editTask(ctx, id, { body });
+  return editIssue(ctx, id, { body });
 }
 
 /**
  * Strips `id` from every dependent's `blocked_by` (with a note) before removing the file, so a
- * crash midway leaves an orphaned task rather than a dangling reference. Returns the dependents.
+ * crash midway leaves an orphaned issue rather than a dangling reference. Returns the dependents.
  */
-export function deleteTask(ctx: Ctx, typed: string): Task[] {
-  const { id } = ctx.task(typed);
-  const dependents = ctx.tasks
+export function deleteIssue(ctx: Ctx, typed: string): Issue[] {
+  const { id } = ctx.issue(typed);
+  const dependents = ctx.issues
     .filter((t) => t.blocked_by.includes(id))
     .map((t) => ({
       ...t,
@@ -202,8 +202,8 @@ export function deleteTask(ctx: Ctx, typed: string): Task[] {
       body: appendNote(t.body, `blocker ${id} deleted`),
       updated: today(),
     }));
-  for (const t of dependents) saveTask(ctx.dir, t);
-  deleteTaskFile(ctx.dir, id);
+  for (const t of dependents) saveIssue(ctx.dir, t);
+  deleteIssueFile(ctx.dir, id);
   return dependents;
 }
 
@@ -266,25 +266,25 @@ export function addProject(ctx: Ctx, n: NewProject): { project: Project; missing
 }
 
 /**
- * Renames a project's key and its tasks' IDs (numbers kept), rewriting `blocked_by` everywhere.
- * New files are written before old ones are removed, so a crash leaves duplicates, never lost tasks.
+ * Renames a project's key and its issues' IDs (numbers kept), rewriting `blocked_by` everywhere.
+ * New files are written before old ones are removed, so a crash leaves duplicates, never lost issues.
  */
 export function rekeyProject(ctx: Ctx, from: string, to: string): { project: Project; renamed: Map<string, string> } {
   const old = ctx.project(from);
   const key = canon(to);
   validateKey(key);
   if (ctx.projects.some((p) => p.key === key) || existsSync(projectFile(ctx.dir, key))) throw new Error(`project '${key}' already exists`);
-  const own = ctx.tasks.filter((t) => t.project === old.key);
+  const own = ctx.issues.filter((t) => t.project === old.key);
   const renamed = new Map(own.map((t) => [t.id, `${key}-${parseId(t.id)!.n}`]));
   const remap = (ids: string[]) => ids.map((b) => renamed.get(b) ?? b);
 
   const project = { ...old, key };
   saveProject(ctx.dir, project);
-  for (const t of own) saveTask(ctx.dir, { ...t, id: renamed.get(t.id)!, project: key, blocked_by: remap(t.blocked_by) });
-  for (const t of ctx.tasks) {
-    if (t.project !== old.key && t.blocked_by.some((b) => renamed.has(b))) saveTask(ctx.dir, { ...t, blocked_by: remap(t.blocked_by) });
+  for (const t of own) saveIssue(ctx.dir, { ...t, id: renamed.get(t.id)!, project: key, blocked_by: remap(t.blocked_by) });
+  for (const t of ctx.issues) {
+    if (t.project !== old.key && t.blocked_by.some((b) => renamed.has(b))) saveIssue(ctx.dir, { ...t, blocked_by: remap(t.blocked_by) });
   }
-  for (const t of own) deleteTaskFile(ctx.dir, t.id);
+  for (const t of own) deleteIssueFile(ctx.dir, t.id);
   unlinkSync(projectFile(ctx.dir, old.key));
   if (ctx.order.includes(old.key)) saveOrder(ctx.dir, ctx.order.map((k) => (k === old.key ? key : k)));
   return { project, renamed };

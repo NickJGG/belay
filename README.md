@@ -1,6 +1,6 @@
 # tracker
 
-A personal task tracker for Claude Code work: the `tracker` CLI (`src/`) and a local dashboard (`web/`). Run `tracker help` for the commands.
+A personal issue tracker for Claude Code work: the `tracker` CLI (`src/`) and a local dashboard (`web/`). Run `tracker help` for the commands.
 
 ## Dashboard setup
 

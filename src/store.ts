@@ -1,5 +1,5 @@
 /**
- * File format for the data dir: `projects/<key>.md` and `tasks/<key>-<n>.md`, each a YAML
+ * File format for the data dir: `projects/<key>.md` and `issues/<key>-<n>.md`, each a YAML
  * frontmatter block followed by a free-form markdown body. Everything that writes goes
  * through here so the format rules (field order, validation, ID allocation) live in one place.
  *
@@ -10,11 +10,11 @@ import { existsSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFil
 import { join, resolve } from 'node:path';
 import { parse, stringify } from 'yaml';
 
-export const TASK_STATUSES = ['idea', 'todo', 'doing', 'done', 'dropped'] as const;
+export const ISSUE_STATUSES = ['idea', 'todo', 'doing', 'done', 'dropped'] as const;
 export const PROJECT_STATUSES = ['active', 'paused', 'archived'] as const;
 export const SOURCES = ['user', 'claude'] as const;
 
-export type TaskStatus = (typeof TASK_STATUSES)[number];
+export type IssueStatus = (typeof ISSUE_STATUSES)[number];
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 export type Source = (typeof SOURCES)[number];
 
@@ -28,11 +28,11 @@ export interface Project {
   body: string;
 }
 
-export interface Task {
+export interface Issue {
   id: string;
   title: string;
   project: string;
-  status: TaskStatus;
+  status: IssueStatus;
   blocked_by: string[];
   priority?: 'high';
   source: Source;
@@ -149,9 +149,9 @@ export function serializeProject(p: Project): string {
   return joinFrontmatter({ key, name, paths, status, focus, group }, body);
 }
 
-// --- tasks ---
+// --- issues ---
 
-export function parseTask(src: string, where: string): Task {
+export function parseIssue(src: string, where: string): Issue {
   const { data: d, body } = splitFrontmatter(src, where);
   const id = canon(text(d, 'id', where));
   const project = canon(text(d, 'project', where));
@@ -161,7 +161,7 @@ export function parseTask(src: string, where: string): Task {
     id,
     title: text(d, 'title', where),
     project,
-    status: oneOf(d, 'status', TASK_STATUSES, where),
+    status: oneOf(d, 'status', ISSUE_STATUSES, where),
     blocked_by: textList(d, 'blocked_by', where).map(canon),
     priority,
     source: oneOf(d, 'source', SOURCES, where, 'user'),
@@ -173,7 +173,7 @@ export function parseTask(src: string, where: string): Task {
   };
 }
 
-export function serializeTask(t: Task): string {
+export function serializeIssue(t: Issue): string {
   const { id, title, project, status, blocked_by, priority, source, grill, plan, created, updated, body } = t;
   return joinFrontmatter({ id, title, project, status, blocked_by, priority, source, grill, plan, created, updated }, body);
 }
@@ -184,15 +184,15 @@ export function projectFile(dir: string, key: string): string {
   return join(dir, 'projects', `${key.toLowerCase()}.md`);
 }
 
-export function taskFile(dir: string, id: string): string {
-  return join(dir, 'tasks', `${id.toLowerCase()}.md`);
+export function issueFile(dir: string, id: string): string {
+  return join(dir, 'issues', `${id.toLowerCase()}.md`);
 }
 
-/** What a path relative to the data dir holds, if it's a task or project file. Temp files from `writeAtomic` don't count. */
-export function entityForPath(rel: string): { kind: 'task' | 'project'; id: string } | undefined {
-  const m = /^(tasks|projects)[\\/]([^\\/]+)\.md$/.exec(rel);
+/** What a path relative to the data dir holds, if it's an issue or project file. Temp files from `writeAtomic` don't count. */
+export function entityForPath(rel: string): { kind: 'issue' | 'project'; id: string } | undefined {
+  const m = /^(issues|projects)[\\/]([^\\/]+)\.md$/.exec(rel);
   if (!m) return undefined;
-  return { kind: m[1] === 'tasks' ? 'task' : 'project', id: canon(m[2]) };
+  return { kind: m[1] === 'issues' ? 'issue' : 'project', id: canon(m[2]) };
 }
 
 function mdFiles(sub: string): string[] {
@@ -214,12 +214,12 @@ export function loadProjects(dir: string): Project[] {
   });
 }
 
-export function loadTasks(dir: string): Task[] {
-  const sub = join(dir, 'tasks');
+export function loadIssues(dir: string): Issue[] {
+  const sub = join(dir, 'issues');
   return mdFiles(sub)
     .map((f) => {
-      const t = parseTask(readFileSync(join(sub, f), 'utf8'), `tasks/${f}`);
-      if (`${t.id.toLowerCase()}.md` !== f) throw new Error(`tasks/${f}: id '${t.id}' does not match file name`);
+      const t = parseIssue(readFileSync(join(sub, f), 'utf8'), `issues/${f}`);
+      if (`${t.id.toLowerCase()}.md` !== f) throw new Error(`issues/${f}: id '${t.id}' does not match file name`);
       return t;
     })
     .sort((a, b) => compareIds(a.id, b.id));
@@ -257,17 +257,17 @@ export function sortByOrder(projects: Project[], order: string[]): Project[] {
   });
 }
 
-export function saveTask(dir: string, t: Task): void {
-  writeAtomic(taskFile(dir, t.id), serializeTask(t));
+export function saveIssue(dir: string, t: Issue): void {
+  writeAtomic(issueFile(dir, t.id), serializeIssue(t));
 }
 
-export function deleteTaskFile(dir: string, id: string): void {
-  unlinkSync(taskFile(dir, id));
+export function deleteIssueFile(dir: string, id: string): void {
+  unlinkSync(issueFile(dir, id));
 }
 
-export function nextTaskNumber(dir: string, key: string): number {
+export function nextIssueNumber(dir: string, key: string): number {
   let max = 0;
-  for (const f of mdFiles(join(dir, 'tasks'))) {
+  for (const f of mdFiles(join(dir, 'issues'))) {
     const id = parseId(f.slice(0, -3));
     if (id?.key === key) max = Math.max(max, id.n);
   }
@@ -275,12 +275,12 @@ export function nextTaskNumber(dir: string, key: string): number {
 }
 
 /** Allocates the next ID for `t.project` and writes the file, never overwriting an existing one. */
-export function createTask(dir: string, t: Omit<Task, 'id'>): Task {
-  for (let n = nextTaskNumber(dir, t.project); ; n++) {
-    const task = { id: `${t.project}-${n}`, ...t };
+export function createIssue(dir: string, t: Omit<Issue, 'id'>): Issue {
+  for (let n = nextIssueNumber(dir, t.project); ; n++) {
+    const issue = { id: `${t.project}-${n}`, ...t };
     try {
-      writeFileSync(taskFile(dir, task.id), serializeTask(task), { flag: 'wx' });
-      return task;
+      writeFileSync(issueFile(dir, issue.id), serializeIssue(issue), { flag: 'wx' });
+      return issue;
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
     }

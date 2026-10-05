@@ -1,7 +1,7 @@
-import { TaskRow } from '@/components/controls';
+import { IssueRow } from '@/components/controls';
 import { StatusGroup } from '@/components/StatusGroup';
 import ui from '@/components/ui.module.css';
-import { ctx, filterTasks, oldestFirst, parseTaskFilter } from '@/lib/data';
+import { ctx, filterIssues, oldestFirst, parseIssueFilter } from '@/lib/data';
 import { IssueFilters } from './IssueFilters';
 
 export const dynamic = 'force-dynamic';
@@ -18,9 +18,9 @@ function heading(q: Query): string {
 
 export default async function Issues({ searchParams }: { searchParams: Promise<Query> }) {
   const q = await searchParams;
-  const filter = parseTaskFilter(q);
-  const { projects, tasks, byId } = ctx();
-  const shown = filterTasks(tasks, filter, byId).sort(oldestFirst);
+  const filter = parseIssueFilter(q);
+  const { projects, issues, byId } = ctx();
+  const shown = filterIssues(issues, filter, byId).sort(oldestFirst);
   return (
     <div className={ui.page}>
       <header className={ui.header}>
@@ -36,7 +36,7 @@ export default async function Issues({ searchParams }: { searchParams: Promise<Q
           <StatusGroup key={s} status={s} count={list.length}>
             <ul className={ui.rows}>
               {list.map((t) => (
-                <TaskRow key={t.id} task={t} />
+                <IssueRow key={t.id} issue={t} />
               ))}
             </ul>
           </StatusGroup>

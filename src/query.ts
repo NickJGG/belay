@@ -1,36 +1,36 @@
 import { resolve } from 'node:path';
-import { SOURCES, TASK_STATUSES, compareIds, type Project, type Source, type Task, type TaskStatus } from './store.ts';
+import { SOURCES, ISSUE_STATUSES, compareIds, type Project, type Source, type Issue, type IssueStatus } from './store.ts';
 
-export type TaskIndex = Map<string, Task>;
+export type IssueIndex = Map<string, Issue>;
 
-export function indexTasks(tasks: Task[]): TaskIndex {
-  return new Map(tasks.map((t) => [t.id, t]));
+export function indexIssues(issues: Issue[]): IssueIndex {
+  return new Map(issues.map((t) => [t.id, t]));
 }
 
-/** Blockers that are neither done nor dropped. A blocker ID with no task file doesn't block. */
-export function openBlockers(task: Task, byId: TaskIndex): Task[] {
-  return task.blocked_by
+/** Blockers that are neither done nor dropped. A blocker ID with no issue file doesn't block. */
+export function openBlockers(issue: Issue, byId: IssueIndex): Issue[] {
+  return issue.blocked_by
     .map((id) => byId.get(id))
-    .filter((b): b is Task => !!b && b.status !== 'done' && b.status !== 'dropped');
+    .filter((b): b is Issue => !!b && b.status !== 'done' && b.status !== 'dropped');
 }
 
-export function isReady(task: Task, byId: TaskIndex): boolean {
-  return task.status === 'todo' && openBlockers(task, byId).length === 0;
+export function isReady(issue: Issue, byId: IssueIndex): boolean {
+  return issue.status === 'todo' && openBlockers(issue, byId).length === 0;
 }
 
 export interface ProjectCounts {
   doing: number;
   ready: number;
-  /** `todo` tasks with open blockers. */
+  /** `todo` issues with open blockers. */
   blocked: number;
   ideas: number;
-  /** Newest `updated` among the project's tasks. */
+  /** Newest `updated` among the project's issues. */
   lastTouched?: string;
 }
 
-export function projectCounts(project: Project, tasks: Task[], byId: TaskIndex): ProjectCounts {
+export function projectCounts(project: Project, issues: Issue[], byId: IssueIndex): ProjectCounts {
   const c: ProjectCounts = { doing: 0, ready: 0, blocked: 0, ideas: 0 };
-  for (const t of tasks) {
+  for (const t of issues) {
     if (t.project !== project.key) continue;
     if (t.status === 'doing') c.doing++;
     else if (t.status === 'idea') c.ideas++;
@@ -42,20 +42,20 @@ export function projectCounts(project: Project, tasks: Task[], byId: TaskIndex):
 }
 
 export interface Next {
-  doing: Task[];
-  high: Task[];
-  focus: Task[];
-  /** Ready tasks from active, non-focus projects; shown only with `--all`. */
-  other: Task[];
+  doing: Issue[];
+  high: Issue[];
+  focus: Issue[];
+  /** Ready issues from active, non-focus projects; shown only with `--all`. */
+  other: Issue[];
 }
 
-export const oldestFirst = (a: Task, b: Task) => a.created.localeCompare(b.created) || compareIds(a.id, b.id);
+export const oldestFirst = (a: Issue, b: Issue) => a.created.localeCompare(b.created) || compareIds(a.id, b.id);
 
-export function next(projects: Project[], tasks: Task[]): Next {
-  const byId = indexTasks(tasks);
+export function next(projects: Project[], issues: Issue[]): Next {
+  const byId = indexIssues(issues);
   const byKey = new Map(projects.map((p) => [p.key, p]));
   const result: Next = { doing: [], high: [], focus: [], other: [] };
-  for (const t of [...tasks].sort(oldestFirst)) {
+  for (const t of [...issues].sort(oldestFirst)) {
     if (t.status === 'doing') {
       result.doing.push(t);
       continue;
@@ -70,28 +70,28 @@ export function next(projects: Project[], tasks: Task[]): Next {
 }
 
 export interface Board {
-  idea: Task[];
+  idea: Issue[];
   /** Ready first, then blocked. */
-  todo: Task[];
-  doing: Task[];
+  todo: Issue[];
+  doing: Issue[];
   /** Newest first; only the recent window unless `older` was asked for. */
-  done: Task[];
-  /** Done tasks hidden by the window. */
+  done: Issue[];
+  /** Done issues hidden by the window. */
   olderDone: number;
-  dropped: Task[];
+  dropped: Issue[];
 }
 
 const DONE_WINDOW_DAYS = 14;
 
-/** A project's tasks by board column, high priority first within each. */
-export function projectBoard(key: string, tasks: Task[], opts: { today: string; older?: boolean }): Board {
-  const byId = indexTasks(tasks);
-  const own = tasks.filter((t) => t.project === key);
-  const high = (a: Task, b: Task) => Number(b.priority === 'high') - Number(a.priority === 'high') || oldestFirst(a, b);
-  const of = (s: Task['status']) => own.filter((t) => t.status === s).sort(high);
+/** A project's issues by board column, high priority first within each. */
+export function projectBoard(key: string, issues: Issue[], opts: { today: string; older?: boolean }): Board {
+  const byId = indexIssues(issues);
+  const own = issues.filter((t) => t.project === key);
+  const high = (a: Issue, b: Issue) => Number(b.priority === 'high') - Number(a.priority === 'high') || oldestFirst(a, b);
+  const of = (s: Issue['status']) => own.filter((t) => t.status === s).sort(high);
   const todo = of('todo');
   const done = of('done').sort((a, b) => b.updated.localeCompare(a.updated) || oldestFirst(a, b));
-  const days = (t: Task) => Math.round((Date.parse(opts.today) - Date.parse(t.updated)) / 86_400_000);
+  const days = (t: Issue) => Math.round((Date.parse(opts.today) - Date.parse(t.updated)) / 86_400_000);
   const recent = done.filter((t) => days(t) <= DONE_WINDOW_DAYS);
   return {
     idea: of('idea'),
@@ -123,26 +123,26 @@ export function projectForCwd(projects: Project[], cwd: string, platform = proce
   return best?.project;
 }
 
-export interface TaskFilter {
-  statuses: readonly TaskStatus[];
+export interface IssueFilter {
+  statuses: readonly IssueStatus[];
   project?: string;
-  /** Only todo tasks with no open blockers. */
+  /** Only todo issues with no open blockers. */
   ready?: boolean;
   priority?: 'high';
   source?: Source;
 }
 
-const OPEN_STATUSES: readonly TaskStatus[] = ['idea', 'todo', 'doing'];
+const OPEN_STATUSES: readonly IssueStatus[] = ['idea', 'todo', 'doing'];
 
 /**
  * Reads a filter from URL query values. Unknown values are dropped rather than rejected, so a
  * hand-typed or stale URL still renders. `status` is a comma list or `all`; it defaults to the open ones.
  */
-export function parseTaskFilter(q: Record<string, string | undefined>): TaskFilter {
+export function parseIssueFilter(q: Record<string, string | undefined>): IssueFilter {
   const statuses =
     q.status === 'all'
-      ? TASK_STATUSES
-      : (q.status ?? '').split(',').filter((s): s is TaskStatus => (TASK_STATUSES as readonly string[]).includes(s));
+      ? ISSUE_STATUSES
+      : (q.status ?? '').split(',').filter((s): s is IssueStatus => (ISSUE_STATUSES as readonly string[]).includes(s));
   return {
     statuses: statuses.length ? statuses : OPEN_STATUSES,
     project: q.project?.toUpperCase() || undefined,
@@ -152,8 +152,8 @@ export function parseTaskFilter(q: Record<string, string | undefined>): TaskFilt
   };
 }
 
-export function filterTasks(tasks: Task[], f: TaskFilter, byId: TaskIndex = indexTasks(tasks)): Task[] {
-  return tasks.filter(
+export function filterIssues(issues: Issue[], f: IssueFilter, byId: IssueIndex = indexIssues(issues)): Issue[] {
+  return issues.filter(
     (t) =>
       f.statuses.includes(t.status) &&
       (!f.project || t.project === f.project) &&

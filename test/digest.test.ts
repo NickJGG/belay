@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { digestLines } from '../src/digest.ts';
 import { grillForProject, grillMatches, grillMentions, projectTerms, type GrillSession } from '../src/grill.ts';
 import type { Session } from '../src/history.ts';
-import type { Project, Task } from '../src/store.ts';
+import type { Project, Issue } from '../src/store.ts';
 
 const project: Project = {
   key: 'ELV',
@@ -14,9 +14,9 @@ const project: Project = {
   body: '',
 };
 
-const task = (id: string, over: Partial<Task> = {}): Task => ({
+const issue = (id: string, over: Partial<Issue> = {}): Issue => ({
   id,
-  title: `Task ${id}`,
+  title: `Issue ${id}`,
   project: id.replace(/-\d+$/, ''),
   status: 'todo',
   blocked_by: [],
@@ -58,13 +58,13 @@ test('grillMatches includes the project tag', () => {
 });
 
 test('digestLines', () => {
-  const tasks = [
-    task('ELV-1', { status: 'doing' }),
-    task('ELV-2', { created: '2026-09-01' }),
-    task('ELV-3', { priority: 'high', created: '2026-10-02' }),
-    task('ELV-4', { blocked_by: ['ELV-1'] }),
-    task('ELV-5', { status: 'idea', grill: 'linked-elevator' }),
-    task('OTH-1'),
+  const issues = [
+    issue('ELV-1', { status: 'doing' }),
+    issue('ELV-2', { created: '2026-09-01' }),
+    issue('ELV-3', { priority: 'high', created: '2026-10-02' }),
+    issue('ELV-4', { blocked_by: ['ELV-1'] }),
+    issue('ELV-5', { status: 'idea', grill: 'linked-elevator' }),
+    issue('OTH-1'),
   ];
   const sessions: Session[] = [
     {
@@ -77,10 +77,10 @@ test('digestLines', () => {
     },
   ];
   const grills = [grill('elevator-call-button'), grill('linked-elevator'), grill('unrelated')];
-  const lines = digestLines(project, tasks, sessions, grills);
+  const lines = digestLines(project, issues, sessions, grills);
   assert.equal(lines[0], 'tracker: ELV — Rideable Elevators (focus)');
-  assert.equal(lines[1], 'doing: ELV-1 Task ELV-1');
-  assert.equal(lines[2], 'ready 2 (1 idea): ELV-3 Task ELV-3; ELV-2 Task ELV-2');
+  assert.equal(lines[1], 'doing: ELV-1 Issue ELV-1');
+  assert.equal(lines[2], 'ready 2 (1 idea): ELV-3 Issue ELV-3; ELV-2 Issue ELV-2');
   assert.match(lines[3], /^recent: 09-2[67] Call button light \(1 commit\)$/);
   assert.equal(lines[4], 'grill: 1 old session matches rideable/elevator (tracker search <word>)');
   assert.equal(lines.length, 5);
@@ -95,9 +95,9 @@ test('digestLines: tagged grill sessions', () => {
     grill('e', '', { project: 'ELV', status: 'in-progress' }),
     grill('elevator-old'),
   ];
-  const tasks = [task('ELV-1', { grill: 'e' })];
+  const issues = [issue('ELV-1', { grill: 'e' })];
   assert.equal(
-    digestLines(project, tasks, [], grills).at(-1),
+    digestLines(project, issues, [], grills).at(-1),
     'grill: 4 sessions tagged (in progress: b, a, …) · 1 old session matches rideable/elevator (tracker search <word>)',
   );
   assert.equal(

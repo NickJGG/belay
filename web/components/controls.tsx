@@ -1,13 +1,13 @@
 'use client';
-/** Task and project controls whose value flips the moment they're used, and reverts if the write fails. */
+/** Issue and project controls whose value flips the moment they're used, and reverts if the write fails. */
 import { useOptimistic, useTransition } from 'react';
 import { Star } from 'lucide-react';
 import { STATUS_KEYS as STATUSES } from '../../src/keys.ts';
-import { setProjectFocus, setProjectStatus, setTaskPriority, setTaskStatus, type Result } from '@/app/actions';
-import type { Project, ProjectStatus, Task, TaskStatus } from '@/lib/types';
-import { Flags, TaskLink } from './bits';
+import { setProjectFocus, setProjectStatus, setIssuePriority, setIssueStatus, type Result } from '@/app/actions';
+import type { Project, ProjectStatus, Issue, IssueStatus } from '@/lib/types';
+import { Flags, IssueLink } from './bits';
 import { Dropdown } from './Dropdown';
-import { useSelectable, useTaskKeys } from './Keys';
+import { useSelectable, useIssueKeys } from './Keys';
 import { StatusIcon } from './StatusIcon';
 import { toastError } from './Toaster';
 import ui from './ui.module.css';
@@ -24,19 +24,19 @@ function useOptimisticAction<T>(value: T, action: (v: T) => Promise<Result>): [T
   return [shown, set];
 }
 
-export const useStatus = (task: Task) => useOptimisticAction(task.status, (s) => setTaskStatus(task.id, s));
-export const usePriority = (task: Task) => useOptimisticAction(task.priority === 'high', (high) => setTaskPriority(task.id, high));
+export const useStatus = (issue: Issue) => useOptimisticAction(issue.status, (s) => setIssueStatus(issue.id, s));
+export const usePriority = (issue: Issue) => useOptimisticAction(issue.priority === 'high', (high) => setIssuePriority(issue.id, high));
 
-export function TaskRow({ task }: { task: Task }) {
-  const [status, setStatus] = useStatus(task);
-  const [high, setHigh] = usePriority(task);
-  useTaskKeys(task.id, { setStatus, setHigh });
+export function IssueRow({ issue }: { issue: Issue }) {
+  const [status, setStatus] = useStatus(issue);
+  const [high, setHigh] = usePriority(issue);
+  useIssueKeys(issue.id, { setStatus, setHigh });
   return (
-    <li className={ui.row} {...useSelectable(task.id)}>
+    <li className={ui.row} {...useSelectable(issue.id)}>
       <StatusIcon status={status} />
-      <TaskLink id={task.id} stretch />
-      <span className={ui.grow}>{task.title}</span>
-      <Flags task={{ ...task, priority: high ? 'high' : undefined }} />
+      <IssueLink id={issue.id} stretch />
+      <span className={ui.grow}>{issue.title}</span>
+      <Flags issue={{ ...issue, priority: high ? 'high' : undefined }} />
     </li>
   );
 }
@@ -66,13 +66,13 @@ export function ProjectStatusSelect({ project, className }: { project: Project; 
   );
 }
 
-export function StatusSelect({ task, className }: { task: Task; className: string }) {
-  const [status, setStatus] = useStatus(task);
-  useTaskKeys(task.id, { setStatus });
+export function StatusSelect({ issue, className }: { issue: Issue; className: string }) {
+  const [status, setStatus] = useStatus(issue);
+  useIssueKeys(issue.id, { setStatus });
   return (
     <label className={className} title="Status (1–5)">
       <StatusIcon status={status} />
-      <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)}>
+      <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value as IssueStatus)}>
         {STATUSES.map((s) => (
           <option key={s} value={s}>
             {s}
@@ -83,9 +83,9 @@ export function StatusSelect({ task, className }: { task: Task; className: strin
   );
 }
 
-export function PrioritySelect({ task, className }: { task: Task; className: string }) {
-  const [high, setHigh] = usePriority(task);
-  useTaskKeys(task.id, { setHigh });
+export function PrioritySelect({ issue, className }: { issue: Issue; className: string }) {
+  const [high, setHigh] = usePriority(issue);
+  useIssueKeys(issue.id, { setHigh });
   return (
     <label className={className}>
       <span className={high ? ui.high : ui.muted} aria-hidden>

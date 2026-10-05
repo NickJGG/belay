@@ -1,4 +1,4 @@
-/* The two-column page with a properties panel on the right, shared by task and project pages. */
+/* The two-column page with a properties panel on the right, shared by issue and project pages. */
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 280px;

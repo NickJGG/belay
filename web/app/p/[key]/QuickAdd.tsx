@@ -22,7 +22,7 @@ export function QuickAdd({ projectKey }: { projectKey: string }) {
         });
       }}
     >
-      <input className={`${ui.input} ${styles.addTitle}`} name="title" placeholder="New task title" aria-label="New task title" required autoComplete="off" />
+      <input className={`${ui.input} ${styles.addTitle}`} name="title" placeholder="New issue title" aria-label="New issue title" required autoComplete="off" />
       <select className={ui.input} name="status" aria-label="Status" defaultValue="idea">
         <option value="idea">idea</option>
         <option value="todo">todo</option>

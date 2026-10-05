@@ -6,40 +6,40 @@ import { claudeDir } from './config.ts';
 import { clip, digestLines } from './digest.ts';
 import { grillDir, grillMatches, loadGrillSessions } from './grill.ts';
 import { attachCommits, duration, localStamp, recentSessions } from './history.ts';
-import { Ctx, addProject, addTask, deleteTask, editProject, editTask, idList, moveProject, oneOf, rekeyProject, setStatus, type MoveTarget } from './ops.ts';
+import { Ctx, addProject, addIssue, deleteIssue, editProject, editIssue, idList, moveProject, oneOf, rekeyProject, setStatus, type MoveTarget } from './ops.ts';
 import { isReady, next, openBlockers, projectCounts, projectForCwd } from './query.ts';
-import { TASK_STATUSES, normalizeStoredPath, taskFile, type Task, type TaskStatus } from './store.ts';
+import { ISSUE_STATUSES, normalizeStoredPath, issueFile, type Issue, type IssueStatus } from './store.ts';
 import { serve } from './web.ts';
 
 const HELP = `tracker — what should I work on?
 
-  next [--all]                      doing, high-priority, then ready tasks in focus projects
+  next [--all]                      doing, high-priority, then ready issues in focus projects
   add "<title>" [--project <key>] [--status idea|todo] [--blocked-by <id>...]
                 [--priority high] [--source user|claude] [--grill <slug>] [--plan <path>] [--note <text>]
   set <id> <status>                 idea|todo|doing|done|dropped
   edit <id> [--title <t>] [--blocked-by <id>...] [--priority high|none]
             [--grill <slug>] [--plan <path>] [--note <text>] [--body <text> | --body-file <path|->]
-                                    --body/--body-file replace the notes (- reads stdin)
-  delete <id>                       erase a task for good; strips it from its dependents' blockers
+                                    --body/--body-file replace the description (- reads stdin)
+  delete <id>                       erase an issue for good; strips it from its dependents' blockers
   show <id>
   list [--project <key>] [--status <s,...>|all]   default hides done and dropped
 
   history [<project>] [-n <count>] [-v]
                                     recent Claude sessions and their commits, newest first
-  search <words>...                 tasks (title, notes) and grill sessions (slug, topic, project) with every word
+  search <words>...                 issues (title, description) and grill sessions (slug, topic, project) with every word
   serve [--port <n>] [--no-open]    dashboard at http://127.0.0.1:4747/ (Ctrl+C to stop); builds web/
                                     first when it or src/ changed (needs 'npm install' in web/)
   digest                            SessionStart hook: reads the hook JSON on stdin, prints a summary
                                     if its cwd is in a registered project, else nothing
 
   project add [<key>] --name <name> --path <dir>... [--group <g>] [--focus]
-                                    key: 3–4 letters, the task-ID prefix (ELV-12); derived from
+                                    key: 3–4 letters, the issue-ID prefix (ELV-12); derived from
                                     the name when omitted (3 letters, 4 on a clash)
   project list [--all]              --all includes archived
   project set <key> [--status active|paused|archived] [--focus|--no-focus] [--name <n>] [--group <g>]
   project move <key> (--before <key> | --after <key> | --top | --bottom)
                                     rearrange the order projects are listed in (here and the sidebar)
-  project rekey <key> <new-key>     rename the key and every task ID in the project, fixing blockers
+  project rekey <key> <new-key>     rename the key and every issue ID in the project, fixing blockers
   project which [<dir>]             key of the project containing <dir> (default cwd); prints nothing if none
 
 --project defaults to the project whose path contains the cwd. --blocked-by takes
@@ -62,10 +62,10 @@ function args<T extends ParseArgsConfig['options']>(
 
 // --- output ---
 
-function lines(tasks: Task[], ctx: Ctx, showStatus = false): string[] {
-  const width = Math.max(0, ...tasks.map((t) => t.id.length));
-  const statusWidth = showStatus ? Math.max(...tasks.map((t) => t.status.length)) : 0;
-  return tasks.map((t) => {
+function lines(issues: Issue[], ctx: Ctx, showStatus = false): string[] {
+  const width = Math.max(0, ...issues.map((t) => t.id.length));
+  const statusWidth = showStatus ? Math.max(...issues.map((t) => t.status.length)) : 0;
+  return issues.map((t) => {
     const flags = [t.priority === 'high' ? '!' : '', t.source === 'claude' ? '(claude)' : ''].filter(Boolean);
     const blockers = openBlockers(t, ctx.byId).map((b) => b.id);
     const tail = [...flags, blockers.length ? `[blocked by ${blockers.join(', ')}]` : ''].filter(Boolean).join(' ');
@@ -83,10 +83,10 @@ function print(text: string | string[]): void {
 function cmdNext(argv: string[]): void {
   const { values } = args(argv, { all: { type: 'boolean' } }, 0);
   const ctx = new Ctx();
-  const n = next(ctx.projects, ctx.tasks);
+  const n = next(ctx.projects, ctx.issues);
   const out: string[] = [];
-  const section = (title: string, tasks: Task[]) => {
-    if (tasks.length) out.push(title, ...lines(tasks, ctx));
+  const section = (title: string, issues: Issue[]) => {
+    if (issues.length) out.push(title, ...lines(issues, ctx));
   };
   const focusKeys = ctx.projects.filter((p) => p.focus && p.status === 'active').map((p) => p.key);
   section('doing', n.doing);
@@ -119,7 +119,7 @@ function cmdAdd(argv: string[]): void {
   const ctx = new Ctx();
   const project = values.project ? ctx.project(values.project) : projectForCwd(ctx.projects, process.cwd());
   if (!project) throw new Error(`cwd is not inside a registered project; pass --project <key>`);
-  const task = addTask(ctx, {
+  const issue = addIssue(ctx, {
     title: positionals[0],
     project: project.key,
     status: values.status,
@@ -130,14 +130,14 @@ function cmdAdd(argv: string[]): void {
     plan: values.plan,
     note: values.note,
   });
-  print(`added ${task.id} (${task.status}): ${task.title}`);
+  print(`added ${issue.id} (${issue.status}): ${issue.title}`);
 }
 
 function cmdSet(argv: string[]): void {
   const { positionals } = args(argv, {}, 2);
-  const { before, task, open } = setStatus(new Ctx(), positionals[0], positionals[1]);
-  print(`${task.id}: ${before} → ${task.status}`);
-  if ((task.status === 'doing' || task.status === 'todo') && open.length) {
+  const { before, issue, open } = setStatus(new Ctx(), positionals[0], positionals[1]);
+  print(`${issue.id}: ${before} → ${issue.status}`);
+  if ((issue.status === 'doing' || issue.status === 'todo') && open.length) {
     print(`  note: still blocked by ${open.map((b) => `${b.id} (${b.status})`).join(', ')}`);
   }
 }
@@ -159,7 +159,7 @@ function cmdEdit(argv: string[]): void {
   );
   if (values.body !== undefined && values['body-file'] !== undefined) throw new Error('pass --body or --body-file, not both');
   const bodyFile = values['body-file'];
-  const task = editTask(new Ctx(), positionals[0], {
+  const issue = editIssue(new Ctx(), positionals[0], {
     title: values.title,
     blockers: values['blocked-by'] && idList(values['blocked-by']),
     priority: values.priority,
@@ -168,14 +168,14 @@ function cmdEdit(argv: string[]): void {
     note: values.note,
     body: bodyFile === undefined ? values.body : readFileSync(bodyFile === '-' ? 0 : bodyFile, 'utf8'),
   });
-  print(`updated ${task.id}`);
+  print(`updated ${issue.id}`);
 }
 
 function cmdDelete(argv: string[]): void {
   const { positionals } = args(argv, {}, 1);
   const ctx = new Ctx();
-  const { id } = ctx.task(positionals[0]);
-  const dependents = deleteTask(ctx, id);
+  const { id } = ctx.issue(positionals[0]);
+  const dependents = deleteIssue(ctx, id);
   print(`deleted ${id}`);
   if (dependents.length) print(`  no longer blocked by it: ${dependents.map((t) => t.id).join(', ')}`);
 }
@@ -183,12 +183,12 @@ function cmdDelete(argv: string[]): void {
 function cmdShow(argv: string[]): void {
   const { positionals } = args(argv, {}, 1);
   const ctx = new Ctx();
-  const t = ctx.task(positionals[0]);
+  const t = ctx.issue(positionals[0]);
   const describe = (id: string) => {
     const b = ctx.byId.get(id);
     return b ? `${id} (${b.status})` : `${id} (missing)`;
   };
-  const blocks = ctx.tasks.filter((x) => x.blocked_by.includes(t.id)).map((x) => `${x.id} (${x.status})`);
+  const blocks = ctx.issues.filter((x) => x.blocked_by.includes(t.id)).map((x) => `${x.id} (${x.status})`);
   const status = t.status === 'todo' ? `todo (${isReady(t, ctx.byId) ? 'ready' : 'blocked'})` : t.status;
   const out = [
     `${t.id}  ${t.title}`,
@@ -200,7 +200,7 @@ function cmdShow(argv: string[]): void {
     t.grill ? `grill:      ${t.grill}` : '',
     t.plan ? `plan:       ${t.plan}` : '',
     `dates:      created ${t.created}, updated ${t.updated}`,
-    `file:       ${normalizeStoredPath(taskFile(ctx.dir, t.id))}`,
+    `file:       ${normalizeStoredPath(issueFile(ctx.dir, t.id))}`,
   ].filter(Boolean);
   if (t.body) out.push('', t.body);
   print(out);
@@ -210,14 +210,14 @@ function cmdList(argv: string[]): void {
   const { values } = args(argv, { project: { type: 'string', short: 'p' }, status: { type: 'string', short: 's' } }, 0);
   const ctx = new Ctx();
   const project = values.project ? ctx.project(values.project).key : undefined;
-  const statuses: readonly TaskStatus[] =
+  const statuses: readonly IssueStatus[] =
     values.status === 'all'
-      ? TASK_STATUSES
+      ? ISSUE_STATUSES
       : values.status
-        ? idList([values.status]).map((s) => oneOf(s, TASK_STATUSES, '--status'))
+        ? idList([values.status]).map((s) => oneOf(s, ISSUE_STATUSES, '--status'))
         : ['idea', 'todo', 'doing'];
-  const tasks = ctx.tasks.filter((t) => statuses.includes(t.status) && (!project || t.project === project));
-  print(tasks.length ? lines(tasks, ctx, true) : 'no tasks');
+  const issues = ctx.issues.filter((t) => statuses.includes(t.status) && (!project || t.project === project));
+  print(issues.length ? lines(issues, ctx, true) : 'no issues');
 }
 
 function cmdHistory(argv: string[]): void {
@@ -253,7 +253,7 @@ function cmdSearch(argv: string[]): void {
   const { positionals } = args(argv, {}, 1, Infinity);
   const words = positionals.map((w) => w.toLowerCase());
   const ctx = new Ctx();
-  const tasks = ctx.tasks.filter((t) => {
+  const issues = ctx.issues.filter((t) => {
     const hay = `${t.title}\n${t.body}`.toLowerCase();
     return words.every((w) => hay.includes(w));
   });
@@ -262,7 +262,7 @@ function cmdSearch(argv: string[]): void {
     .filter((g) => grillMatches(g, words))
     .sort((a, b) => (b.updated ?? '').localeCompare(a.updated ?? ''));
   const out: string[] = [];
-  if (tasks.length) out.push('tasks', ...lines(tasks, ctx, true));
+  if (issues.length) out.push('issues', ...lines(issues, ctx, true));
   if (grill.length) {
     out.push(`grill sessions (${normalizeStoredPath(grillDir(claude))}/<slug>.md)`);
     const slugW = Math.max(...grill.map((g) => g.slug.length));
@@ -306,7 +306,7 @@ function cmdDigest(argv: string[]): void {
     const exclude = typeof input.session_id === 'string' ? input.session_id : undefined;
     const sessions = recentSessions(claude, ctx.projects, { project, limit: 3, exclude });
     attachCommits(sessions, ctx.projects);
-    print(digestLines(project, ctx.tasks, sessions, loadGrillSessions(claude)));
+    print(digestLines(project, ctx.issues, sessions, loadGrillSessions(claude)));
   } catch (e) {
     console.error(`tracker digest: ${(e as Error).message}`);
   }
@@ -345,7 +345,7 @@ function projectAdd(argv: string[]): void {
     focus: values.focus,
   });
   for (const p of missing) console.error(`warning: ${p} does not exist`);
-  print(`added project ${project.key} — tasks will be ${project.key}-1, ${project.key}-2, …`);
+  print(`added project ${project.key} — issues will be ${project.key}-1, ${project.key}-2, …`);
 }
 
 function projectMove(argv: string[]): void {
@@ -389,7 +389,7 @@ function projectList(argv: string[]): void {
   const statusW = Math.max(...projects.map((p) => p.status.length));
   print(
     projects.map((p) => {
-      const c = projectCounts(p, ctx.tasks, ctx.byId);
+      const c = projectCounts(p, ctx.issues, ctx.byId);
       const counts = [
         [c.doing, 'doing'],
         [c.ready, 'ready'],
