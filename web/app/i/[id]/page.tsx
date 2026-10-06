@@ -56,7 +56,7 @@ export default async function IssuePage({ params }: Props) {
         crumbs={[projectsCrumb, { label: project?.name ?? issue.project, href: projectHref(issue.project) }, { label: issue.id, icon: <StatusIcon status={issue.status} /> }]}
         after={<Flags issue={issue} />}
       />
-      <div className={styles.page}>
+      <div className={ui.page}>
         <div className={panel.layout}>
           <article className={panel.main}>
             <TitleEdit key={issue.title} value={issue.title} label="Title" save={setIssueTitle.bind(null, issue.id)} />

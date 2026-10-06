@@ -6,6 +6,8 @@ import { entityForPath } from '../../../src/store.ts';
 export const dynamic = 'force-dynamic';
 
 const DEBOUNCE_MS = 100;
+
+const isLogFile = (rel: string) => /^log[\\/][^\\/]+\.yaml$/.test(rel);
 const KEEPALIVE_MS = 25_000;
 
 export function GET(request: Request) {
@@ -39,7 +41,7 @@ export function GET(request: Request) {
         const entity = rel ? entityForPath(rel) : undefined;
         if (entity) (entity.kind === 'issue' ? issues : projects).add(entity.id);
         // A null name means the platform couldn't say what changed; settings.yaml carries the theme and accent, order.yaml the sidebar order.
-        else if (rel !== undefined && rel !== 'settings.yaml' && rel !== 'order.yaml') return;
+        else if (rel !== undefined && rel !== 'settings.yaml' && rel !== 'order.yaml' && !isLogFile(rel)) return;
         clearTimeout(timer);
         timer = setTimeout(flush, DEBOUNCE_MS);
       });

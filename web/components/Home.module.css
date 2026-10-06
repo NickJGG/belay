@@ -1,0 +1,108 @@
+/* The rail grows only once it has wrapped below the main column, so stacked it takes the full width. */
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 40px;
+  align-items: flex-start;
+}
+
+.main {
+  flex: 999 1 520px;
+  min-width: 0;
+}
+
+.rail {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.main > h2:first-child,
+.rail > h2:first-child {
+  margin-top: 8px;
+}
+
+.timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-left: 6px;
+  padding-left: 22px;
+}
+
+/* The rail, starting inside the first ring so nothing shows above the newest day. */
+.timeline::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: var(--line-soft);
+}
+
+.tlDay {
+  position: relative;
+}
+
+/* A day's ring, which its chevron swaps in for on hover like a status icon; an empty run's is the same ring, unswapped. */
+.node,
+.tlDay[data-gap]::before {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--bg);
+}
+
+/* Centered on the rail: back across the padding, then half the ring. */
+.tlDay[data-gap]::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: -26px;
+  border-color: var(--line);
+}
+
+/*
+ * The heading's 14px icon slot pulled back onto the rail (slot center 21px left of the content), with room after
+ * it so the label lines up with the rows' icons. The slot's background hides the rail behind the chevron.
+ */
+.tlDay summary {
+  margin: 0 0 2px -28px;
+}
+
+.tlDay summary > span:first-child {
+  margin-right: 16px;
+  background: var(--bg);
+}
+
+.tlHead {
+  margin: 0;
+  padding-left: 8px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.event {
+  align-items: baseline;
+  padding-block: 4px;
+}
+
+.event > svg {
+  align-self: center;
+  flex: none;
+}
+
+.earlier {
+  width: fit-content;
+  font-size: 12px;
+}
+
+.viewAll {
+  display: block;
+  margin-top: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+}

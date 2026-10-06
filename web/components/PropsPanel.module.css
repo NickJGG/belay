@@ -1,8 +1,3 @@
-/* Unlike ui.page, not width-capped, so the properties panel sits at the window's right edge. */
-.page {
-  padding: 16px 28px 48px;
-}
-
 /* The two-column page with a properties panel on the right, shared by issue and project pages. */
 .layout {
   display: grid;

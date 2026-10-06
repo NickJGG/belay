@@ -66,10 +66,23 @@ function Days({ week, moved }: { week: string[]; moved: (boolean | null)[] }) {
   );
 }
 
-/** One row per goal that counts: a meter for habits and quantities, a burndown for targets, and the week's moved days. */
-export function ThisWeek({ rows, week, burndowns }: { rows: WeekRow[]; week: string[]; burndowns: Record<string, { set: string; points: { day: string; left: number }[] }> }) {
+/**
+ * One row per goal that counts: a meter for habits and quantities, a burndown for targets, and the week's moved days.
+ * `rail` fits a narrow column by moving the goal text to a second line.
+ */
+export function ThisWeek({
+  rows,
+  week,
+  burndowns,
+  rail,
+}: {
+  rows: WeekRow[];
+  week: string[];
+  burndowns: Record<string, { set: string; points: { day: string; left: number }[] }>;
+  rail?: boolean;
+}) {
   return (
-    <ul className={ui.rows}>
+    <ul className={`${ui.rows} ${rail ? styles.rail : ''}`}>
       {rows.map((r) => {
         const g = r.goal!;
         return (
@@ -84,7 +97,7 @@ export function ThisWeek({ rows, week, burndowns }: { rows: WeekRow[]; week: str
                 <Meter done={g.done} of={g.of} unit={g.form === 'habit' ? 'days' : g.kind} />
               )}
             </span>
-            <span className={`${ui.grow} ${g.form === 'target' && g.state === 'overdue' ? ui.warn : ''}`}>
+            <span className={`${ui.grow} ${styles.text} ${g.form === 'target' && g.state === 'overdue' ? ui.warn : ''}`}>
               {weekGoal(g)}
               {g.form !== 'target' && g.metToday && <span className={ui.muted}> · today ✓</span>}
             </span>

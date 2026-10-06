@@ -1,37 +1,46 @@
 import Link from 'next/link';
-import { CalendarDays } from 'lucide-react';
 import { idColumn, Logo } from '@/components/bits';
 import { IssueRow } from '@/components/controls';
+import home from '@/components/Home.module.css';
+import { InFlight } from '@/components/InFlight';
 import { PageBar } from '@/components/PageBar';
-import { Group } from '@/components/StatusGroup';
-import { StatusIcon } from '@/components/StatusIcon';
 import { ThisWeek } from '@/components/ThisWeek';
+import { Timeline } from '@/components/Timeline';
 import ui from '@/components/ui.module.css';
-import { addDays, burndown, commitTimes, ctx, goalOf, next, urgencies, weekDays, weekStart, weekSummary, workDay } from '@/lib/data';
-import type { Issue } from '@/lib/types';
+import {
+  addDays,
+  burndown,
+  commitTimes,
+  ctx,
+  doingSince,
+  goalOf,
+  grillSessions,
+  inFlight,
+  next,
+  oldestFirst,
+  timeline,
+  urgencies,
+  weekDays,
+  weekStart,
+  weekSummary,
+  workDay,
+} from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
-function IssueRows({ issues }: { issues: Issue[] }) {
-  return (
-    <ul className={ui.rows}>
-      {issues.map((t) => (
-        <IssueRow key={t.id} issue={t} />
-      ))}
-    </ul>
-  );
+const WEEK = 7;
+const MAX_DAYS = 52 * WEEK;
+const UP_NEXT_FOCUS = 3;
+const IDEAS_SHOWN = 5;
+
+/** `?days=` as a whole number of weeks, at least one. */
+function windowDays(raw: string | undefined): number {
+  const weeks = Math.floor(Number(raw) / WEEK);
+  return Number.isFinite(weeks) && weeks > 1 ? Math.min(weeks * WEEK, MAX_DAYS) : WEEK;
 }
 
-function Section({ id, icon, label, issues, defaultOpen }: { id: string; icon: React.ReactNode; label: string; issues: Issue[]; defaultOpen?: boolean }) {
-  if (!issues.length) return null;
-  return (
-    <Group id={id} icon={icon} label={label} count={issues.length} defaultOpen={defaultOpen}>
-      <IssueRows issues={issues} />
-    </Group>
-  );
-}
-
-export default function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
+  const days = windowDays((await searchParams).days);
   const data = ctx();
   const { projects, issues } = data;
   if (!projects.length) {
@@ -60,36 +69,59 @@ export default function Home() {
     }),
   );
   const n = next(projects, issues, urgencies(goalRows.map((r) => r.goal!)));
-  const focusKeys = projects.filter((p) => p.focus && p.status === 'active').map((p) => p.key);
+  const upNext = [...n.high, ...n.focus.slice(0, UP_NEXT_FOCUS)];
+  const ideas = issues.filter((t) => t.status === 'idea').sort(oldestFirst);
+
+  const from = addDays(day, -(days - 1));
+  // Back to the oldest doing issue's start too, so each one's latest linked log entry is in range.
+  const logsFrom = issues.filter((t) => t.status === 'doing').reduce((min, t) => (doingSince(t) < min ? doingSince(t) : min), from);
+  const logs = data.logs(logsFrom, day);
+  const flight = inFlight(projects, issues, logs, grillSessions(), day);
 
   return (
     <>
       <PageBar crumbs={[{ label: 'Home', icon: <Logo /> }]} />
-      <div className={ui.page} style={idColumn([...n.doing, ...n.high, ...n.focus, ...n.other])}>
-        {goalRows.length > 0 && (
-          <Group id="week" icon={<CalendarDays size={14} aria-hidden />} label="This week" count={goalRows.length}>
-            <ThisWeek rows={goalRows} week={weekDays(week)} burndowns={burndowns} />
-          </Group>
-        )}
-        <Section id="doing" icon={<StatusIcon status="doing" />} label="Doing" issues={n.doing} />
-        <Section id="high" icon={<span className={ui.high}>!!</span>} label="High priority" issues={n.high} />
-        <Section id="focus" icon={<StatusIcon status="todo" />} label={`Ready — focus: ${focusKeys.join(', ') || 'none'}`} issues={n.focus} />
-        {!n.doing.length && !n.high.length && !n.focus.length && (
-          <p className={ui.empty}>
-            {focusKeys.length ? (
-              'Nothing ready in focus projects.'
-            ) : (
+      <div className={ui.page}>
+        <div className={home.layout}>
+          <div className={home.main}>
+            <h2 className={ui.h2}>In flight</h2>
+            <InFlight data={flight} />
+            <h2 className={ui.h2}>Timeline</h2>
+            <Timeline days={timeline(projects, issues, logs, from, day)} today={day} earlierHref={`/?days=${days + WEEK}`} />
+          </div>
+
+          <aside className={home.rail} aria-label="This week and up next">
+            {goalRows.length > 0 && (
               <>
-                No focus projects — star one in{' '}
-                <Link className={ui.link} href="/projects">
-                  Projects
-                </Link>
-                .
+                <h2 className={ui.h2}>This week</h2>
+                <ThisWeek rows={goalRows} week={weekDays(week)} burndowns={burndowns} rail />
               </>
             )}
-          </p>
-        )}
-        <Section id="elsewhere" icon={<StatusIcon status="todo" />} label="Ready elsewhere" issues={n.other} defaultOpen={false} />
+            <h2 className={ui.h2}>Up next</h2>
+            {upNext.length ? (
+              <ul className={ui.rows} style={idColumn(upNext)}>
+                {upNext.map((t) => (
+                  <IssueRow key={t.id} issue={t} />
+                ))}
+              </ul>
+            ) : (
+              <p className={ui.empty}>Nothing ready in focus projects.</p>
+            )}
+            {ideas.length > 0 && (
+              <>
+                <h2 className={ui.h2}>Ideas to triage</h2>
+                <ul className={ui.rows} style={idColumn(ideas.slice(0, IDEAS_SHOWN))}>
+                  {ideas.slice(0, IDEAS_SHOWN).map((t) => (
+                    <IssueRow key={t.id} issue={t} />
+                  ))}
+                </ul>
+                <Link className={`${ui.link} ${home.viewAll}`} href="/issues?status=idea">
+                  View all {ideas.length} →
+                </Link>
+              </>
+            )}
+          </aside>
+        </div>
       </div>
     </>
   );

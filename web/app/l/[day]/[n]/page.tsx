@@ -13,7 +13,7 @@ import { PageBar, projectsCrumb } from '@/components/PageBar';
 import panel from '@/components/PropsPanel.module.css';
 import ui from '@/components/ui.module.css';
 import { ctx, workDay } from '@/lib/data';
-import { dayLabel } from '../../../p/[key]/Logs';
+import { dayLabel } from '@/lib/days';
 import { DeleteLog } from './DeleteLog';
 import { LogProps } from './LogProps';
 import { LogTextEditor } from './LogTextEditor';
@@ -56,7 +56,7 @@ export default async function LogPage(props: Props) {
     return (
       <>
         <PageBar crumbs={[projectsCrumb, { label: address }]} />
-        <div className={panel.page}>
+        <div className={ui.page}>
           <p className={ui.empty}>
             This log entry moved or was deleted.{' '}
             <Link className={ui.link} href={key ? logsHref(key) : '/projects'}>
@@ -87,7 +87,7 @@ export default async function LogPage(props: Props) {
         ]}
         after={entry.by === 'claude' && <span className={ui.src}>claude</span>}
       />
-      <div className={panel.page}>
+      <div className={ui.page}>
         <div className={panel.layout}>
           <article className={panel.main}>
             <LogTextEditor address={address} at={entry.at} text={entry.text} />

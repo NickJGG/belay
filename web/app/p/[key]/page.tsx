@@ -65,7 +65,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
   return (
     <>
       <PageBar crumbs={[projectsCrumb, { label: project.name }]} />
-      <div className={panel.page}>
+      <div className={ui.page}>
         <div className={panel.layout}>
           <div className={panel.main} style={idColumn(tab === 'ideas' ? board.idea : [...board.todo, ...board.doing, ...board.done, ...(showDropped ? board.dropped : [])])}>
             <nav className={styles.tabs} aria-label="View">

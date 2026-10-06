@@ -2,21 +2,8 @@ import Link from 'next/link';
 import { firstLine, type DatedEntry } from '../../../../src/logs.ts';
 import { IssueLink, logHref } from '@/components/bits';
 import ui from '@/components/ui.module.css';
-import { addDays } from '@/lib/data';
+import { dayLabel } from '@/lib/days';
 import styles from './page.module.css';
-
-export function dayLabel(day: string, today: string): string {
-  if (day === today) return 'Today';
-  if (day === addDays(today, -1)) return 'Yesterday';
-  const [y, m, d] = day.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-  return date.toLocaleDateString('en', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    ...(day.slice(0, 4) !== today.slice(0, 4) && { year: 'numeric' }),
-  });
-}
 
 /** `3 applied · 1 outreach` */
 function kindTotals(entries: DatedEntry[]): string {
