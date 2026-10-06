@@ -72,8 +72,10 @@ const HELP = `belay — what should I work on?
   history [<project>] [-n <count>] [-v]
                                     recent Claude sessions and their commits, newest first
   search <words>...                 issues (title, description, comments) and grill sessions (slug, topic, project) with every word
-  serve [--port <n>] [--no-open]    dashboard at http://127.0.0.1:4747/ (Ctrl+C to stop); builds web/
-                                    first when it or src/ changed (needs 'npm install' in web/)
+  serve [--port <n>] [--no-open] [--dev]
+                                    dashboard at http://127.0.0.1:4747/ (Ctrl+C to stop); builds web/
+                                    first when it or src/ changed (needs 'npm install' in web/);
+                                    --dev skips the build and runs next dev, so edits show up live
   digest                            SessionStart hook: reads the hook JSON on stdin, prints a summary
                                     if its cwd is in a registered project, else nothing
   statusline                        status line command: reads Claude Code's status JSON on stdin, prints
@@ -497,10 +499,10 @@ function cmdSearch(argv: string[]): void {
 }
 
 function cmdServe(argv: string[]): void {
-  const { values } = args(argv, { port: { type: 'string' }, open: { type: 'boolean' } }, 0);
+  const { values } = args(argv, { port: { type: 'string' }, open: { type: 'boolean' }, dev: { type: 'boolean' } }, 0);
   const port = Number(values.port ?? DEFAULT_PORT);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`--port must be 1–65535 (got '${values.port}')`);
-  serve({ port, open: values.open ?? true }).catch((e: Error) => {
+  serve({ port, open: values.open ?? true, dev: values.dev ?? false }).catch((e: Error) => {
     console.error(`belay: ${e.message}`);
     process.exitCode = 1;
   });

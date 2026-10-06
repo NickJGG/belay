@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { CalendarDays } from 'lucide-react';
-import { Logo } from '@/components/bits';
+import { idColumn, Logo } from '@/components/bits';
 import { IssueRow } from '@/components/controls';
 import { PageBar } from '@/components/PageBar';
 import { Group } from '@/components/StatusGroup';
@@ -65,7 +65,7 @@ export default function Home() {
   return (
     <>
       <PageBar crumbs={[{ label: 'Home', icon: <Logo /> }]} />
-      <div className={ui.page}>
+      <div className={ui.page} style={idColumn([...n.doing, ...n.high, ...n.focus, ...n.other])}>
         {goalRows.length > 0 && (
           <Group id="week" icon={<CalendarDays size={14} aria-hidden />} label="This week" count={goalRows.length}>
             <ThisWeek rows={goalRows} week={weekDays(week)} burndowns={burndowns} />

@@ -1,4 +1,7 @@
-/** `belay serve`: builds `web/` when its sources changed, then runs `next start` on loopback. */
+/**
+ * `belay serve`: builds `web/` when its sources changed, then runs `next start` on loopback.
+ * `--dev` runs `next dev` instead, which picks up edits live; its output goes to `.next/dev`, apart from the build.
+ */
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -64,7 +67,7 @@ function openBrowser(url: string): void {
   child.unref();
 }
 
-export async function serve({ port, open }: { port: number; open: boolean }): Promise<void> {
+export async function serve({ port, open, dev }: { port: number; open: boolean; dev: boolean }): Promise<void> {
   const web = join(ROOT, 'web');
   // Run Next's JS entry with this Node rather than `.bin/next`, which is a .cmd shim on Windows.
   const next = join(web, 'node_modules', 'next', 'dist', 'bin', 'next');
@@ -73,13 +76,13 @@ export async function serve({ port, open }: { port: number; open: boolean }): Pr
 
   // dataDir() resolves BELAY_DATA to an absolute path, so a relative one survives the cwd change.
   const env = { ...process.env, BELAY_DATA: dataDir(), PORT: String(port) };
-  if (buildStale(ROOT)) {
+  if (!dev && buildStale(ROOT)) {
     console.log('belay: building the dashboard…');
     const build = spawnSync(process.execPath, [next, 'build'], { cwd: web, env, stdio: 'inherit' });
     if (build.status !== 0) throw new Error('next build failed');
   }
 
-  const child = spawn(process.execPath, [next, 'start', '-H', '127.0.0.1', '-p', String(port)], { cwd: web, env, stdio: 'inherit' });
+  const child = spawn(process.execPath, [next, dev ? 'dev' : 'start', '-H', '127.0.0.1', '-p', String(port)], { cwd: web, env, stdio: 'inherit' });
   child.on('exit', (code) => process.exit(code ?? 0));
   const url = `http://127.0.0.1:${port}/`;
   if ((await waitUntilUp(url)) && open) openBrowser(url);

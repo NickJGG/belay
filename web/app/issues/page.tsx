@@ -1,4 +1,5 @@
 import { Inbox, Layers } from 'lucide-react';
+import { idColumn } from '@/components/bits';
 import { IssueRow } from '@/components/controls';
 import { PageBar } from '@/components/PageBar';
 import { StatusGroup } from '@/components/StatusGroup';
@@ -27,7 +28,7 @@ export default async function Issues({ searchParams }: { searchParams: Promise<Q
   return (
     <>
       <PageBar crumbs={[{ label: title, icon: title === 'Ideas' ? <Inbox size={14} aria-hidden /> : <Layers size={14} aria-hidden /> }]} after={<span className={ui.muted}>{shown.length}</span>} />
-      <div className={ui.page}>
+      <div className={ui.page} style={idColumn(shown)}>
         <IssueFilters projects={projects.map((p) => p.key).sort()} />
         {!shown.length && <p className={ui.empty}>No matching issues.</p>}
         {filter.statuses.map((s) => {

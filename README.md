@@ -13,4 +13,6 @@ npm install
 
 Then `belay serve [--port <n>] [--no-open]` starts it at http://127.0.0.1:4747/. The first run builds it with `next build`. Later runs start straight away, rebuilding only when a file under `web/` or `src/` is newer than the last build. Re-run `npm install` in `web/` after its `package.json` changes.
 
+With `--dev` it runs `next dev` instead of building, so edits to `web/` or `src/` show up without a restart.
+
 For development, `npm run dev` in `web/` serves on port 4748. Point `BELAY_DATA` at a copy of `~/Belay` so experiments can't touch the real data.

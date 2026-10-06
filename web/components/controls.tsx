@@ -34,7 +34,7 @@ export function IssueRow({ issue }: { issue: Issue }) {
   return (
     <li className={ui.row} {...useSelectable(issue.id)}>
       <StatusIcon status={status} />
-      <IssueLink id={issue.id} stretch />
+      <IssueLink id={issue.id} stretch className={ui.idCol} />
       <span className={ui.grow}>{issue.title}</span>
       <Flags issue={{ ...issue, priority: high ? 'high' : undefined }} />
     </li>

@@ -23,10 +23,14 @@ export const issueHref = (id: string) => `/i/${encodeURIComponent(id)}`;
 /** `at` lets the page tell when the address has come to hold a different entry. */
 export const logHref = (day: string, n: number, at: string) => `/l/${day}/${n}?at=${encodeURIComponent(at)}`;
 
+/** Style for a container of `IssueRow`s: sizes every row's ID column to the longest ID among `issues`. */
+export const idColumn = (issues: Pick<Issue, 'id'>[]) =>
+  ({ '--id-w': `${Math.max(0, ...issues.map((t) => t.id.length))}ch` }) as React.CSSProperties;
+
 /** `stretch` makes the link cover its whole `ui.row`. */
-export function IssueLink({ id, stretch }: { id: string; stretch?: boolean }) {
+export function IssueLink({ id, stretch, className = '' }: { id: string; stretch?: boolean; className?: string }) {
   return (
-    <Link className={`${ui.mono} ${ui.muted} ${stretch ? ui.stretch : ''}`} href={issueHref(id)}>
+    <Link className={`${ui.mono} ${ui.muted} ${stretch ? ui.stretch : ''} ${className}`} href={issueHref(id)}>
       {id}
     </Link>
   );

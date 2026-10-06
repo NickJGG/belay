@@ -28,6 +28,12 @@
   color: var(--muted);
 }
 
+/* --id-w comes from `idColumn` on an ancestor. */
+.idCol {
+  flex: none;
+  min-width: var(--id-w, auto);
+}
+
 .empty {
   margin: 8px 0;
   color: var(--muted);

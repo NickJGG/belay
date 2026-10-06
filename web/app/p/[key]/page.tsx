@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { today } from '../../../../src/store.ts';
 import { setProjectGoal, setProjectGroup, setProjectKinds, setProjectName } from '@/app/actions';
-import { projectHref } from '@/components/bits';
+import { idColumn, projectHref } from '@/components/bits';
 import { FocusToggle, ProjectStatusSelect, IssueRow } from '@/components/controls';
 import { TextEdit } from '@/components/InlineEdit';
 import { PageBar, projectsCrumb } from '@/components/PageBar';
@@ -67,7 +67,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
       <PageBar crumbs={[projectsCrumb, { label: project.name }]} />
       <div className={panel.page}>
         <div className={panel.layout}>
-          <div className={panel.main}>
+          <div className={panel.main} style={idColumn(tab === 'ideas' ? board.idea : [...board.todo, ...board.doing, ...board.done, ...(showDropped ? board.dropped : [])])}>
             <nav className={styles.tabs} aria-label="View">
               {(['issues', 'ideas', 'logs'] as const).map((t) => (
                 <Link key={t} className={styles.tab} href={tabHref(t)} aria-current={tab === t ? 'page' : undefined}>
