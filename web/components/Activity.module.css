@@ -32,9 +32,10 @@
   background: var(--bg);
 }
 
-/* Centered on the rail: back across the padding, then half the ring. */
+/* Centered on the rail: back across the padding, then half the ring. `*` doesn't reach pseudo-elements, hence the box-sizing. */
 .day[data-gap]::before {
   content: '';
+  box-sizing: border-box;
   position: absolute;
   top: 3px;
   left: -26px;
