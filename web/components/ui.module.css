@@ -34,6 +34,15 @@
   min-width: var(--id-w, auto);
 }
 
+/* The mono ID and sans title have different font metrics, so centering each box leaves their glyphs at different heights. */
+.idTitle {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
 .empty {
   margin: 8px 0;
   color: var(--muted);
