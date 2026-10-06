@@ -1,9 +1,11 @@
 'use server';
 /** Thin wrappers: validate the untyped input, call one op on a fresh load, revalidate. */
+import { join } from 'node:path';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { claudeDir, dataDir } from '../../src/config.ts';
 import { parseGoalSpec } from '../../src/goals.ts';
+import { grillDir, isGrillSlug } from '../../src/grill.ts';
 import { ConflictError, Ctx, addComment, addIssue, addLog, bodyHash, deleteComment, deleteIssue, deleteLog, editComment, editLog, editProject, editIssue, moveProject, replaceBody, setFocus, setPriority, setStatus } from '../../src/ops.ts';
 import { logFile } from '../../src/logs.ts';
 import { isLinked, linkedPath, openFile } from '../../src/open.ts';
@@ -252,6 +254,18 @@ export async function openLinkedFile(id: unknown, kind: unknown): Promise<Result
     const path = linkedPath(new Ctx(data).issue(str(id, 'id')), kind, { data, claude: claudeDir() });
     if (!path) throw new Error(`no ${kind} on ${id}`);
     openFile(path);
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  return {};
+}
+
+/** Opens a grill session's file on this machine. Only a validated slug comes from the client, never a path. */
+export async function openGrillFile(slug: unknown): Promise<Result> {
+  try {
+    const s = str(slug, 'slug');
+    if (!isGrillSlug(s)) throw new Error(`not a grill session: '${s}'`);
+    openFile(join(grillDir(claudeDir()), `${s}.md`));
   } catch (e) {
     return { error: (e as Error).message };
   }

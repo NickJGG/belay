@@ -1,4 +1,4 @@
-/** Read-only access to grill sessions (`<claudeDir>/skills/grill/sessions/<slug>.md`) for search and the digest. */
+/** Read-only access to grill sessions (`<claudeDir>/skills/grill/sessions/<slug>.md`) for search, the digest and the dashboard. */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { splitFrontmatter, type Project } from './store.ts';
@@ -16,27 +16,49 @@ export function grillDir(claudeDir: string): string {
   return join(claudeDir, 'skills', 'grill', 'sessions');
 }
 
+/** A session as its own page shows it: `body` is the markdown after the frontmatter. */
+export type GrillDoc = GrillSession & { started?: string; body: string };
+
+export const isGrillSlug = (s: string): boolean => /^[a-z0-9][a-z0-9-]*$/.test(s);
+
+function readSession(text: string, slug: string): GrillDoc {
+  let data: Record<string, unknown> = {};
+  let body = text;
+  try {
+    ({ data, body } = splitFrontmatter(text, `${slug}.md`));
+  } catch {
+    // a malformed session is still findable by slug
+  }
+  const str = (k: string) => (data[k] == null ? undefined : String(data[k]));
+  return {
+    slug,
+    topic: str('topic') ?? '',
+    status: str('status'),
+    started: str('started'),
+    updated: str('updated') ?? str('started'),
+    project: str('project'),
+    body,
+  };
+}
+
 export function loadGrillSessions(claudeDir: string): GrillSession[] {
   const dir = grillDir(claudeDir);
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
     .filter((f) => f.endsWith('.md'))
     .map((f) => {
-      let data: Record<string, unknown> = {};
-      try {
-        data = splitFrontmatter(readFileSync(join(dir, f), 'utf8'), f).data;
-      } catch {
-        // a malformed session is still findable by slug
-      }
-      const str = (k: string) => (data[k] == null ? undefined : String(data[k]));
-      return {
-        slug: f.slice(0, -3),
-        topic: str('topic') ?? '',
-        status: str('status'),
-        updated: str('updated') ?? str('started'),
-        project: str('project'),
-      };
+      const { slug, topic, status, updated, project } = readSession(readFileSync(join(dir, f), 'utf8'), f.slice(0, -3));
+      return { slug, topic, status, updated, project };
     });
+}
+
+/** One session with its markdown body, minus the `# Grill session: …` heading. Undefined for a missing file or a slug that isn't a plain file name. */
+export function loadGrillSession(claudeDir: string, slug: string): GrillDoc | undefined {
+  if (!isGrillSlug(slug)) return undefined;
+  const path = join(grillDir(claudeDir), `${slug}.md`);
+  if (!existsSync(path)) return undefined;
+  const s = readSession(readFileSync(path, 'utf8'), slug);
+  return { ...s, body: s.body.replace(/^#\s+Grill session:[^\n]*\n*/, '') };
 }
 
 /** Sessions tagged with the project, plus untagged ones whose slug or topic mentions one of its terms. */

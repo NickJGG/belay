@@ -2,7 +2,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { claudeDir, dataDir } from '../../src/config.ts';
-import { loadGrillSessions } from '../../src/grill.ts';
+import { loadGrillSession, loadGrillSessions } from '../../src/grill.ts';
 import { commitsBetween } from '../../src/history.ts';
 import { Ctx } from '../../src/ops.ts';
 import { loadSettings } from '../../src/settings.ts';
@@ -13,6 +13,7 @@ export const settings = cache(() => loadSettings(dataDir()));
 export { dataDir };
 
 export const grillSessions = cache(() => loadGrillSessions(claudeDir()));
+export const grillSession = cache((slug: string) => loadGrillSession(claudeDir(), slug));
 
 /** Git commit times under the project's paths on work days `from`..`to`. Runs git, so only once per render. */
 export const commitTimes = cache((key: string, from: string, to: string): string[] => {

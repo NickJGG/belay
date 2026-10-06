@@ -20,6 +20,8 @@ export const projectHref = (key: string) => `/p/${encodeURIComponent(key)}`;
 
 export const issueHref = (id: string) => `/i/${encodeURIComponent(id)}`;
 
+export const grillHref = (slug: string) => `/g/${encodeURIComponent(slug)}`;
+
 /** `at` lets the page tell when the address has come to hold a different entry. */
 export const logHref = (day: string, n: number, at: string) => `/l/${day}/${n}?at=${encodeURIComponent(at)}`;
 

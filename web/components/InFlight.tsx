@@ -1,10 +1,11 @@
 import { MessagesSquare } from 'lucide-react';
+import Link from 'next/link';
 import type { InFlight as InFlightData } from '../../src/home.ts';
-import { IssueLink, idColumn } from '@/components/bits';
+import { IssueLink, grillHref, idColumn } from '@/components/bits';
 import { StatusIcon } from '@/components/StatusIcon';
 import ui from '@/components/ui.module.css';
 
-/** Doing issues, then grill sessions still waiting on an issue. Grill rows aren't links: no page shows a session. */
+/** Doing issues, then grill sessions still waiting on an issue; each row links to its page. */
 export function InFlight({ data }: { data: InFlightData }) {
   if (!data.issues.length && !data.grill.length) return <p className={ui.empty}>Nothing in flight.</p>;
   return (
@@ -21,9 +22,9 @@ export function InFlight({ data }: { data: InFlightData }) {
       {data.grill.map((g) => (
         <li key={g.slug} className={ui.row}>
           <MessagesSquare className={ui.muted} size={14} aria-label="Grill session" />
-          <span className={ui.grow} title={g.slug}>
+          <Link className={`${ui.grow} ${ui.stretch}`} href={grillHref(g.slug)} title={g.slug}>
             {g.topic || g.slug}
-          </span>
+          </Link>
         </li>
       ))}
     </ul>

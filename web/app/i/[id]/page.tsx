@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { claudeDir } from '../../../../src/config.ts';
 import { bodyHash } from '../../../../src/ops.ts';
 import { linkedPath } from '../../../../src/open.ts';
 import { openLinkedFile, setIssueTitle } from '@/app/actions';
-import { Flags, projectHref } from '@/components/bits';
+import { Flags, grillHref, projectHref } from '@/components/bits';
 import { Chip, type Ref } from '@/components/Chip';
 import { PrioritySelect, StatusSelect } from '@/components/controls';
 import { TitleEdit } from '@/components/InlineEdit';
@@ -46,7 +47,6 @@ export default async function IssuePage({ params }: Props) {
   const open = issue.status === 'todo' ? openBlockers(issue, byId) : [];
   const dependents = issues.filter((t) => t.blocked_by.includes(issue.id));
   const dirs = { data: dir, claude: claudeDir() };
-  const grillPath = linkedPath(issue, 'grill', dirs);
   const planPath = linkedPath(issue, 'plan', dirs);
   const candidates =issues.filter((t) => t.id !== issue.id && (t.status === 'idea' || t.status === 'todo' || t.status === 'doing')).map(ref);
 
@@ -99,11 +99,13 @@ export default async function IssuePage({ params }: Props) {
               <dd>{issue.created}</dd>
               <dt>Updated</dt>
               <dd>{issue.updated}</dd>
-              {grillPath && (
+              {issue.grill && (
                 <>
                   <dt>Grill</dt>
                   <dd>
-                    <OpenFile open={openLinkedFile.bind(null, issue.id, 'grill')} path={grillPath} />
+                    <Link className={panel.fileLink} href={grillHref(issue.grill)}>
+                      {issue.grill}
+                    </Link>
                   </dd>
                 </>
               )}
