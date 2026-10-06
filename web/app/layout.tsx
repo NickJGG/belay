@@ -11,7 +11,12 @@ import styles from './layout.module.css';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = { title: { template: '%s · Belay', default: 'Belay' } };
+export function generateMetadata(): Metadata {
+  return {
+    title: { template: '%s · Belay', default: 'Belay' },
+    icons: { icon: { url: `/favicon?a=${accent(settings().accent).key}`, type: 'image/svg+xml' } },
+  };
+}
 
 /** Theme and accent are set on <html> here, on the server, so the first paint is already right. */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
