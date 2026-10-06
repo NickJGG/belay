@@ -4,7 +4,7 @@ import type { Issue, Project } from './store.ts';
 import { addDays, weekStart, workDay, workDayOf } from './workday.ts';
 
 /** Moves per work day: each issue transition, comment, log entry and commit (`commits`: git times) counts once. */
-export function activity(project: Project, issues: Issue[], logs: DatedEntry[], commits: string[]): Map<string, number> {
+export function moves(project: Project, issues: Issue[], logs: DatedEntry[], commits: string[]): Map<string, number> {
   const counts = new Map<string, number>();
   const add = (day: string) => counts.set(day, (counts.get(day) ?? 0) + 1);
   for (const t of commits) add(workDay(new Date(t)));
@@ -49,7 +49,7 @@ export function heatmap(
   const { from } = heatRange(day, weeks);
   const days = Array.from({ length: 7 * weeks }, (_, i) => addDays(from, i));
   const rows = projects.map((p) => {
-    const counts = activity(p, issues, logs, commits[p.key] ?? []);
+    const counts = moves(p, issues, logs, commits[p.key] ?? []);
     const past = [...counts.keys()].filter((d) => d <= day).sort();
     return {
       project: p.key,

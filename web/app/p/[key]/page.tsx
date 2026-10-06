@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { today } from '../../../../src/store.ts';
 import { setProjectGoal, setProjectGroup, setProjectKinds, setProjectName } from '@/app/actions';
+import { Activity } from '@/components/Activity';
 import { idColumn, projectHref } from '@/components/bits';
 import { FocusToggle, ProjectStatusSelect, IssueRow } from '@/components/controls';
 import { TextEdit } from '@/components/InlineEdit';
@@ -10,7 +11,8 @@ import { PageBar, projectsCrumb } from '@/components/PageBar';
 import panel from '@/components/PropsPanel.module.css';
 import { StatusGroup } from '@/components/StatusGroup';
 import ui from '@/components/ui.module.css';
-import { addDays, ctx, goalSpec, projectBoard, projectCounts, workDay } from '@/lib/data';
+import { activity, addDays, ctx, goalSpec, projectBoard, projectCounts, workDay } from '@/lib/data';
+import { WEEK, windowDays } from '@/lib/days';
 import type { Issue, IssueStatus } from '@/lib/types';
 import { Logs } from './Logs';
 import styles from './page.module.css';
@@ -19,7 +21,7 @@ export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ key: string }>;
-  searchParams: Promise<{ tab?: string; dropped?: string; older?: string; all?: string }>;
+  searchParams: Promise<{ tab?: string; dropped?: string; older?: string; all?: string; days?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -34,7 +36,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
   const project = projects.find((p) => p.key === key);
   if (!project) notFound();
 
-  const tab = view.tab === 'logs' || view.tab === 'ideas' ? view.tab : 'issues';
+  const tab = view.tab === 'activity' || view.tab === 'logs' || view.tab === 'ideas' ? view.tab : 'issues';
   const showDropped = view.dropped === '1';
   const showOlder = view.older === '1';
   const board = projectBoard(project.key, issues, { today: today(), older: showOlder });
@@ -60,6 +62,9 @@ export default async function ProjectPage({ params, searchParams }: Props) {
   const day = workDay();
   const allLogs = tab === 'logs' ? data.logs('0000-01-01', day).filter((e) => e.project === project.key) : [];
   const logs = view.all === '1' ? allLogs : allLogs.filter((e) => e.day > addDays(day, -28));
+  const days = windowDays(view.days);
+  const from = addDays(day, -(days - 1));
+  const feed = tab === 'activity' ? activity(projects, issues, data.logs(from, day), from, day, project.key) : [];
   const empty = !board.todo.length && !board.doing.length && !board.done.length && !board.olderDone;
 
   return (
@@ -69,13 +74,15 @@ export default async function ProjectPage({ params, searchParams }: Props) {
         <div className={panel.layout}>
           <div className={panel.main} style={idColumn(tab === 'ideas' ? board.idea : [...board.todo, ...board.doing, ...board.done, ...(showDropped ? board.dropped : [])])}>
             <nav className={styles.tabs} aria-label="View">
-              {(['issues', 'ideas', 'logs'] as const).map((t) => (
+              {(['activity', 'issues', 'ideas', 'logs'] as const).map((t) => (
                 <Link key={t} className={styles.tab} href={tabHref(t)} aria-current={tab === t ? 'page' : undefined}>
                   {t[0].toUpperCase() + t.slice(1)}
                 </Link>
               ))}
             </nav>
-            {tab === 'logs' ? (
+            {tab === 'activity' ? (
+              <Activity days={feed} today={day} scope={project.key} earlierHref={`${tabHref('activity')}&days=${days + WEEK}`} />
+            ) : tab === 'logs' ? (
               <Logs entries={logs} today={day} older={allLogs.length - logs.length} moreHref={`${tabHref('logs')}&all=1`} />
             ) : tab === 'ideas' ? (
               board.idea.length ? section('idea', board.idea) : <p className={ui.empty}>No ideas.</p>

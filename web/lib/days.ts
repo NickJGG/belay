@@ -23,3 +23,12 @@ export function shortDay(day: string, today: string): string {
   const options: Intl.DateTimeFormatOptions = daysBetween(day, today) < 7 ? { weekday: 'short' } : { month: 'short', day: 'numeric' };
   return dateOf(day).toLocaleDateString('en', options);
 }
+
+export const WEEK = 7;
+const MAX_DAYS = 52 * WEEK;
+
+/** An Activity window from `?days=`: a whole number of weeks, one at least and a year at most. */
+export function windowDays(raw: string | undefined): number {
+  const weeks = Math.floor(Number(raw) / WEEK);
+  return Number.isFinite(weeks) && weeks > 1 ? Math.min(weeks * WEEK, MAX_DAYS) : WEEK;
+}

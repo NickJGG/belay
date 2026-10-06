@@ -18,7 +18,7 @@ interface Target {
 
 const isSubmit = (e: React.KeyboardEvent) => e.key === 'Enter' && (e.ctrlKey || e.metaKey);
 
-export function Activity({ id, comments }: { id: string; comments: Comment[] }) {
+export function Comments({ id, comments }: { id: string; comments: Comment[] }) {
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState<Target & { original: string; text: string }>();
   const [deleting, setDeleting] = useState<Target>();
@@ -62,9 +62,9 @@ export function Activity({ id, comments }: { id: string; comments: Comment[] }) 
     });
 
   return (
-    <section className={styles.activity} aria-labelledby="activity-title">
-      <h2 id="activity-title" className={ui.h2}>
-        Activity
+    <section className={styles.thread} aria-labelledby="comments-title">
+      <h2 id="comments-title" className={ui.h2}>
+        Comments
       </h2>
       {comments.length > 0 && (
         <ol className={styles.comments}>

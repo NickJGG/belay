@@ -16,7 +16,7 @@ import { StatusIcon } from '@/components/StatusIcon';
 import ui from '@/components/ui.module.css';
 import { ctx, openBlockers } from '@/lib/data';
 import type { Issue } from '@/lib/types';
-import { Activity } from './Activity';
+import { Comments } from './Comments';
 import { BodyEditor } from './BodyEditor';
 import { Blockers } from './Blockers';
 import { DeleteIssue } from './DeleteIssue';
@@ -66,7 +66,7 @@ export default async function IssuePage({ params }: Props) {
               </p>
             )}
             <BodyEditor id={issue.id} body={issue.body} hash={bodyHash(issue.body)} />
-            <Activity id={issue.id} comments={issue.comments} />
+            <Comments id={issue.id} comments={issue.comments} />
           </article>
 
           <aside className={panel.props} aria-label="Properties">

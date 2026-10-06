@@ -1,14 +1,14 @@
-/** The dashboard home page's derived views: what's In flight, and a timeline of recent work days. */
+/** The dashboard's derived views: what's In flight, and the Activity of recent work days. */
 import type { GrillSession } from './grill.ts';
 import type { DatedEntry } from './logs.ts';
 import type { Issue, IssueStatus, Project } from './store.ts';
 import { addDays, daysBetween, workDayOf } from './workday.ts';
 
-/** Work days without activity after which a `doing` issue is Idle. */
+/** Work days without a transition, comment or linked log entry after which a `doing` issue is Idle. */
 export const IDLE_DAYS = 3;
 
 /** The latest of the issue's transitions, comments and linked log entries. Commits and `updated` don't count. */
-export function issueActivity(issue: Issue, logs: DatedEntry[]): string | undefined {
+export function lastTouch(issue: Issue, logs: DatedEntry[]): string | undefined {
   const times = [
     ...(issue.transitions ?? []).map((t) => t.at),
     ...issue.comments.map((c) => c.at),
@@ -30,19 +30,19 @@ export interface InFlightIssue {
 }
 
 export interface InFlight {
-  /** Idle first, then most recent activity first. */
+  /** Idle first, then most recently touched first. */
   issues: InFlightIssue[];
   /** In-progress sessions tagged with a project that no issue links to yet. */
   grill: GrillSession[];
 }
 
-/** `logs` must reach back to the earliest `doingSince` of the doing issues, so their activity is complete. */
+/** `logs` must reach back to the earliest `doingSince` of the doing issues, so their last touch is found. */
 export function inFlight(projects: Project[], issues: Issue[], logs: DatedEntry[], grill: GrillSession[], today: string): InFlight {
   const active = new Set(projects.filter((p) => p.status === 'active').map((p) => p.key));
   const rows = issues
     .filter((t) => t.status === 'doing' && active.has(t.project))
     .map((issue) => {
-      const last = issueActivity(issue, logs);
+      const last = lastTouch(issue, logs);
       const idle = daysBetween(last ? workDayOf(last) : issue.updated, today);
       return {
         last: last ?? issue.updated,
@@ -57,38 +57,40 @@ export function inFlight(projects: Project[], issues: Issue[], logs: DatedEntry[
   };
 }
 
-export type TimelineEvent =
+export type ActivityEvent =
   | { type: 'transition'; at: string; issue: Issue; to: IssueStatus }
   | { type: 'log'; at: string; entry: DatedEntry };
 
-export type TimelineDay = { day: string; events: TimelineEvent[] } | { gap: { from: string; to: string } };
+export type ActivityDay = { day: string; events: ActivityEvent[] } | { gap: { from: string; to: string } };
 
-const TIMELINE_STATUSES: readonly IssueStatus[] = ['doing', 'done', 'dropped'];
+const ACTIVITY_STATUSES: readonly IssueStatus[] = ['doing', 'done', 'dropped'];
 
 /**
- * Work days `from`..`to`, newest first, each with its log entries and its issues' moves to doing/done/dropped,
- * newest first. An issue shows once, at its latest such move in the window. A run of consecutive days with
- * nothing collapses into one gap. Archived projects are left out.
+ * Activity: work days `from`..`to`, newest first, each with its log entries and its issues' moves to
+ * doing/done/dropped, newest first. An issue shows once, at its latest such move in the window. A run of
+ * consecutive days with nothing collapses into one gap. Archived projects are left out, unless `project`
+ * scopes it to one project, archived or not.
  */
-export function timeline(projects: Project[], issues: Issue[], logs: DatedEntry[], from: string, to: string): TimelineDay[] {
+export function activity(projects: Project[], issues: Issue[], logs: DatedEntry[], from: string, to: string, project?: string): ActivityDay[] {
   const archived = new Set(projects.filter((p) => p.status === 'archived').map((p) => p.key));
-  const byDay = new Map<string, TimelineEvent[]>();
-  const add = (day: string, e: TimelineEvent) => {
+  const skip = (key: string) => (project ? key !== project : archived.has(key));
+  const byDay = new Map<string, ActivityEvent[]>();
+  const add = (day: string, e: ActivityEvent) => {
     if (day < from || day > to) return;
     const list = byDay.get(day);
     if (list) list.push(e);
     else byDay.set(day, [e]);
   };
   for (const issue of issues) {
-    if (archived.has(issue.project)) continue;
-    const t = issue.transitions?.findLast((x) => x.from && TIMELINE_STATUSES.includes(x.to) && workDayOf(x.at) >= from && workDayOf(x.at) <= to);
+    if (skip(issue.project)) continue;
+    const t = issue.transitions?.findLast((x) => x.from && ACTIVITY_STATUSES.includes(x.to) && workDayOf(x.at) >= from && workDayOf(x.at) <= to);
     if (t) add(workDayOf(t.at), { type: 'transition', at: t.at, issue, to: t.to });
   }
   for (const entry of logs) {
-    if (!archived.has(entry.project)) add(entry.day, { type: 'log', at: entry.at, entry });
+    if (!skip(entry.project)) add(entry.day, { type: 'log', at: entry.at, entry });
   }
 
-  const out: TimelineDay[] = [];
+  const out: ActivityDay[] = [];
   for (let day = to; day >= from; day = addDays(day, -1)) {
     const events = byDay.get(day);
     const prev = out.at(-1);

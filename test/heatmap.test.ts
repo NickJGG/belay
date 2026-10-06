@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { activity, heatLevel, heatmap, heatRange } from '../src/heatmap.ts';
+import { heatLevel, heatmap, heatRange, moves } from '../src/heatmap.ts';
 import type { DatedEntry } from '../src/logs.ts';
 import type { Issue, Project } from '../src/store.ts';
 
@@ -25,7 +25,7 @@ const log = (project: string, day: string): DatedEntry => ({ project, at: `${day
 // 2026-10-08 is a Thursday.
 const THU = '2026-10-08';
 
-test('activity counts each transition, comment, log entry and commit on its work day', () => {
+test('moves counts each transition, comment, log entry and commit on its work day', () => {
   const issues = [
     issue({
       transitions: [
@@ -38,7 +38,7 @@ test('activity counts each transition, comment, log entry and commit on its work
   ];
   const logs = [log('JOB', '2026-10-05'), log('PORT', '2026-10-05')];
   const commits = [new Date(2026, 9, 5, 2).toISOString()];
-  assert.deepEqual([...activity(project('JOB'), issues, logs, commits)].sort(), [
+  assert.deepEqual([...moves(project('JOB'), issues, logs, commits)].sort(), [
     ['2026-10-04', 1],
     ['2026-10-05', 1],
     ['2026-10-06', 3],

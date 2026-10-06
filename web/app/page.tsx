@@ -1,13 +1,14 @@
 import Link from 'next/link';
+import { Activity } from '@/components/Activity';
 import { idColumn, Logo } from '@/components/bits';
 import { IssueRow } from '@/components/controls';
 import home from '@/components/Home.module.css';
 import { InFlight } from '@/components/InFlight';
 import { PageBar } from '@/components/PageBar';
 import { ThisWeek } from '@/components/ThisWeek';
-import { Timeline } from '@/components/Timeline';
 import ui from '@/components/ui.module.css';
 import {
+  activity,
   addDays,
   burndown,
   commitTimes,
@@ -18,26 +19,18 @@ import {
   inFlight,
   next,
   oldestFirst,
-  timeline,
   urgencies,
   weekDays,
   weekStart,
   weekSummary,
   workDay,
 } from '@/lib/data';
+import { WEEK, windowDays } from '@/lib/days';
 
 export const dynamic = 'force-dynamic';
 
-const WEEK = 7;
-const MAX_DAYS = 52 * WEEK;
 const UP_NEXT_FOCUS = 3;
 const IDEAS_SHOWN = 5;
-
-/** `?days=` as a whole number of weeks, at least one. */
-function windowDays(raw: string | undefined): number {
-  const weeks = Math.floor(Number(raw) / WEEK);
-  return Number.isFinite(weeks) && weeks > 1 ? Math.min(weeks * WEEK, MAX_DAYS) : WEEK;
-}
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
   const days = windowDays((await searchParams).days);
@@ -86,8 +79,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
           <div className={home.main}>
             <h2 className={ui.h2}>In flight</h2>
             <InFlight data={flight} />
-            <h2 className={ui.h2}>Timeline</h2>
-            <Timeline days={timeline(projects, issues, logs, from, day)} today={day} earlierHref={`/?days=${days + WEEK}`} />
+            <h2 className={ui.h2}>Activity</h2>
+            <Activity days={activity(projects, issues, logs, from, day)} today={day} earlierHref={`/?days=${days + WEEK}`} />
           </div>
 
           <aside className={home.rail} aria-label="This week and up next">

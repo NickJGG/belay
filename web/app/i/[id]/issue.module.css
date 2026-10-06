@@ -188,13 +188,13 @@
   background: color-mix(in oklch, var(--danger) 85%, #000);
 }
 
-.activity {
+.thread {
   display: grid;
   gap: 12px;
   margin-top: 8px;
 }
 
-.activity > h2 {
+.thread > h2 {
   margin-bottom: 0;
 }
 

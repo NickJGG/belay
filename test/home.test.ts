@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { GrillSession } from '../src/grill.ts';
-import { doingSince, IDLE_DAYS, inFlight, issueActivity, timeline } from '../src/home.ts';
+import { activity, doingSince, IDLE_DAYS, inFlight, lastTouch } from '../src/home.ts';
 import type { DatedEntry } from '../src/logs.ts';
 import type { Issue, Project } from '../src/store.ts';
 
@@ -30,15 +30,15 @@ const started = (at: string) => [
 
 const TODAY = '2026-10-06';
 
-test('issueActivity: latest transition, comment or linked log entry; ignores updated and other issues', () => {
+test('lastTouch: latest transition, comment or linked log entry; ignores updated and other issues', () => {
   const t = issue('BEL-1', {
     updated: '2026-10-05',
     transitions: started('2026-10-01T09:00'),
     comments: [{ at: '2026-10-02T09:00', by: 'user', text: 'x' }],
   });
-  assert.equal(issueActivity(t, []), '2026-10-02T09:00');
-  assert.equal(issueActivity(t, [entry('2026-10-03', { issue: 'BEL-1' }), entry('2026-10-04', { issue: 'BEL-2' })]), '2026-10-03T12:00');
-  assert.equal(issueActivity(issue('BEL-3'), []), undefined);
+  assert.equal(lastTouch(t, []), '2026-10-02T09:00');
+  assert.equal(lastTouch(t, [entry('2026-10-03', { issue: 'BEL-1' }), entry('2026-10-04', { issue: 'BEL-2' })]), '2026-10-03T12:00');
+  assert.equal(lastTouch(issue('BEL-3'), []), undefined);
 });
 
 test('doingSince: last move to doing, else updated', () => {
@@ -84,7 +84,7 @@ test('inFlight: grill sessions in progress, tagged and not yet linked', () => {
   assert.deepEqual(grill.map((s) => [s.slug, s.project]), [['open', 'BEL']]);
 });
 
-test('timeline: each issue once, at its latest move to doing/done/dropped in the window, plus log entries, newest first', () => {
+test('activity: each issue once, at its latest move to doing/done/dropped in the window, plus log entries, newest first', () => {
   const t = issue('BEL-1', {
     transitions: [
       { at: '2026-10-05T09:00', to: 'idea', by: 'user' },
@@ -96,17 +96,29 @@ test('timeline: each issue once, at its latest move to doing/done/dropped in the
   });
   const logs = [entry('2026-10-05', { at: '2026-10-05T15:00' }), entry('2026-10-05', { at: '2026-10-06T09:00', n: 2 })];
   const events = (from: string, to: string) =>
-    timeline([project('BEL')], [t], logs, from, to).flatMap((d) => ('day' in d ? d.events : [])).map((e) => (e.type === 'log' ? `log ${e.at}` : `${e.to} ${e.at}`));
+    activity([project('BEL')], [t], logs, from, to).flatMap((d) => ('day' in d ? d.events : [])).map((e) => (e.type === 'log' ? `log ${e.at}` : `${e.to} ${e.at}`));
   assert.deepEqual(events('2026-10-05', '2026-10-07'), ['done 2026-10-06T10:00', 'log 2026-10-06T09:00', 'log 2026-10-05T15:00']);
   assert.deepEqual(events('2026-10-05', '2026-10-05').filter((e) => !e.startsWith('log')), ['doing 2026-10-05T11:00']);
 });
 
-test('timeline: empty runs collapse, archived projects and days outside the window are left out', () => {
+test('activity: empty runs collapse, archived projects and days outside the window are left out', () => {
   const projects = [project('BEL'), project('OLD', { status: 'archived' })];
   const logs = [entry('2026-09-29'), entry('2026-10-01'), entry('2026-10-05'), entry('2026-10-06', { project: 'OLD' }), entry('2026-09-28')];
-  const days = timeline(projects, [], logs, '2026-09-29', TODAY);
+  const days = activity(projects, [], logs, '2026-09-29', TODAY);
   assert.deepEqual(
     days.map((d) => ('gap' in d ? `${d.gap.from}..${d.gap.to}` : d.day)),
     ['2026-10-06..2026-10-06', '2026-10-05', '2026-10-02..2026-10-04', '2026-10-01', '2026-09-30..2026-09-30', '2026-09-29'],
   );
+});
+
+test('activity: scoped to one project, archived or not', () => {
+  const projects = [project('BEL'), project('OLD', { status: 'archived' })];
+  const moved = (id: string) => issue(id, { status: 'done', transitions: [{ at: '2026-10-05T10:00', from: 'doing', to: 'done', by: 'user' }] });
+  const logs = [entry('2026-10-05'), entry('2026-10-06', { project: 'OLD' })];
+  const events = (key: string) =>
+    activity(projects, [moved('BEL-1'), moved('OLD-1')], logs, '2026-10-05', TODAY, key)
+      .flatMap((d) => ('day' in d ? d.events : []))
+      .map((e) => (e.type === 'log' ? `log ${e.entry.project}` : e.issue.id));
+  assert.deepEqual(events('BEL'), ['log BEL', 'BEL-1']);
+  assert.deepEqual(events('OLD'), ['log OLD', 'OLD-1']);
 });

@@ -25,6 +25,6 @@ export { plural } from '../../src/digest.ts';
 export { filterIssues, indexIssues, isReady, next, oldestFirst, openBlockers, parseIssueFilter, projectBoard, projectCounts } from '../../src/query.ts';
 export { addDays, daysBetween, weekDays, weekStart, workDay } from '../../src/workday.ts';
 export { burndown, goalOf, goalSpec, urgencies } from '../../src/goals.ts';
-export { doingSince, inFlight, timeline } from '../../src/home.ts';
+export { activity, doingSince, inFlight } from '../../src/home.ts';
 export { heatLevel, heatmap, heatRange } from '../../src/heatmap.ts';
 export { weekGoal, weekSummary } from '../../src/week.ts';
