@@ -1,0 +1,25 @@
+'use client';
+
+import Link from 'next/link';
+import { useState } from 'react';
+import styles from './page.module.css';
+
+export function Tabs<T extends string>({ tabs, current, hrefs }: { tabs: readonly T[]; current: T; hrefs: Record<T, string> }) {
+  // Moves the indicator on click, before the server render of the new tab arrives.
+  const [active, setActive] = useState(current);
+  const [synced, setSynced] = useState(current);
+  if (current !== synced) {
+    setSynced(current);
+    setActive(current);
+  }
+  return (
+    <nav className={styles.tabs} aria-label="View" style={{ '--n': tabs.length, '--i': tabs.indexOf(active) } as React.CSSProperties}>
+      <span className={styles.indicator} aria-hidden />
+      {tabs.map((t) => (
+        <Link key={t} className={styles.tab} href={hrefs[t]} aria-current={active === t ? 'page' : undefined} onClick={() => setActive(t)}>
+          {t[0].toUpperCase() + t.slice(1)}
+        </Link>
+      ))}
+    </nav>
+  );
+}

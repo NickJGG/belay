@@ -15,9 +15,13 @@ import { activity, addDays, ctx, goalSpec, projectBoard, projectCounts, workDay 
 import { WEEK, windowDays } from '@/lib/days';
 import type { Issue, IssueStatus } from '@/lib/types';
 import { Logs } from './Logs';
+import { Tabs } from './Tabs';
 import styles from './page.module.css';
 
 export const dynamic = 'force-dynamic';
+
+const TABS = ['activity', 'issues', 'ideas', 'logs'] as const;
+type Tab = (typeof TABS)[number];
 
 interface Props {
   params: Promise<{ key: string }>;
@@ -36,7 +40,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
   const project = projects.find((p) => p.key === key);
   if (!project) notFound();
 
-  const tab = view.tab === 'activity' || view.tab === 'logs' || view.tab === 'ideas' ? view.tab : 'issues';
+  const tab: Tab = view.tab === 'activity' || view.tab === 'logs' || view.tab === 'ideas' ? view.tab : 'issues';
   const showDropped = view.dropped === '1';
   const showOlder = view.older === '1';
   const board = projectBoard(project.key, issues, { today: today(), older: showOlder });
@@ -58,7 +62,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
       </StatusGroup>
     );
   const counts = projectCounts(project, issues, byId);
-  const tabHref = (t: typeof tab) => `${projectHref(project.key)}${t === 'issues' ? '' : `?tab=${t}`}`;
+  const tabHref = (t: Tab) => `${projectHref(project.key)}${t === 'issues' ? '' : `?tab=${t}`}`;
   const day = workDay();
   const allLogs = tab === 'logs' ? data.logs('0000-01-01', day).filter((e) => e.project === project.key) : [];
   const logs = view.all === '1' ? allLogs : allLogs.filter((e) => e.day > addDays(day, -28));
@@ -73,13 +77,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
       <div className={ui.page}>
         <div className={panel.layout}>
           <div className={panel.main} style={idColumn(tab === 'ideas' ? board.idea : [...board.todo, ...board.doing, ...board.done, ...(showDropped ? board.dropped : [])])}>
-            <nav className={styles.tabs} aria-label="View">
-              {(['activity', 'issues', 'ideas', 'logs'] as const).map((t) => (
-                <Link key={t} className={styles.tab} href={tabHref(t)} aria-current={tab === t ? 'page' : undefined}>
-                  {t[0].toUpperCase() + t.slice(1)}
-                </Link>
-              ))}
-            </nav>
+            <Tabs tabs={TABS} current={tab} hrefs={Object.fromEntries(TABS.map((t) => [t, tabHref(t)])) as Record<Tab, string>} />
             {tab === 'activity' ? (
               <Activity days={feed} today={day} scope={project.key} earlierHref={`${tabHref('activity')}&days=${days + WEEK}`} />
             ) : tab === 'logs' ? (

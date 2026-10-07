@@ -5,22 +5,38 @@
 }
 
 .tabs {
-  display: flex;
-  gap: 2px;
-  margin-bottom: 8px;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--n), 1fr);
+  width: fit-content;
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-raised);
+}
+
+.indicator {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: calc(100% / var(--n));
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--line));
+  border-radius: 13px;
+  background: color-mix(in oklab, var(--accent) 14%, var(--bg-raised));
+  transform: translateX(calc(var(--i) * 100%));
+  transition: transform 200ms ease-in-out;
 }
 
 .tab {
+  position: relative;
   display: inline-flex;
+  justify-content: center;
   align-items: center;
   height: 26px;
-  padding: 0 12px;
-  border-radius: 13px;
+  padding: 0 10px;
   color: var(--muted);
-  font-size: 12.5px;
-  transition:
-    background var(--fade),
-    color var(--fade);
+  font-size: 12px;
+  transition: color var(--fade);
 }
 
 .tab:hover {
@@ -28,9 +44,13 @@
 }
 
 .tab[aria-current='page'] {
-  background: var(--hover);
   color: var(--fg);
-  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .indicator {
+    transition: none;
+  }
 }
 
 .logDay + .logDay {
