@@ -27,5 +27,4 @@ export { filterIssues, indexIssues, isReady, next, oldestFirst, openBlockers, pa
 export { addDays, daysBetween, weekDays, weekStart, workDay } from '../../src/workday.ts';
 export { burndown, goalOf, goalSpec, urgencies } from '../../src/goals.ts';
 export { activity, doingSince, inFlight } from '../../src/home.ts';
-export { heatLevel, heatmap, heatRange } from '../../src/heatmap.ts';
 export { weekGoal, weekSummary } from '../../src/week.ts';
