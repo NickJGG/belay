@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import { projectHref } from '@/components/bits';
+import { idColumn, projectHref } from '@/components/bits';
 import { FocusToggle } from '@/components/controls';
 import { PageBar, projectsCrumb } from '@/components/PageBar';
 import ui from '@/components/ui.module.css';
-import { ctx, indexIssues, plural, projectCounts } from '@/lib/data';
+import { ctx } from '@/lib/data';
 import type { Project } from '@/lib/types';
 import styles from './projects.module.css';
 
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Projects' };
 
 export default function Projects() {
-  const { projects, issues } = ctx();
+  const { projects } = ctx();
   const bar = <PageBar crumbs={[projectsCrumb]} />;
   if (!projects.length) {
     return (
@@ -27,7 +27,6 @@ export default function Projects() {
     );
   }
 
-  const byId = indexIssues(issues);
   const ordered = (list: Project[]) =>
     [...list].sort((a, b) => (a.group ?? '').localeCompare(b.group ?? ''));
   const active = ordered(projects.filter((p) => p.status === 'active'));
@@ -35,30 +34,22 @@ export default function Projects() {
   const paused = ordered(projects.filter((p) => p.status === 'paused'));
   const archived = projects.filter((p) => p.status === 'archived').length;
 
-  const projectRow = (p: Project) => {
-    const c = projectCounts(p, issues, byId);
-    const counts = [
-      c.doing ? `${c.doing} doing` : '',
-      c.ready ? `${c.ready} ready` : '',
-      c.blocked ? `${c.blocked} blocked` : '',
-      c.ideas ? plural(c.ideas, 'idea') : '',
-    ].filter(Boolean);
-    return (
-      <li key={p.key} className={ui.row}>
-        <FocusToggle project={p} />
-        <Link href={projectHref(p.key)} className={styles.name}>
-          {p.name}
+  const projectRow = (p: Project) => (
+    <li key={p.key} className={ui.row}>
+      <FocusToggle project={p} />
+      <span className={ui.idTitle}>
+        <Link href={projectHref(p.key)} className={`${ui.mono} ${ui.muted} ${ui.stretch} ${ui.idCol}`}>
+          {p.key}
         </Link>
-        <span className={`${ui.mono} ${ui.muted}`}>{p.key}</span>
-        <span className={`${ui.grow} ${ui.muted}`}>{counts.join(' · ')}</span>
-      </li>
-    );
-  };
+        <span className={`${ui.grow} ${styles.name}`}>{p.name}</span>
+      </span>
+    </li>
+  );
 
   return (
     <>
       {bar}
-      <div className={ui.page}>
+      <div className={ui.page} style={idColumn([...active, ...paused].map((p) => p.key))}>
         {groups.map((g) => (
           <section key={g || '-'}>
             {g && <h3 className={ui.h3}>{g}</h3>}

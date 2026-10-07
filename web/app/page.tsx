@@ -92,7 +92,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
             )}
             <h2 className={ui.h2}>Up next</h2>
             {upNext.length ? (
-              <ul className={ui.rows} style={idColumn(upNext)}>
+              <ul className={ui.rows} style={idColumn(upNext.map((t) => t.id))}>
                 {upNext.map((t) => (
                   <IssueRow key={t.id} issue={t} />
                 ))}
@@ -103,7 +103,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
             {ideas.length > 0 && (
               <>
                 <h2 className={ui.h2}>Ideas to triage</h2>
-                <ul className={ui.rows} style={idColumn(ideas.slice(0, IDEAS_SHOWN))}>
+                <ul className={ui.rows} style={idColumn(ideas.slice(0, IDEAS_SHOWN).map((t) => t.id))}>
                   {ideas.slice(0, IDEAS_SHOWN).map((t) => (
                     <IssueRow key={t.id} issue={t} />
                   ))}

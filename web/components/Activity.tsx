@@ -37,9 +37,9 @@ function Event({ e }: { e: ActivityEvent }) {
  * `scope` keeps a project's collapsed days apart from the home page's.
  */
 export function Activity({ days, today, earlierHref, scope }: { days: ActivityDay[]; today: string; earlierHref: string; scope?: string }) {
-  const issues = days.flatMap((d) => ('day' in d ? d.events.flatMap((e) => (e.type === 'transition' ? [e.issue] : [])) : []));
+  const ids = days.flatMap((d) => ('day' in d ? d.events.flatMap((e) => (e.type === 'transition' ? [e.issue.id] : [])) : []));
   return (
-    <div className={styles.feed} style={idColumn(issues)}>
+    <div className={styles.feed} style={idColumn(ids)}>
       {days.map((d) =>
         'gap' in d ? (
           <section key={d.gap.to} className={styles.day} data-gap>

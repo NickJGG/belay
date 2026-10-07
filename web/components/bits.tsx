@@ -24,9 +24,9 @@ export const grillHref = (slug: string) => `/g/${encodeURIComponent(slug)}`;
 /** `at` lets the page tell when the address has come to hold a different entry. */
 export const logHref = (day: string, n: number, at: string) => `/l/${day}/${n}?at=${encodeURIComponent(at)}`;
 
-/** Style for a container of `IssueRow`s: sizes every row's ID column to the longest ID among `issues`. */
-export const idColumn = (issues: Pick<Issue, 'id'>[]) =>
-  ({ '--id-w': `${Math.max(0, ...issues.map((t) => t.id.length))}ch` }) as React.CSSProperties;
+/** Style for a container of rows: sizes every row's `ui.idCol` to the longest of `ids` (issue IDs or project keys). */
+export const idColumn = (ids: string[]) =>
+  ({ '--id-w': `${Math.max(0, ...ids.map((id) => id.length))}ch` }) as React.CSSProperties;
 
 /** `stretch` makes the link cover its whole `ui.row`. */
 export function IssueLink({ id, stretch, className = '' }: { id: string; stretch?: boolean; className?: string }) {

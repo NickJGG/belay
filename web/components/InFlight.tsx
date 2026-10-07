@@ -9,7 +9,7 @@ import ui from '@/components/ui.module.css';
 export function InFlight({ data }: { data: InFlightData }) {
   if (!data.issues.length && !data.grill.length) return <p className={ui.empty}>Nothing in flight.</p>;
   return (
-    <ul className={ui.rows} style={idColumn(data.issues.map((r) => r.issue))}>
+    <ul className={ui.rows} style={idColumn(data.issues.map((r) => r.issue.id))}>
       {data.issues.map(({ issue }) => (
         <li key={issue.id} className={ui.row}>
           <StatusIcon status="doing" />

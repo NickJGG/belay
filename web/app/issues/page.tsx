@@ -29,7 +29,7 @@ export default async function Issues({ searchParams }: { searchParams: Promise<Q
   return (
     <>
       <PageBar crumbs={[{ label: title, icon: title === 'Ideas' ? <Inbox size={14} aria-hidden /> : <Layers size={14} aria-hidden /> }]} after={<span className={ui.muted}>{shown.length}</span>} />
-      <div className={ui.page} style={idColumn(shown)}>
+      <div className={ui.page} style={idColumn(shown.map((t) => t.id))}>
         <IssueFilters projects={projects.map((p) => p.key).sort()} />
         {!shown.length && <p className={ui.empty}>No matching issues.</p>}
         {BOARD_ORDER.filter((s) => filter.statuses.includes(s)).map((s) => {
