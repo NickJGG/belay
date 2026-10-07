@@ -22,7 +22,7 @@ export const commitTimes = cache((key: string, from: string, to: string): string
 });
 
 export { plural } from '../../src/digest.ts';
-export { filterIssues, indexIssues, isReady, next, oldestFirst, openBlockers, parseIssueFilter, projectBoard, projectCounts } from '../../src/query.ts';
+export { filterIssues, indexIssues, isReady, next, oldestFirst, openBlockers, parseIssueFilter, parseIssueSort, projectBoard, projectCounts } from '../../src/query.ts';
 export { addDays, daysBetween, weekDays, weekStart, workDay } from '../../src/workday.ts';
 export { burndown, goalOf, goalSpec, urgencies } from '../../src/goals.ts';
 export { activity, doingSince, inFlight } from '../../src/home.ts';

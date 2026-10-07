@@ -4,12 +4,18 @@
   font-size: 12px;
 }
 
+.tabRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
 .tabs {
   position: relative;
   display: grid;
   grid-template-columns: repeat(var(--n), 1fr);
   width: fit-content;
-  margin-bottom: 14px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--bg-raised);
@@ -45,6 +51,179 @@
 
 .tab[aria-current='page'] {
   color: var(--fg);
+}
+
+.view {
+  position: relative;
+  margin-left: auto;
+}
+
+.viewButton {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-raised);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color var(--fade);
+}
+
+.viewButton:hover,
+.viewButton[data-on] {
+  color: var(--fg);
+}
+
+.viewButton[data-on] {
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--line));
+  background: color-mix(in oklab, var(--accent) 14%, var(--bg-raised));
+}
+
+.viewPanel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 220px;
+  padding: 8px 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow);
+  transition:
+    opacity var(--fade),
+    transform var(--fade);
+}
+
+@starting-style {
+  .viewPanel {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+.viewOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.viewOption:hover:enabled {
+  background: color-mix(in oklch, var(--accent) 14%, transparent);
+}
+
+.viewOption:disabled {
+  cursor: default;
+}
+
+.viewField {
+  position: relative;
+}
+
+.viewTrigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 6px 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.viewTrigger:hover,
+.viewTrigger[aria-expanded='true'] {
+  background: color-mix(in oklch, var(--accent) 14%, transparent);
+}
+
+.viewRule {
+  margin: 4px 8px;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.viewFlyout .viewRule {
+  margin: 4px;
+}
+
+.viewIcon {
+  flex: none;
+  color: var(--muted);
+}
+
+/* The row differs from the default view. */
+.viewIcon[data-on] {
+  color: var(--accent);
+}
+
+.viewChevron {
+  flex: none;
+  margin-left: auto;
+  color: var(--muted);
+}
+
+/* Lines up with the panel's left edge, past its padding and border. */
+.viewFlyout {
+  position: absolute;
+  top: -4px;
+  right: calc(100% + 9px);
+  z-index: 21;
+  width: 150px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow);
+  transition:
+    opacity var(--fade),
+    transform var(--fade);
+}
+
+@starting-style {
+  .viewFlyout {
+    opacity: 0;
+    transform: translateX(2px);
+  }
+}
+
+.viewCheck {
+  margin-left: auto;
+  color: var(--accent);
+}
+
+.viewReset {
+  align-self: flex-start;
+  margin: 0 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.viewReset:hover {
+  text-decoration: underline;
 }
 
 @media (prefers-reduced-motion: reduce) {
