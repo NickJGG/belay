@@ -1,19 +1,21 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { grillForProject } from '../../../../src/grill.ts';
 import { DEFAULT_VIEW_STATUSES, VIEW_STATUSES, isDefaultStatuses, toggleStatus, type ViewStatus } from '../../../../src/view.ts';
 import { setProjectGoal, setProjectGroup, setProjectKinds, setProjectName } from '@/app/actions';
 import { Activity } from '@/components/Activity';
-import { idColumn, projectHref } from '@/components/bits';
+import { idColumn, projectHref, projectTabHref } from '@/components/bits';
 import { FocusToggle, ProjectStatusSelect, IssueRow } from '@/components/controls';
 import { TextEdit } from '@/components/InlineEdit';
 import { PageBar, projectsCrumb } from '@/components/PageBar';
 import panel from '@/components/PropsPanel.module.css';
 import { StatusGroup } from '@/components/StatusGroup';
 import ui from '@/components/ui.module.css';
-import { activity, addDays, ctx, goalSpec, parseIssueFilter, parseIssueSort, projectBoard, projectCounts, workDay } from '@/lib/data';
+import { activity, addDays, ctx, goalSpec, grillSessions, parseIssueFilter, parseIssueSort, projectBoard, projectCounts, workDay } from '@/lib/data';
 import { WEEK, windowDays } from '@/lib/days';
 import type { Issue, IssueStatus } from '@/lib/types';
+import { Grills } from './Grills';
 import { Logs } from './Logs';
 import { Tabs } from './Tabs';
 import { ViewMenu } from './ViewMenu';
@@ -21,7 +23,7 @@ import styles from './page.module.css';
 
 export const dynamic = 'force-dynamic';
 
-const TABS = ['activity', 'issues', 'ideas', 'logs'] as const;
+const TABS = ['activity', 'issues', 'ideas', 'logs', 'grills'] as const;
 type Tab = (typeof TABS)[number];
 
 interface Props {
@@ -41,7 +43,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
   const project = projects.find((p) => p.key === key);
   if (!project) notFound();
 
-  const tab: Tab = view.tab === 'activity' || view.tab === 'logs' || view.tab === 'ideas' ? view.tab : 'issues';
+  const tab: Tab = TABS.find((t) => t === view.tab) ?? 'issues';
   const day = workDay();
   const filter = parseIssueFilter(view, DEFAULT_VIEW_STATUSES);
   const sort = parseIssueSort(view);
@@ -81,9 +83,10 @@ export default async function ProjectPage({ params, searchParams }: Props) {
       </StatusGroup>
     );
   const counts = projectCounts(project, issues, byId);
-  const tabHref = (t: Tab) => `${projectHref(project.key)}${t === 'issues' ? '' : `?tab=${t}`}`;
+  const tabHref = (t: Tab) => projectTabHref(project.key, t);
   const allLogs = tab === 'logs' ? data.logs('0000-01-01', day).filter((e) => e.project === project.key) : [];
   const logs = view.all === '1' ? allLogs : allLogs.filter((e) => e.day > addDays(day, -28));
+  const grills = tab === 'grills' ? grillForProject(grillSessions(), project).tagged.sort((a, b) => (b.updated ?? '').localeCompare(a.updated ?? '')) : [];
   const days = windowDays(view.days);
   const from = addDays(day, -(days - 1));
   const feed = tab === 'activity' ? activity(projects, issues, data.logs(from, day), from, day, project.key) : [];
@@ -128,6 +131,8 @@ export default async function ProjectPage({ params, searchParams }: Props) {
             </div>
             {tab === 'activity' ? (
               <Activity days={feed} today={day} scope={project.key} earlierHref={`${tabHref('activity')}&days=${days + WEEK}`} />
+            ) : tab === 'grills' ? (
+              <Grills sessions={grills} issues={issues} />
             ) : tab === 'logs' ? (
               <Logs entries={logs} today={day} older={allLogs.length - logs.length} moreHref={`${tabHref('logs')}&all=1`} />
             ) : tab === 'ideas' ? (

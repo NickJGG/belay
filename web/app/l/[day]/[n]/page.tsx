@@ -6,7 +6,7 @@ import { logDays } from '../../../../../src/ops.ts';
 import { linkCandidates } from '../../../../../src/picker.ts';
 import { isDay } from '../../../../../src/workday.ts';
 import { openLogFile } from '@/app/actions';
-import { projectHref } from '@/components/bits';
+import { projectHref, projectTabHref } from '@/components/bits';
 import type { Ref } from '@/components/Chip';
 import { OpenFile } from '@/components/OpenFile';
 import { PageBar, projectsCrumb } from '@/components/PageBar';
@@ -42,8 +42,6 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   return { title: entry ? firstLine(entry.text).line : `${day}/${n}` };
 }
 
-const logsHref = (key: string) => `${projectHref(key)}?tab=logs`;
-
 export default async function LogPage(props: Props) {
   const { day, n, entries, entry, gone } = await load(props);
   const { projects, issues, byId, dir } = ctx();
@@ -59,7 +57,7 @@ export default async function LogPage(props: Props) {
         <div className={ui.page}>
           <p className={ui.empty}>
             This log entry moved or was deleted.{' '}
-            <Link className={ui.link} href={key ? logsHref(key) : '/projects'}>
+            <Link className={ui.link} href={key ? projectTabHref(key, 'logs') : '/projects'}>
               {key ? `Back to ${projects.find((p) => p.key === key)?.name ?? key} logs` : 'Back to projects'}
             </Link>
           </p>
@@ -82,7 +80,7 @@ export default async function LogPage(props: Props) {
         crumbs={[
           projectsCrumb,
           { label: project?.name ?? entry.project, href: projectHref(entry.project) },
-          { label: 'Logs', href: logsHref(entry.project) },
+          { label: 'Logs', href: projectTabHref(entry.project, 'logs') },
           { label: address },
         ]}
         after={entry.by === 'claude' && <span className={ui.src}>claude</span>}

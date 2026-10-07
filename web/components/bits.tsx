@@ -3,22 +3,21 @@ import Link from 'next/link';
 import type { Issue } from '@/lib/types';
 import ui from './ui.module.css';
 
-export function Flags({ issue }: { issue: Pick<Issue, 'priority' | 'source'> }) {
+export function Flags({ issue }: { issue: Pick<Issue, 'priority'> }) {
   return (
-    <>
-      {issue.priority === 'high' && (
-        <span className={ui.high} title="High priority">
-          !!
-        </span>
-      )}
-      {issue.source === 'claude' && <span className={ui.src}>claude</span>}
-    </>
+    issue.priority === 'high' && (
+      <span className={ui.high} title="High priority">
+        !!
+      </span>
+    )
   );
 }
 
 export const projectHref = (key: string) => `/p/${encodeURIComponent(key)}`;
 
-export const issueHref = (id: string) => `/i/${encodeURIComponent(id)}`;
+export const projectTabHref = (key: string, tab: string) => `${projectHref(key)}${tab === 'issues' ? '' : `?tab=${tab}`}`;
+
+export const issueHref =(id: string) => `/i/${encodeURIComponent(id)}`;
 
 export const grillHref = (slug: string) => `/g/${encodeURIComponent(slug)}`;
 

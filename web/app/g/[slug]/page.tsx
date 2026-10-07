@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation';
 import { claudeDir } from '../../../../src/config.ts';
 import { grillDir } from '../../../../src/grill.ts';
 import { openGrillFile } from '@/app/actions';
-import { projectHref } from '@/components/bits';
+import { projectHref, projectTabHref } from '@/components/bits';
 import { Chip } from '@/components/Chip';
 import { Markdown } from '@/components/Markdown';
 import { OpenFile } from '@/components/OpenFile';
@@ -43,7 +43,12 @@ export default async function GrillPage({ params }: Props) {
       <PageBar
         crumbs={[
           projectsCrumb,
-          ...(project ? [{ label: project.name, href: projectHref(project.key) }] : []),
+          ...(project
+            ? [
+                { label: project.name, href: projectHref(project.key) },
+                { label: 'Grills', href: projectTabHref(project.key, 'grills') },
+              ]
+            : []),
           { label: slug, icon: <MessagesSquare size={14} aria-hidden /> },
         ]}
       />

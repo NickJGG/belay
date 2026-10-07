@@ -5,7 +5,7 @@ import { claudeDir } from '../../../../src/config.ts';
 import { bodyHash } from '../../../../src/ops.ts';
 import { linkedPath } from '../../../../src/open.ts';
 import { openLinkedFile, setIssueTitle } from '@/app/actions';
-import { Flags, grillHref, projectHref } from '@/components/bits';
+import { Flags, grillHref, projectHref, projectTabHref } from '@/components/bits';
 import { Chip, type Ref } from '@/components/Chip';
 import { PrioritySelect, StatusSelect } from '@/components/controls';
 import { TitleEdit } from '@/components/InlineEdit';
@@ -53,7 +53,14 @@ export default async function IssuePage({ params }: Props) {
   return (
     <>
       <PageBar
-        crumbs={[projectsCrumb, { label: project?.name ?? issue.project, href: projectHref(issue.project) }, { label: issue.id, icon: <StatusIcon status={issue.status} /> }]}
+        crumbs={[
+          projectsCrumb,
+          { label: project?.name ?? issue.project, href: projectHref(issue.project) },
+          issue.status === 'idea'
+            ? { label: 'Ideas', href: projectTabHref(issue.project, 'ideas') }
+            : { label: 'Issues', href: projectTabHref(issue.project, 'issues') },
+          { label: issue.id, icon: <StatusIcon status={issue.status} /> },
+        ]}
         after={<Flags issue={issue} />}
       />
       <div className={ui.page}>
