@@ -4,11 +4,14 @@
  */
 import type { IssueStatus } from './store.ts';
 
-/** The statuses the Issues tab can show, in board order. */
-export const VIEW_STATUSES = ['todo', 'doing', 'done', 'dropped'] as const satisfies readonly IssueStatus[];
+/** The order status groups are listed in: active work first, then the backlog, then finished. */
+export const BOARD_ORDER = ['doing', 'todo', 'idea', 'done', 'dropped'] as const satisfies readonly IssueStatus[];
+
+/** The statuses the Issues tab can show, in board order: `BOARD_ORDER` without `idea`. */
+export const VIEW_STATUSES = ['doing', 'todo', 'done', 'dropped'] as const satisfies readonly IssueStatus[];
 export type ViewStatus = (typeof VIEW_STATUSES)[number];
 
-export const DEFAULT_VIEW_STATUSES: readonly ViewStatus[] = ['todo', 'doing', 'done'];
+export const DEFAULT_VIEW_STATUSES: readonly ViewStatus[] = ['doing', 'todo', 'done'];
 
 /** The query keys the view menu owns. */
 export const VIEW_PARAMS = ['status', 'priority', 'source', 'ready', 'sort', 'dir'] as const;

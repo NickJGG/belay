@@ -114,7 +114,7 @@ export default async function ProjectPage({ params, searchParams }: Props) {
       <PageBar crumbs={[projectsCrumb, { label: project.name }]} />
       <div className={ui.page}>
         <div className={panel.layout}>
-          <div className={panel.main} style={idColumn(tab === 'ideas' ? board.idea : [...board.todo, ...board.doing, ...board.done, ...(showDropped ? board.dropped : [])])}>
+          <div className={panel.main} style={idColumn(tab === 'ideas' ? board.idea : [...board.doing, ...board.todo, ...board.done, ...(showDropped ? board.dropped : [])])}>
             <div className={styles.tabRow}>
               <Tabs tabs={TABS} current={tab} hrefs={Object.fromEntries(TABS.map((t) => [t, tabHref(t)])) as Record<Tab, string>} />
               {(tab === 'issues' || tab === 'ideas') && (
@@ -140,8 +140,8 @@ export default async function ProjectPage({ params, searchParams }: Props) {
             ) : (
               <>
               {empty}
-              {section('todo', board.todo)}
               {section('doing', board.doing)}
+              {section('todo', board.todo)}
               {section(
                 'done',
                 board.done,

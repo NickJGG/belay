@@ -1,4 +1,5 @@
 import { Inbox, Layers } from 'lucide-react';
+import { BOARD_ORDER } from '../../../src/view.ts';
 import { idColumn } from '@/components/bits';
 import { IssueRow } from '@/components/controls';
 import { PageBar } from '@/components/PageBar';
@@ -31,7 +32,7 @@ export default async function Issues({ searchParams }: { searchParams: Promise<Q
       <div className={ui.page} style={idColumn(shown)}>
         <IssueFilters projects={projects.map((p) => p.key).sort()} />
         {!shown.length && <p className={ui.empty}>No matching issues.</p>}
-        {filter.statuses.map((s) => {
+        {BOARD_ORDER.filter((s) => filter.statuses.includes(s)).map((s) => {
           const list = shown.filter((t) => t.status === s);
           if (!list.length) return null;
           return (
