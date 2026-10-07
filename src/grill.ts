@@ -1,5 +1,5 @@
 /** Read-only access to grill sessions (`<claudeDir>/skills/grill/sessions/<slug>.md`) for search, the digest and the dashboard. */
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { splitFrontmatter, type Project } from './store.ts';
 
@@ -21,13 +21,41 @@ export type GrillDoc = GrillSession & { started?: string; body: string };
 
 export const isGrillSlug = (s: string): boolean => /^[a-z0-9][a-z0-9-]*$/.test(s);
 
+const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n?---(?:\r?\n|$)/;
+const PLAIN_LINE = /^([A-Za-z_]\w*): ([^-?:,[\]{}#&*!|>'"%@`\s](?:[^#]|\S#)*)$/;
+const NON_STRING = /^(?:[-+.\d~]|0x|0o|(?:true|false|null)$)/i;
+
+/**
+ * YAML parsing dominates loading the session list, and nearly all grill frontmatter is flat `key: value` text.
+ * Parses that shape alone; undefined for anything `yaml` might read differently, which then falls back to it.
+ */
+function plainFrontmatter(src: string): Record<string, string> | undefined {
+  const data: Record<string, string> = {};
+  for (const line of src.split(/\r?\n/)) {
+    if (!line) continue;
+    const m = PLAIN_LINE.exec(line);
+    if (!m || m[1] in data) return undefined;
+    const v = m[2].trimEnd();
+    if (v.includes(': ') || v.endsWith(':') || (NON_STRING.test(v) && !/^\d{4}-\d\d-\d\d$/.test(v))) return undefined;
+    data[m[1]] = v;
+  }
+  return data;
+}
+
 function readSession(text: string, slug: string): GrillDoc {
   let data: Record<string, unknown> = {};
   let body = text;
-  try {
-    ({ data, body } = splitFrontmatter(text, `${slug}.md`));
-  } catch {
-    // a malformed session is still findable by slug
+  const m = FRONTMATTER.exec(text);
+  const plain = m && plainFrontmatter(m[1]);
+  if (plain) {
+    data = plain;
+    body = text.slice(m[0].length).trim();
+  } else {
+    try {
+      ({ data, body } = splitFrontmatter(text, `${slug}.md`));
+    } catch {
+      // a malformed session is still findable by slug
+    }
   }
   const str = (k: string) => (data[k] == null ? undefined : String(data[k]));
   return {
@@ -41,15 +69,50 @@ function readSession(text: string, slug: string): GrillDoc {
   };
 }
 
-export function loadGrillSessions(claudeDir: string): GrillSession[] {
+const CHUNK = 4096;
+
+/** The file up to the end of its frontmatter, or the whole file when it has no closed frontmatter block. */
+function readHead(path: string): string {
+  const fd = openSync(path, 'r');
+  try {
+    let buf = Buffer.alloc(0);
+    for (;;) {
+      const chunk = Buffer.alloc(CHUNK);
+      const n = readSync(fd, chunk, 0, CHUNK, null);
+      if (n === 0) return buf.toString('utf8');
+      buf = Buffer.concat([buf, chunk.subarray(0, n)]);
+      // latin1 maps bytes 1:1, so the match length is a byte offset; a match ending at `$` might continue in the next chunk
+      const m = FRONTMATTER.exec(buf.toString('latin1'));
+      if (m?.[0].endsWith('\n')) return buf.toString('utf8', 0, m[0].length);
+    }
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function readSummary(path: string, slug: string): GrillSession {
+  const { topic, status, updated, project } = readSession(readHead(path), slug);
+  return { slug, topic, status, updated, project };
+}
+
+/** Parsed sessions keyed by file name, reused while the file's mtime is unchanged. */
+export type GrillMemo = Map<string, { mtimeMs: number; session: GrillSession }>;
+
+export function loadGrillSessions(claudeDir: string, memo?: GrillMemo): GrillSession[] {
   const dir = grillDir(claudeDir);
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .filter((f) => f.endsWith('.md'))
-    .map((f) => {
-      const { slug, topic, status, updated, project } = readSession(readFileSync(join(dir, f), 'utf8'), f.slice(0, -3));
-      return { slug, topic, status, updated, project };
-    });
+  const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.md')) : [];
+  if (!memo) return files.map((f) => readSummary(join(dir, f), f.slice(0, -3)));
+  const present = new Set(files);
+  for (const f of memo.keys()) if (!present.has(f)) memo.delete(f);
+  return files.map((f) => {
+    const path = join(dir, f);
+    const { mtimeMs } = statSync(path);
+    const hit = memo.get(f);
+    if (hit?.mtimeMs === mtimeMs) return hit.session;
+    const session = readSummary(path, f.slice(0, -3));
+    memo.set(f, { mtimeMs, session });
+    return session;
+  });
 }
 
 /** One session with its markdown body, minus the `# Grill session: …` heading. Undefined for a missing file or a slug that isn't a plain file name. */
