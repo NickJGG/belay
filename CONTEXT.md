@@ -26,6 +26,8 @@
 
 **Ready** — Derived, never stored: a `todo` issue whose `blocked_by` issues are all `done` or `dropped`.
 
+**Blocked** — Derived, never stored: an issue of any status with at least one `blocked_by` issue not `done` or `dropped`. A `doing` issue can be Blocked if it was started anyway. Not the opposite of Ready, which is `todo`-only.
+
 **In flight** — Derived, never stored: every `doing` issue in an active project, plus every in-progress Grill session tagged with a project and not yet linked to an issue.
 
 **Idle** — Derived, never stored: a `doing` issue with no transition, comment or linked log entry for 3 or more work days. Commits don't count, since they map to a project, not an issue.

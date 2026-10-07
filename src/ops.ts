@@ -101,7 +101,7 @@ export function setStatus(ctx: Ctx, id: string, value: string, author = USER): {
   const status = oneOf(value, ISSUE_STATUSES, 'status');
   const transitions =
     status === current.status ? current.transitions : [...(current.transitions ?? []), { at: now(), from: current.status, to: status, ...author }];
-  const issue = { ...current, status, updated: today(), ...(transitions && { transitions }) };
+  const issue = { ...current, status, updated: now(), ...(transitions && { transitions }) };
   saveIssue(ctx.dir, issue);
   return { before: current.status, issue, open: openBlockers(current, ctx.byId) };
 }
@@ -123,7 +123,7 @@ export function addIssue(ctx: Ctx, t: NewIssue, author = USER): Issue {
   if (!title) throw new Error('title is empty');
   const project = ctx.project(t.project);
   const blockers = ctx.checkBlockers(undefined, t.blockers ?? []);
-  const date = today();
+  const d = new Date();
   const status = oneOf(t.status ?? 'todo', ['idea', 'todo'] as const, 'status');
   return createIssue(ctx.dir, {
     title,
@@ -134,16 +134,16 @@ export function addIssue(ctx: Ctx, t: NewIssue, author = USER): Issue {
     source: oneOf(t.source ?? 'user', SOURCES, 'source'),
     grill: t.grill,
     plan: t.plan,
-    created: date,
-    updated: date,
+    created: today(d),
+    updated: now(d),
     comments: [],
-    transitions: [{ at: now(), to: status, ...author }],
+    transitions: [{ at: now(d), to: status, ...author }],
     body: (t.body ?? '').trim(),
   });
 }
 
 export function setPriority(ctx: Ctx, id: string, high: boolean): Issue {
-  const issue = { ...ctx.issue(id), priority: high ? ('high' as const) : undefined, updated: today() };
+  const issue = { ...ctx.issue(id), priority: high ? ('high' as const) : undefined, updated: now() };
   saveIssue(ctx.dir, issue);
   return issue;
 }
@@ -176,7 +176,7 @@ export function editIssue(ctx: Ctx, id: string, patch: IssuePatch): Issue {
   if (patch.grill !== undefined) issue.grill = patch.grill || undefined;
   if (patch.plan !== undefined) issue.plan = patch.plan || undefined;
   if (patch.body !== undefined) issue.body = patch.body.trim();
-  issue.updated = today();
+  issue.updated = now();
   saveIssue(ctx.dir, issue);
   return issue;
 }
@@ -232,7 +232,7 @@ export class CommentConflictError extends Error {
 export function addComment(ctx: Ctx, id: string, text: string, author: Author): { issue: Issue; n: number } {
   const current = ctx.issue(id);
   const comment = { at: now(), ...author, text: commentText(text) };
-  const issue = { ...current, comments: [...current.comments, comment], updated: today() };
+  const issue = { ...current, comments: [...current.comments, comment], updated: now() };
   saveIssue(ctx.dir, issue);
   return { issue, n: issue.comments.length };
 }
@@ -250,7 +250,7 @@ export function editComment(ctx: Ctx, id: string, n: number, text: string, expec
   const current = ctx.issue(id);
   const i = commentIndex(current, n, expectAt);
   const comments = current.comments.map((c, j) => (j === i ? { ...c, text: commentText(text) } : c));
-  const issue = { ...current, comments, updated: today() };
+  const issue = { ...current, comments, updated: now() };
   saveIssue(ctx.dir, issue);
   return issue;
 }
@@ -258,7 +258,7 @@ export function editComment(ctx: Ctx, id: string, n: number, text: string, expec
 export function deleteComment(ctx: Ctx, id: string, n: number, expectAt?: string): Issue {
   const current = ctx.issue(id);
   const i = commentIndex(current, n, expectAt);
-  const issue = { ...current, comments: current.comments.filter((_, j) => j !== i), updated: today() };
+  const issue = { ...current, comments: current.comments.filter((_, j) => j !== i), updated: now() };
   saveIssue(ctx.dir, issue);
   return issue;
 }
@@ -276,7 +276,7 @@ export function deleteIssue(ctx: Ctx, typed: string, author: Author): Issue[] {
       ...t,
       blocked_by: t.blocked_by.filter((b) => b !== id),
       comments: [...t.comments, { at, ...author, text: `blocker ${id} deleted` }],
-      updated: today(),
+      updated: now(),
     }));
   for (const t of dependents) saveIssue(ctx.dir, t);
   deleteIssueFile(ctx.dir, id);

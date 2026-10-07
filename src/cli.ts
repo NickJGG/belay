@@ -31,9 +31,9 @@ import {
 import { goalOf, goalSpec, goalStrip, goalsProgress, urgencies } from './goals.ts';
 import { parseLogAddress, type DatedEntry } from './logs.ts';
 import { commitDays, movedDays } from './moved.ts';
-import { isReady, next, openBlockers, projectCounts, projectForCwd } from './query.ts';
+import { filterIssues, issueComparator, isReady, naturalDesc, next, openBlockers, projectCounts, projectForCwd, SORT_FIELDS } from './query.ts';
 import { statusLine, withGoals } from './statusline.ts';
-import { ISSUE_STATUSES, normalizeStoredPath, issueFile, type Issue, type IssueStatus } from './store.ts';
+import { ISSUE_STATUSES, normalizeStoredPath, issueFile, SOURCES, type Issue, type IssueStatus } from './store.ts';
 import { serve } from './web.ts';
 import { weekLines, weekSummary } from './week.ts';
 import { addDays, isDay, weekStart, workDay, workDayOf } from './workday.ts';
@@ -65,7 +65,10 @@ const HELP = `belay — what should I work on?
            [--date today|yesterday|YYYY-MM-DD]
                                     '' clears kind (and count), count, minutes or issue; --date moves
                                     the entry to the end of that day (up to 7 days back)
-  list [--project <key>] [--status <s,...>|all]   default hides done and dropped
+  list [--project <key>] [--status <s,...>|all] [--priority high] [--source user|claude]
+       [--ready | --blocked] [--sort id|title|created|updated] [--asc | --desc]
+                                    default hides done and dropped; --blocked is any status with an
+                                    open blocker; --sort starts newest first for updated, else ascending
   week [--last]                     this (or last) Mon–Sun week per project: days moved, goal, issues
                                     done, commits and log entries
 
@@ -300,7 +303,7 @@ function cmdShow(argv: string[]): void {
     blocks.length ? `blocks:     ${blocks.join(', ')}` : '',
     t.grill ? `grill:      ${t.grill}` : '',
     t.plan ? `plan:       ${t.plan}` : '',
-    `dates:      created ${t.created}, updated ${t.updated}`,
+    `dates:      created ${t.created}, updated ${t.updated.replace('T', ' ')}`,
     `file:       ${normalizeStoredPath(issueFile(ctx.dir, t.id))}`,
   ].filter(Boolean);
   if (t.body) out.push('', t.body);
@@ -315,7 +318,24 @@ function cmdShow(argv: string[]): void {
 }
 
 function cmdList(argv: string[]): void {
-  const { values } = args(argv, { project: { type: 'string', short: 'p' }, status: { type: 'string', short: 's' } }, 0);
+  const { values } = args(
+    argv,
+    {
+      project: { type: 'string', short: 'p' },
+      status: { type: 'string', short: 's' },
+      priority: { type: 'string' },
+      source: { type: 'string' },
+      ready: { type: 'boolean' },
+      blocked: { type: 'boolean' },
+      sort: { type: 'string' },
+      asc: { type: 'boolean' },
+      desc: { type: 'boolean' },
+    },
+    0,
+  );
+  if (values.ready && values.blocked) throw new Error('pass --ready or --blocked, not both');
+  if (values.asc && values.desc) throw new Error('pass --asc or --desc, not both');
+  if ((values.asc || values.desc) && !values.sort) throw new Error('--asc and --desc need --sort');
   const ctx = new Ctx();
   const project = values.project ? ctx.project(values.project).key : undefined;
   const statuses: readonly IssueStatus[] =
@@ -324,7 +344,18 @@ function cmdList(argv: string[]): void {
       : values.status
         ? idList([values.status]).map((s) => oneOf(s, ISSUE_STATUSES, '--status'))
         : ['idea', 'todo', 'doing'];
-  const issues = ctx.issues.filter((t) => statuses.includes(t.status) && (!project || t.project === project));
+  const filter = {
+    statuses,
+    project,
+    readiness: values.ready ? ('ready' as const) : values.blocked ? ('blocked' as const) : undefined,
+    priority: values.priority === undefined ? undefined : oneOf(values.priority, ['high'] as const, '--priority'),
+    source: values.source === undefined ? undefined : oneOf(values.source, SOURCES, '--source'),
+  };
+  const issues = filterIssues(ctx.issues, filter, ctx.byId);
+  if (values.sort !== undefined) {
+    const field = oneOf(values.sort, SORT_FIELDS, '--sort');
+    issues.sort(issueComparator({ field, desc: values.desc || (!values.asc && naturalDesc(field)) }));
+  }
   print(issues.length ? lines(issues, ctx, true) : 'no issues');
 }
 

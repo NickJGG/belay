@@ -6,7 +6,7 @@ import type { DatedEntry } from './logs.ts';
 import { movedDays } from './moved.ts';
 import type { GoalInput } from './ops.ts';
 import type { Goal, Issue, Project } from './store.ts';
-import { addDays, daysBetween, weekStart, workDayOf } from './workday.ts';
+import { addDays, daysBetween, updatedDay, weekStart, workDayOf } from './workday.ts';
 
 export type TargetState = 'noscope' | 'ontrack' | 'behind' | 'overdue' | 'done';
 
@@ -27,7 +27,7 @@ export function goalOf(project: Project): Goal | undefined {
 function doneDay(t: Issue): string | undefined {
   if (t.status !== 'done') return undefined;
   const last = t.transitions?.findLast((x) => x.to === 'done');
-  return last ? workDayOf(last.at) : t.updated;
+  return last ? workDayOf(last.at) : updatedDay(t);
 }
 
 function inScope(t: Issue, set: string): boolean {

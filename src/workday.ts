@@ -22,6 +22,11 @@ export function workDayOf(at: string): string {
   return workDay(parseAt(at));
 }
 
+/** The work day of an issue's `updated`, which is date-only on issues last written before it carried a time. */
+export function updatedDay(t: { updated: string }): string {
+  return DAY_RE.test(t.updated) ? t.updated : workDayOf(t.updated);
+}
+
 export function addDays(day: string, n: number): string {
   const d = dateOf(day);
   return today(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n));

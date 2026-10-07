@@ -98,7 +98,7 @@ export default async function IssuePage({ params }: Props) {
               <dt>Created</dt>
               <dd>{issue.created}</dd>
               <dt>Updated</dt>
-              <dd>{issue.updated}</dd>
+              <dd>{issue.updated.length > 10 ? <span title={issue.updated.replace('T', ' ')}>{issue.updated.slice(0, 10)}</span> : issue.updated}</dd>
               {issue.grill && (
                 <>
                   <dt>Grill</dt>

@@ -30,7 +30,16 @@ export function IssueFilters({ projects }: { projects: string[] }) {
     const value = search.get(key) ?? '';
     return <Dropdown label={label} value={value} options={options} onChange={(v) => set(key, v)} className={value ? styles.chipOn : styles.chip} />;
   };
-  const ready = search.get('ready') === '1';
+  const readiness = search.get('ready');
+  const toggle = (value: string, label: string) => {
+    const on = readiness === value;
+    return (
+      <button type="button" className={on ? styles.chipOn : styles.chip} aria-pressed={on} onClick={() => set('ready', on ? '' : value)}>
+        {on && <Check size={12} aria-hidden />}
+        {label}
+      </button>
+    );
+  };
 
   return (
     <div className={styles.filters}>
@@ -38,10 +47,8 @@ export function IssueFilters({ projects }: { projects: string[] }) {
       {select('project', 'Project', [['', 'Any project'], ...projects.map((p): Option => [p, p])])}
       {select('priority', 'Priority', [['', 'Any priority'], ['high', 'High']])}
       {select('source', 'Source', [['', 'Any source'], ['claude', 'Claude'], ['user', 'User']])}
-      <button type="button" className={ready ? styles.chipOn : styles.chip} aria-pressed={ready} onClick={() => set('ready', ready ? '' : '1')}>
-        {ready && <Check size={12} aria-hidden />}
-        Ready only
-      </button>
+      {toggle('1', 'Ready only')}
+      {toggle('blocked', 'Blocked only')}
       {search.size > 0 && (
         <Link className={styles.clear} href={pathname}>
           <X size={12} aria-hidden />

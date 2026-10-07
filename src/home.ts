@@ -2,7 +2,7 @@
 import type { GrillSession } from './grill.ts';
 import type { DatedEntry } from './logs.ts';
 import type { Issue, IssueStatus, Project } from './store.ts';
-import { addDays, daysBetween, workDayOf } from './workday.ts';
+import { addDays, daysBetween, updatedDay, workDayOf } from './workday.ts';
 
 /** Work days without a transition, comment or linked log entry after which a `doing` issue is Idle. */
 export const IDLE_DAYS = 3;
@@ -20,7 +20,7 @@ export function lastTouch(issue: Issue, logs: DatedEntry[]): string | undefined 
 /** The work day the issue last moved to `doing`, or its `updated` day when no transition says. */
 export function doingSince(issue: Issue): string {
   const t = issue.transitions?.findLast((x) => x.to === 'doing');
-  return t ? workDayOf(t.at) : issue.updated;
+  return t ? workDayOf(t.at) : updatedDay(issue);
 }
 
 export interface InFlightIssue {
@@ -43,7 +43,7 @@ export function inFlight(projects: Project[], issues: Issue[], logs: DatedEntry[
     .filter((t) => t.status === 'doing' && active.has(t.project))
     .map((issue) => {
       const last = lastTouch(issue, logs);
-      const idle = daysBetween(last ? workDayOf(last) : issue.updated, today);
+      const idle = daysBetween(last ? workDayOf(last) : updatedDay(issue), today);
       return {
         last: last ?? issue.updated,
         row: { issue, ...(idle >= IDLE_DAYS && { idleDays: idle }) },

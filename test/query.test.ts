@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { filterIssues, indexIssues, isReady, next, parseIssueFilter, projectBoard, projectForCwd } from '../src/query.ts';
+import { filterIssues, indexIssues, issueComparator, isReady, next, parseIssueFilter, parseIssueSort, projectBoard, projectCounts, projectForCwd } from '../src/query.ts';
 import type { Project, Issue } from '../src/store.ts';
 
 const project = (key: string, over: Partial<Project> = {}): Project => ({
@@ -105,15 +105,87 @@ test('projectBoard orders todo ready-first, windows done, and counts the hidden'
   assert.deepEqual(all.done.map((t) => t.id), ['a-5', 'a-6']);
 });
 
+test('projectBoard: a filter applies before grouping and the done window', () => {
+  const issues = [
+    issue('a-1', { status: 'done', updated: '2026-09-01T10:00', source: 'claude' }),
+    issue('a-2', { status: 'done', updated: '2026-08-01' }),
+    issue('a-3', { status: 'done', updated: '2026-10-03T02:00', source: 'claude' }),
+    issue('a-4', { source: 'claude' }),
+    issue('a-5'),
+  ];
+  const board = projectBoard('a', issues, { today: '2026-10-04', filter: parseIssueFilter({ source: 'claude' }, ['todo', 'doing', 'done']) });
+  assert.deepEqual(board.todo.map((t) => t.id), ['a-4']);
+  assert.deepEqual(board.done.map((t) => t.id), ['a-3']);
+  assert.equal(board.olderDone, 1);
+});
+
+test('projectBoard: a sort replaces the default order in every column', () => {
+  const issues = [
+    issue('a-1', { title: 'c', blocked_by: ['a-9'] }),
+    issue('a-9', { status: 'doing' }),
+    issue('a-2', { title: 'B', priority: 'high' }),
+    issue('a-3', { title: 'a' }),
+    issue('a-4', { status: 'done', title: 'z', updated: '2026-10-03' }),
+    issue('a-5', { status: 'done', title: 'y', updated: '2026-10-02' }),
+  ];
+  const board = projectBoard('a', issues, { today: '2026-10-04', sort: { field: 'title', desc: false } });
+  assert.deepEqual(board.todo.map((t) => t.id), ['a-3', 'a-2', 'a-1']);
+  assert.deepEqual(board.done.map((t) => t.id), ['a-5', 'a-4']);
+});
+
+test('projectCounts: lastTouched is the work day of the newest updated', () => {
+  const p = project('a');
+  const issues = [issue('a-1', { updated: '2026-10-03' }), issue('a-2', { updated: '2026-10-03T02:30' }), issue('a-3', { updated: '2026-10-02T20:00' })];
+  assert.equal(projectCounts(p, issues, indexIssues(issues)).lastTouched, '2026-10-02');
+});
+
 test('parseIssueFilter: defaults to open statuses and drops unknown values', () => {
-  assert.deepEqual(parseIssueFilter({}), { statuses: ['idea', 'todo', 'doing'], project: undefined, ready: undefined, priority: undefined, source: undefined });
+  assert.deepEqual(parseIssueFilter({}), { statuses: ['idea', 'todo', 'doing'], project: undefined, readiness: undefined, priority: undefined, source: undefined });
   assert.deepEqual(parseIssueFilter({ status: 'done,bogus,idea' }).statuses, ['done', 'idea']);
   assert.deepEqual(parseIssueFilter({ status: 'bogus' }).statuses, ['idea', 'todo', 'doing']);
   assert.equal(parseIssueFilter({ status: 'all' }).statuses.length, 5);
   const f = parseIssueFilter({ project: 'a', ready: '1', priority: 'high', source: 'claude' });
-  assert.deepEqual([f.project, f.ready, f.priority, f.source], ['A', true, 'high', 'claude']);
+  assert.deepEqual([f.project, f.readiness, f.priority, f.source], ['A', 'ready', 'high', 'claude']);
   const g = parseIssueFilter({ project: '', ready: '0', priority: 'low', source: 'bot' });
-  assert.deepEqual([g.project, g.ready, g.priority, g.source], [undefined, undefined, undefined, undefined]);
+  assert.deepEqual([g.project, g.readiness, g.priority, g.source], [undefined, undefined, undefined, undefined]);
+  assert.equal(parseIssueFilter({ ready: 'blocked' }).readiness, 'blocked');
+  assert.deepEqual(parseIssueFilter({}, ['todo', 'doing', 'done']).statuses, ['todo', 'doing', 'done']);
+  assert.deepEqual(parseIssueFilter({ status: 'dropped' }, ['todo', 'doing', 'done']).statuses, ['dropped']);
+});
+
+test('blocked filter: any status with an open blocker; missing or finished blockers do not count', () => {
+  const issues = [
+    issue('a-1'),
+    issue('a-2', { status: 'doing', blocked_by: ['a-1'] }),
+    issue('a-3', { blocked_by: ['a-1'] }),
+    issue('a-4', { blocked_by: ['a-9'] }),
+    issue('a-5', { blocked_by: ['a-6'] }),
+    issue('a-6', { status: 'done' }),
+  ];
+  const ids = filterIssues(issues, parseIssueFilter({ ready: 'blocked' })).map((t) => t.id);
+  assert.deepEqual(ids, ['a-2', 'a-3']);
+});
+
+test('parseIssueSort: natural directions, explicit dir, garbage', () => {
+  assert.deepEqual(parseIssueSort({ sort: 'updated' }), { field: 'updated', desc: true });
+  assert.deepEqual(parseIssueSort({ sort: 'title' }), { field: 'title', desc: false });
+  assert.deepEqual(parseIssueSort({ sort: 'updated', dir: 'asc' }), { field: 'updated', desc: false });
+  assert.deepEqual(parseIssueSort({ sort: 'id', dir: 'desc' }), { field: 'id', desc: true });
+  assert.deepEqual(parseIssueSort({ sort: 'created', dir: 'sideways' }), { field: 'created', desc: false });
+  assert.equal(parseIssueSort({ sort: 'bogus' }), undefined);
+  assert.equal(parseIssueSort({}), undefined);
+});
+
+test('issueComparator: ties break by ID, titles ignore case, date-only updated sorts before same-day times', () => {
+  const sorted = (list: Issue[], field: 'id' | 'title' | 'created' | 'updated', desc = false) =>
+    [...list].sort(issueComparator({ field, desc })).map((t) => t.id);
+  const issues = [issue('a-10', { title: 'beta' }), issue('a-2', { title: 'Alpha' }), issue('a-3', { title: 'alpha' })];
+  assert.deepEqual(sorted(issues, 'id'), ['a-2', 'a-3', 'a-10']);
+  assert.deepEqual(sorted(issues, 'id', true), ['a-10', 'a-3', 'a-2']);
+  assert.deepEqual(sorted(issues, 'title'), ['a-2', 'a-3', 'a-10']);
+  assert.deepEqual(sorted(issues, 'created'), ['a-2', 'a-3', 'a-10']);
+  const times = [issue('a-1', { updated: '2026-10-02T09:00' }), issue('a-2', { updated: '2026-10-02' }), issue('a-3', { updated: '2026-10-01T23:00' })];
+  assert.deepEqual(sorted(times, 'updated', true), ['a-1', 'a-2', 'a-3']);
 });
 
 test('filterIssues combines every filter', () => {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { addDays, daysBetween, isDay, parseDay, weekDays, weekStart, workDay, workDayOf } from '../src/workday.ts';
+import { addDays, daysBetween, isDay, parseDay, updatedDay, weekDays, weekStart, workDay, workDayOf } from '../src/workday.ts';
 
 test('workDay ends at 4am local', () => {
   assert.equal(workDay(new Date(2026, 9, 6, 3, 59)), '2026-10-05');
@@ -38,4 +38,10 @@ test('parseDay takes today, yesterday or a real date, relative to the work day',
   assert.throws(() => parseDay('last week'), /date must be/);
   assert.equal(isDay('2026-02-28'), true);
   assert.equal(isDay('2026-2-28'), false);
+});
+
+test('updatedDay passes date-only values through and takes the work day of timestamps', () => {
+  assert.equal(updatedDay({ updated: '2026-10-07' }), '2026-10-07');
+  assert.equal(updatedDay({ updated: '2026-10-07T03:59' }), '2026-10-06');
+  assert.equal(updatedDay({ updated: '2026-10-07T14:30' }), '2026-10-07');
 });

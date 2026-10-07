@@ -30,7 +30,7 @@ import {
 } from '../src/ops.ts';
 import { loadLog, saveLog } from '../src/logs.ts';
 import { next } from '../src/query.ts';
-import { createIssue, loadOrder, loadProjects, loadIssues, saveOrder, saveProject, today, type Issue } from '../src/store.ts';
+import { AT_RE, createIssue, DAY_RE, loadOrder, loadProjects, loadIssues, saveOrder, saveProject, type Issue } from '../src/store.ts';
 
 let dir: string;
 
@@ -88,6 +88,9 @@ test('addIssue validates title, project, status and blockers', () => {
   assert.equal(t.id, 'PIX-1');
   assert.equal(t.title, 'x');
   assert.deepEqual(t.comments, []);
+  assert.match(t.created, DAY_RE);
+  assert.equal(t.updated.slice(0, 10), t.created);
+  assert.equal(t.updated, t.transitions?.[0].at);
 });
 
 test('addIssue trims the body', () => {
@@ -124,7 +127,7 @@ test('editIssue sets, clears and validates fields like the old cmdEdit', () => {
   assert.equal(t.priority, 'high');
   assert.equal(t.grill, undefined);
   assert.equal(t.plan, 'p.md');
-  assert.equal(t.updated, today());
+  assert.match(t.updated, AT_RE);
 
   assert.equal(editIssue(new Ctx(dir), 'PIX-2', { priority: 'none' }).priority, undefined);
   assert.throws(() => editIssue(new Ctx(dir), 'PIX-2', { title: ' ' }), /title is empty/);
@@ -144,7 +147,7 @@ test('addComment appends a trimmed, timestamped comment, bumps updated and leave
   assert.equal(n, 1);
   assert.deepEqual(loadIssues(dir)[0], t);
   assert.equal(t.body, 'desc');
-  assert.equal(t.updated, today());
+  assert.match(t.updated, AT_RE);
   assert.match(t.comments[0].at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
   assert.deepEqual({ ...t.comments[0], at: '' }, { at: '', by: 'claude', session: 's1', text: 'first\nline two' });
   assert.equal(addComment(new Ctx(dir), 'PIX-1', 'second', { by: 'user' }).n, 2);
@@ -157,7 +160,7 @@ test('editComment and deleteComment address #n, bump updated and leave the body 
   let t = editComment(new Ctx(dir), 'PIX-1', 2, ' B ');
   assert.deepEqual(t.comments.map((c) => c.text), ['a', 'B', 'c']);
   assert.equal(t.comments[1].at, '2026-10-01T09:00');
-  assert.equal(t.updated, today());
+  assert.match(t.updated, AT_RE);
   t = deleteComment(new Ctx(dir), 'PIX-1', 1);
   assert.deepEqual(loadIssues(dir)[0].comments.map((c) => c.text), ['B', 'c']);
   assert.equal(t.body, 'desc');

@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import { SOURCES, ISSUE_STATUSES, compareIds, type Project, type Source, type Issue, type IssueStatus } from './store.ts';
+import { daysBetween, updatedDay } from './workday.ts';
 
 export type IssueIndex = Map<string, Issue>;
 
@@ -24,20 +25,22 @@ export interface ProjectCounts {
   /** `todo` issues with open blockers. */
   blocked: number;
   ideas: number;
-  /** Newest `updated` among the project's issues. */
+  /** The work day of the newest `updated` among the project's issues. */
   lastTouched?: string;
 }
 
 export function projectCounts(project: Project, issues: Issue[], byId: IssueIndex): ProjectCounts {
   const c: ProjectCounts = { doing: 0, ready: 0, blocked: 0, ideas: 0 };
+  let latest: Issue | undefined;
   for (const t of issues) {
     if (t.project !== project.key) continue;
     if (t.status === 'doing') c.doing++;
     else if (t.status === 'idea') c.ideas++;
     else if (t.status === 'todo' && isReady(t, byId)) c.ready++;
     else if (t.status === 'todo') c.blocked++;
-    if (!c.lastTouched || t.updated > c.lastTouched) c.lastTouched = t.updated;
+    if (!latest || t.updated > latest.updated) latest = t;
   }
+  if (latest) c.lastTouched = updatedDay(latest);
   return c;
 }
 
@@ -89,18 +92,22 @@ export interface Board {
 
 const DONE_WINDOW_DAYS = 14;
 
-/** A project's issues by board column, high priority first within each. */
-export function projectBoard(key: string, issues: Issue[], opts: { today: string; older?: boolean }): Board {
+/**
+ * A project's issues by board column, narrowed by `filter`. Without `sort`, high priority comes first within
+ * each column; with it, every column is sorted by it alone. `today` is a work day.
+ */
+export function projectBoard(key: string, issues: Issue[], opts: { today: string; older?: boolean; filter?: IssueFilter; sort?: IssueSort }): Board {
   const byId = indexIssues(issues);
-  const own = issues.filter((t) => t.project === key);
-  const of = (s: Issue['status']) => own.filter((t) => t.status === s).sort(highFirst);
+  const mine = issues.filter((t) => t.project === key);
+  const own = opts.filter ? filterIssues(mine, opts.filter, byId) : mine;
+  const order = opts.sort ? issueComparator(opts.sort) : highFirst;
+  const of = (s: Issue['status']) => own.filter((t) => t.status === s).sort(order);
   const todo = of('todo');
-  const done = of('done').sort(recentFirst);
-  const days = (t: Issue) => Math.round((Date.parse(opts.today) - Date.parse(t.updated)) / 86_400_000);
-  const recent = done.filter((t) => days(t) <= DONE_WINDOW_DAYS);
+  const done = opts.sort ? of('done') : of('done').sort(recentFirst);
+  const recent = done.filter((t) => daysBetween(updatedDay(t), opts.today) <= DONE_WINDOW_DAYS);
   return {
     idea: of('idea'),
-    todo: [...todo.filter((t) => isReady(t, byId)), ...todo.filter((t) => !isReady(t, byId))],
+    todo: opts.sort ? todo : [...todo.filter((t) => isReady(t, byId)), ...todo.filter((t) => !isReady(t, byId))],
     doing: of('doing'),
     done: opts.older ? done : recent,
     olderDone: done.length - recent.length,
@@ -131,8 +138,8 @@ export function projectForCwd(projects: Project[], cwd: string, platform = proce
 export interface IssueFilter {
   statuses: readonly IssueStatus[];
   project?: string;
-  /** Only todo issues with no open blockers. */
-  ready?: boolean;
+  /** `ready`: todo issues with no open blockers. `blocked`: issues of any status with an open blocker. */
+  readiness?: 'ready' | 'blocked';
   priority?: 'high';
   source?: Source;
 }
@@ -141,17 +148,18 @@ const OPEN_STATUSES: readonly IssueStatus[] = ['idea', 'todo', 'doing'];
 
 /**
  * Reads a filter from URL query values. Unknown values are dropped rather than rejected, so a
- * hand-typed or stale URL still renders. `status` is a comma list or `all`; it defaults to the open ones.
+ * hand-typed or stale URL still renders. `status` is a comma list or `all`; it defaults to `defaultStatuses`.
+ * `ready` is `1` (ready) or `blocked`.
  */
-export function parseIssueFilter(q: Record<string, string | undefined>): IssueFilter {
+export function parseIssueFilter(q: Record<string, string | undefined>, defaultStatuses: readonly IssueStatus[] = OPEN_STATUSES): IssueFilter {
   const statuses =
     q.status === 'all'
       ? ISSUE_STATUSES
       : (q.status ?? '').split(',').filter((s): s is IssueStatus => (ISSUE_STATUSES as readonly string[]).includes(s));
   return {
-    statuses: statuses.length ? statuses : OPEN_STATUSES,
+    statuses: statuses.length ? statuses : defaultStatuses,
     project: q.project?.toUpperCase() || undefined,
-    ready: q.ready === '1' || undefined,
+    readiness: q.ready === '1' ? 'ready' : q.ready === 'blocked' ? 'blocked' : undefined,
     priority: q.priority === 'high' ? 'high' : undefined,
     source: (SOURCES as readonly string[]).includes(q.source ?? '') ? (q.source as Source) : undefined,
   };
@@ -162,8 +170,38 @@ export function filterIssues(issues: Issue[], f: IssueFilter, byId: IssueIndex =
     (t) =>
       f.statuses.includes(t.status) &&
       (!f.project || t.project === f.project) &&
-      (!f.ready || isReady(t, byId)) &&
+      (f.readiness !== 'ready' || isReady(t, byId)) &&
+      (f.readiness !== 'blocked' || openBlockers(t, byId).length > 0) &&
       (!f.priority || t.priority === f.priority) &&
       (!f.source || t.source === f.source),
   );
+}
+
+export const SORT_FIELDS = ['id', 'title', 'created', 'updated'] as const;
+export type SortField = (typeof SORT_FIELDS)[number];
+
+export interface IssueSort {
+  field: SortField;
+  desc: boolean;
+}
+
+/** The direction a field starts in: newest first for `updated`, ascending for the rest. */
+export const naturalDesc = (field: SortField) => field === 'updated';
+
+/** Reads `sort` and `dir` (`asc`|`desc`) from URL query values; a missing `dir` means the field's natural direction. */
+export function parseIssueSort(q: Record<string, string | undefined>): IssueSort | undefined {
+  const field = SORT_FIELDS.find((f) => f === q.sort);
+  if (!field) return undefined;
+  return { field, desc: q.dir === 'desc' ? true : q.dir === 'asc' ? false : naturalDesc(field) };
+}
+
+export function issueComparator(sort: IssueSort): (a: Issue, b: Issue) => number {
+  const by: (a: Issue, b: Issue) => number = {
+    id: () => 0,
+    title: (a: Issue, b: Issue) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }),
+    created: (a: Issue, b: Issue) => a.created.localeCompare(b.created),
+    updated: (a: Issue, b: Issue) => a.updated.localeCompare(b.updated),
+  }[sort.field];
+  const sign = sort.desc ? -1 : 1;
+  return (a, b) => sign * (by(a, b) || compareIds(a.id, b.id));
 }
