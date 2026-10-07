@@ -30,6 +30,9 @@
   border-radius: 13px;
   background: color-mix(in oklab, var(--accent) 14%, var(--bg-raised));
   transform: translateX(calc(var(--i) * 100%));
+}
+
+.tabs[data-animate] .indicator {
   transition: transform 200ms ease-in-out;
 }
 
@@ -227,7 +230,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .indicator {
+  .tabs[data-animate] .indicator {
     transition: none;
   }
 }
