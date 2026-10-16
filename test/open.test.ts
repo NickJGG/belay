@@ -10,7 +10,7 @@ test('file resolves to the issue file', () => {
 });
 
 test('grill resolves to its session file', () => {
-  assert.equal(linkedPath({ id: 'TRK-1', grill: 'some-topic' }, 'grill', dirs), join(dirs.claude, 'skills', 'grill', 'sessions', 'some-topic.md'));
+  assert.equal(linkedPath({ id: 'TRK-1', grill: 'some-topic' }, 'grill', dirs), join(dirs.claude, 'skills', 'grill', 'sessions', 'some-topic', 'some-topic.md'));
 });
 
 test('plan resolves to an absolute path', () => {

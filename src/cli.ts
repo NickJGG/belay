@@ -517,7 +517,7 @@ function cmdSearch(argv: string[]): void {
   const out: string[] = [];
   if (issues.length) out.push('issues', ...lines(issues, ctx, true));
   if (grill.length) {
-    out.push(`grill sessions (${normalizeStoredPath(grillDir(claude))}/<slug>.md)`);
+    out.push(`grill sessions (${normalizeStoredPath(grillDir(claude))}/<slug>/<slug>.md)`);
     const slugW = Math.max(...grill.map((g) => g.slug.length));
     const statusW = Math.max(...grill.map((g) => (g.status ?? '').length));
     const projW = Math.max(...grill.map((g) => (g.project ?? '').length));

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
-import { grillDir, isGrillSlug, loadGrillSession, loadGrillSessions, type GrillMemo } from '../src/grill.ts';
+import { grillDir, grillFile, isGrillSlug, loadGrillSession, loadGrillSessions, type GrillMemo } from '../src/grill.ts';
 import { splitFrontmatter } from '../src/store.ts';
 
 let claude: string;
@@ -15,7 +15,10 @@ beforeEach(() => {
 
 afterEach(() => rmSync(claude, { recursive: true, force: true }));
 
-const write = (slug: string, text: string) => writeFileSync(join(grillDir(claude), `${slug}.md`), text);
+const write = (slug: string, text: string) => {
+  mkdirSync(join(grillDir(claude), slug), { recursive: true });
+  writeFileSync(grillFile(claude, slug), text);
+};
 
 const session = `---
 slug: page
@@ -109,8 +112,8 @@ test('loadGrillSessions lists sessions without frontmatter, or with an unclosed 
   );
 });
 
-test('loadGrillSessions reuses memoized sessions until the mtime changes, and drops deleted files', () => {
-  const path = join(grillDir(claude), 'page.md');
+test("loadGrillSessions reuses memoized sessions until the session file's mtime changes, and drops deleted folders", () => {
+  const path = grillFile(claude, 'page');
   write('page', session);
   write('gone', session);
   // whole seconds: a Date can't restore NTFS's sub-millisecond mtime
@@ -122,12 +125,24 @@ test('loadGrillSessions reuses memoized sessions until the mtime changes, and dr
 
   write('page', session.replace('A session page', 'Renamed'));
   utimesSync(path, atime, mtime);
-  rmSync(join(grillDir(claude), 'gone.md'));
+  rmSync(join(grillDir(claude), 'gone'), { recursive: true });
   assert.deepEqual(loadGrillSessions(claude, memo).map((g) => g.topic), ['A session page']);
-  assert.deepEqual([...memo.keys()], ['page.md']);
+  assert.deepEqual([...memo.keys()], ['page']);
 
   utimesSync(path, atime, new Date(mtime.getTime() + 2000));
   assert.deepEqual(loadGrillSessions(claude, memo).map((g) => g.topic), ['Renamed']);
+});
+
+test('loadGrillSessions ignores flat files, folders without their session file, and non-slug folders', () => {
+  write('page', session);
+  writeFileSync(join(grillDir(claude), 'flat.md'), session);
+  mkdirSync(join(grillDir(claude), 'empty'));
+  writeFileSync(join(grillDir(claude), 'empty', 'other.md'), session);
+  mkdirSync(join(grillDir(claude), 'Not_A_Slug'));
+  writeFileSync(join(grillDir(claude), 'Not_A_Slug', 'Not_A_Slug.md'), session);
+  assert.deepEqual(loadGrillSessions(claude).map((g) => g.slug), ['page']);
+  assert.deepEqual(loadGrillSessions(claude, new Map()).map((g) => g.slug), ['page']);
+  assert.equal(loadGrillSession(claude, 'flat'), undefined);
 });
 
 test('loadGrillSession reads frontmatter exactly as yaml does, plain or not', () => {

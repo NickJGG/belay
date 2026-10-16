@@ -1,8 +1,8 @@
 /** Opening an issue's own file, grill session or plan in the OS default app. */
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { grillDir } from './grill.ts';
+import { resolve } from 'node:path';
+import { grillFile } from './grill.ts';
 import { issueFile, type Issue } from './store.ts';
 
 export type Linked = 'file' | 'grill' | 'plan';
@@ -16,7 +16,7 @@ export function linkedPath(
   dirs: { data: string; claude: string },
 ): string | undefined {
   if (kind === 'file') return issueFile(dirs.data, issue.id);
-  if (kind === 'grill') return issue.grill ? join(grillDir(dirs.claude), `${issue.grill}.md`) : undefined;
+  if (kind === 'grill') return issue.grill ? grillFile(dirs.claude, issue.grill) : undefined;
   return issue.plan ? resolve(issue.plan) : undefined;
 }
 

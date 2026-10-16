@@ -1,11 +1,11 @@
-import { join } from 'node:path';
+import { existsSync } from 'node:fs';
 import { MessagesSquare } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { claudeDir } from '../../../../src/config.ts';
-import { grillDir } from '../../../../src/grill.ts';
-import { openGrillFile } from '@/app/actions';
+import { grillFile, grillPreview } from '../../../../src/grill.ts';
+import { openGrillFile, openGrillPreview } from '@/app/actions';
 import { projectHref, projectTabHref } from '@/components/bits';
 import { Chip } from '@/components/Chip';
 import { Markdown } from '@/components/Markdown';
@@ -37,6 +37,7 @@ export default async function GrillPage({ params }: Props) {
   const { projects, issues } = ctx();
   const project = projects.find((p) => p.key === g.project?.toUpperCase());
   const linked = issues.filter((t) => t.grill === slug);
+  const preview = grillPreview(claudeDir(), slug);
 
   return (
     <>
@@ -97,8 +98,16 @@ export default async function GrillPage({ params }: Props) {
               )}
               <dt>File</dt>
               <dd>
-                <OpenFile open={openGrillFile.bind(null, slug)} path={join(grillDir(claudeDir()), `${slug}.md`)} />
+                <OpenFile open={openGrillFile.bind(null, slug)} path={grillFile(claudeDir(), slug)} />
               </dd>
+              {existsSync(preview) && (
+                <>
+                  <dt>Preview</dt>
+                  <dd>
+                    <OpenFile open={openGrillPreview.bind(null, slug)} path={preview} />
+                  </dd>
+                </>
+              )}
             </dl>
           </aside>
         </div>
