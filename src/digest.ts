@@ -61,6 +61,8 @@ function goalDigest(project: Project, issues: Issue[], byId: IssueIndex, g: Dige
 export interface DigestOptions {
   /** Files the load skipped. */
   bad?: BadFile[];
+  /** After compaction: only the header, doing, ready and bad-files lines. */
+  compact?: boolean;
 }
 
 export function digestLines(
@@ -69,7 +71,7 @@ export function digestLines(
   sessions: Session[],
   grill: GrillSession[],
   goals?: DigestGoals,
-  { bad = [] }: DigestOptions = {},
+  { bad = [], compact = false }: DigestOptions = {},
 ): string[] {
   const byId = indexIssues(issues);
   const own = issues.filter((t) => t.project === project.key);
@@ -80,14 +82,15 @@ export function digestLines(
 
   const tags = [project.focus ? 'focus' : '', project.status !== 'active' ? project.status : ''].filter(Boolean);
   const out = [`belay: ${project.key} — ${project.name}${tags.length ? ` (${tags.join(', ')})` : ''}`];
-  if (doing.length) out.push(`doing: ${doing.map(label).join('; ')}`);
-  const more = ready.length > 3 ? '; …' : '';
+  const firstThree = (list: Issue[]) => list.slice(0, 3).map(label).join('; ') + (list.length > 3 ? '; …' : '');
+  if (doing.length) out.push(`doing${doing.length > 3 ? ` ${doing.length}` : ''}: ${firstThree(doing)}`);
   const ideaNote = ideas ? ` (${plural(ideas, 'idea')})` : '';
-  out.push(ready.length ? `ready ${ready.length}${ideaNote}: ${ready.slice(0, 3).map(label).join('; ')}${more}` : `ready: none${ideaNote}`);
+  out.push(ready.length ? `ready ${ready.length}${ideaNote}: ${firstThree(ready)}` : `ready: none${ideaNote}`);
   if (bad.length) {
     const shown = bad.slice(0, 2).map((b) => `${b.file} (${clip(b.error, 60)})`);
     out.push(`bad files: ${shown.join('; ')}${bad.length > 2 ? '; …' : ''}`);
   }
+  if (compact) return out;
   if (goals) out.push(...goalDigest(project, issues, byId, goals));
   if (sessions.length) {
     const recent = sessions.map((s) => {

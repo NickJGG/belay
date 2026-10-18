@@ -579,7 +579,7 @@ function cmdServe(argv: string[]): void {
 function cmdDigest(argv: string[]): void {
   args(argv, {}, 0);
   try {
-    let input: { cwd?: unknown; session_id?: unknown } = {};
+    let input: { cwd?: unknown; session_id?: unknown; source?: unknown } = {};
     if (!process.stdin.isTTY) {
       try {
         input = JSON.parse(readFileSync(0, 'utf8'));
@@ -599,6 +599,10 @@ function cmdDigest(argv: string[]): void {
     }
     const project = projectForCwd(ctx.projects, cwd);
     if (!project) return;
+    if (input.source === 'compact') {
+      print(digestLines(project, ctx.issues, [], [], undefined, { bad: ctx.bad, compact: true }));
+      return;
+    }
     const claude = claudeDir();
     const exclude = typeof input.session_id === 'string' ? input.session_id : undefined;
     const sessions = recentSessions(claude, ctx.projects, { project, limit: 3, exclude });

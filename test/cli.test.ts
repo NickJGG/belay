@@ -85,3 +85,13 @@ test('a corrupt issue: read commands carry on and say so, writes refuse', () => 
   assert.equal(set.code, 1);
   assert.match(set.err, /^belay: issues\/pix-2\.md: line 3: /);
 });
+
+test('digest after compaction prints only the trimmed lines', () => {
+  belay('project', 'add', 'PIX', '--name', 'Pixel', '--path', dir);
+  belay('add', 'Draw the map', '--project', 'pix');
+  belay('add', 'Colour it', '--project', 'pix');
+  belay('set', 'pix-1', 'doing');
+  const r = belayWith(JSON.stringify({ source: 'compact', cwd: dir }), 'digest');
+  assert.equal(r.code, 0, r.err);
+  assert.equal(r.out, 'belay: PIX — Pixel\ndoing: PIX-1 Draw the map\nready 1: PIX-2 Colour it\n');
+});

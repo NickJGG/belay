@@ -158,3 +158,24 @@ test('digestLines: bad files after ready, at most two', () => {
   assert.equal(digestLines(project, [issue('ELV-1')], [], [], undefined, { bad: bad.slice(1, 2) })[2], 'bad files: issues/elv-8.md (missing frontmatter)');
   assert.equal(digestLines(project, [issue('ELV-1')], [], []).length, 2);
 });
+
+test('digestLines: doing shows the 3 oldest, counted only past 3', () => {
+  const doing = (n: number) => Array.from({ length: n }, (_, i) => issue(`ELV-${i + 1}`, { status: 'doing', created: `2026-09-0${9 - i}` }));
+  assert.equal(digestLines(project, doing(3), [], [])[1], 'doing: ELV-3 Issue ELV-3; ELV-2 Issue ELV-2; ELV-1 Issue ELV-1');
+  assert.equal(digestLines(project, doing(4), [], [])[1], 'doing 4: ELV-4 Issue ELV-4; ELV-3 Issue ELV-3; ELV-2 Issue ELV-2; …');
+});
+
+test('digestLines: compact keeps header, doing, ready and bad files', () => {
+  const issues = [issue('ELV-1', { status: 'doing' }), issue('ELV-2')];
+  const sessions: Session[] = [{ id: 's', cwd: '', title: 'Call button', start: '2026-09-26T19:00:00Z', end: '2026-09-26T19:30:00Z' }];
+  const grills = [grill('elevator-call-button')];
+  const bad = [{ file: 'issues/elv-8.md', error: 'missing frontmatter' }];
+  const quiet = goals({ progress: [jobGoal] });
+  assert.equal(digestLines(project, issues, sessions, grills, quiet).length, 6);
+  assert.deepEqual(digestLines(project, issues, sessions, grills, quiet, { bad, compact: true }), [
+    'belay: ELV — Rideable Elevators (focus)',
+    'doing: ELV-1 Issue ELV-1',
+    'ready 1: ELV-2 Issue ELV-2',
+    'bad files: issues/elv-8.md (missing frontmatter)',
+  ]);
+});
