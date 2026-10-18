@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
 import {
   createIssue,
   entityForPath,
+  issueCacheFile,
   loadOrder,
   loadProjects,
   loadIssues,
@@ -17,6 +18,7 @@ import {
   serializeIssue,
   sortByOrder,
   validateKey,
+  type BadFile,
   type Project,
   type Issue,
 } from '../src/store.ts';
@@ -222,4 +224,66 @@ test('loadOrder: missing file is empty, keys are canonicalised, bad shapes throw
   assert.throws(() => loadOrder(dir), /order.yaml: 'project_order' must be a list of strings/);
   writeFileSync(join(dir, 'order.yaml'), '- ELV');
   assert.throws(() => loadOrder(dir), /order.yaml: not a mapping/);
+});
+
+test('a yaml error names the file and its line in the file', () => {
+  writeFileSync(join(dir, 'issues', 'pix-1.md'), '---\nid: PIX-1\nproject: PIX\ntitle: a: b: c\n---\n');
+  assert.throws(() => loadIssues(dir), /^Error: issues\/pix-1\.md: line 4: Nested mappings are not allowed in compact mappings$/);
+  writeFileSync(join(dir, 'order.yaml'), 'project_order: [PIX\n');
+  assert.throws(() => loadOrder(dir), /^Error: order\.yaml: line \d+: /);
+});
+
+test('lenient loads skip bad files and collect them; strict ones throw', () => {
+  createIssue(dir, issue());
+  writeFileSync(join(dir, 'issues', 'pix-2.md'), 'no frontmatter');
+  saveProject(dir, { key: 'PIX', name: 'Pixel', paths: [], status: 'active', focus: false, body: '' });
+  writeFileSync(join(dir, 'projects', 'don.md'), '---\nkey: DON\n---\n');
+  assert.throws(() => loadIssues(dir), /issues\/pix-2\.md: missing frontmatter/);
+  assert.throws(() => loadProjects(dir), /projects\/don\.md: 'name' must be a non-empty string/);
+  const bad: BadFile[] = [];
+  assert.deepEqual(loadIssues(dir, { bad }).map((t) => t.id), ['PIX-1']);
+  assert.deepEqual(loadProjects(dir, { bad }).map((p) => p.key), ['PIX']);
+  assert.deepEqual(bad, [
+    { file: 'issues/pix-2.md', error: 'missing frontmatter' },
+    { file: 'projects/don.md', error: "'name' must be a non-empty string" },
+  ]);
+});
+
+const cacheFiles = () => JSON.parse(readFileSync(issueCacheFile(dir), 'utf8')).files;
+
+test('issue cache: a hit skips parsing, a changed file is re-read', () => {
+  createIssue(dir, issue({ title: 'aaaa' }));
+  loadIssues(dir);
+  const cache = JSON.parse(readFileSync(issueCacheFile(dir), 'utf8'));
+  cache.files['issues/pix-1.md'].issue.title = 'from cache';
+  writeFileSync(issueCacheFile(dir), JSON.stringify(cache));
+  assert.equal(loadIssues(dir)[0].title, 'from cache');
+
+  const file = join(dir, 'issues', 'pix-1.md');
+  writeFileSync(file, readFileSync(file, 'utf8').replace('aaaa', 'bbbb'));
+  utimesSync(file, new Date(2026, 0, 1), new Date(2026, 0, 1));
+  assert.equal(loadIssues(dir)[0].title, 'bbbb', 'same size, new mtime');
+  writeFileSync(file, readFileSync(file, 'utf8').replace('bbbb', 'longer'));
+  utimesSync(file, new Date(2026, 0, 1), new Date(2026, 0, 1));
+  assert.equal(loadIssues(dir)[0].title, 'longer', 'same mtime, new size');
+  assert.equal(cacheFiles()['issues/pix-1.md'].issue.title, 'longer');
+});
+
+test('issue cache: deleted files drop out, bad files are never cached', () => {
+  createIssue(dir, issue());
+  createIssue(dir, issue());
+  loadIssues(dir);
+  assert.deepEqual(Object.keys(cacheFiles()).sort(), ['issues/pix-1.md', 'issues/pix-2.md']);
+  rmSync(join(dir, 'issues', 'pix-2.md'));
+  writeFileSync(join(dir, 'issues', 'pix-3.md'), 'no frontmatter');
+  assert.deepEqual(loadIssues(dir, { bad: [] }).map((t) => t.id), ['PIX-1']);
+  assert.deepEqual(Object.keys(cacheFiles()), ['issues/pix-1.md']);
+});
+
+test('issue cache: a corrupt cache file is ignored and rebuilt', () => {
+  createIssue(dir, issue());
+  mkdirSync(join(dir, 'cache'));
+  writeFileSync(issueCacheFile(dir), '{not json');
+  assert.deepEqual(loadIssues(dir).map((t) => t.id), ['PIX-1']);
+  assert.deepEqual(Object.keys(cacheFiles()), ['issues/pix-1.md']);
 });

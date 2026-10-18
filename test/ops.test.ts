@@ -510,3 +510,13 @@ test('setSettings patches the theme and accent, accepting only known names', () 
   assert.throws(() => setSettings(new Ctx(dir), { accent: 'chartreuse' }), /accent must be one of amber\|/);
   assert.deepEqual(loadSettings(dir), { accent: 'teal', theme: 'dark' });
 });
+
+test('a lenient Ctx with bad files refuses writes, naming them', () => {
+  createIssue(dir, issue());
+  writeFileSync(join(dir, 'issues', 'pix-2.md'), 'no frontmatter');
+  assert.throws(() => new Ctx(dir), /issues\/pix-2\.md: missing frontmatter/);
+  const ctx = new Ctx(dir, { lenient: true });
+  assert.deepEqual(ctx.issues.map((t) => t.id), ['PIX-1']);
+  assert.throws(() => setStatus(ctx, 'PIX-1', 'doing'), /^Error: not writing while files are bad: issues\/pix-2\.md \(missing frontmatter\)$/);
+  assert.equal(loadIssues(dir, { bad: [] })[0].status, 'todo');
+});

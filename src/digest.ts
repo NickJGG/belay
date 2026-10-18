@@ -4,7 +4,7 @@ import { grillForProject, projectTerms, type GrillSession } from './grill.ts';
 import { localStamp, type Session } from './history.ts';
 import type { DatedEntry } from './logs.ts';
 import { highFirst, indexIssues, isReady, oldestFirst, type IssueIndex } from './query.ts';
-import type { Project, Issue } from './store.ts';
+import type { BadFile, Project, Issue } from './store.ts';
 import { addDays, workDayOf } from './workday.ts';
 
 export function clip(text: string, max: number): string {
@@ -58,7 +58,19 @@ function goalDigest(project: Project, issues: Issue[], byId: IssueIndex, g: Dige
   return out;
 }
 
-export function digestLines(project: Project, issues: Issue[], sessions: Session[], grill: GrillSession[], goals?: DigestGoals): string[] {
+export interface DigestOptions {
+  /** Files the load skipped. */
+  bad?: BadFile[];
+}
+
+export function digestLines(
+  project: Project,
+  issues: Issue[],
+  sessions: Session[],
+  grill: GrillSession[],
+  goals?: DigestGoals,
+  { bad = [] }: DigestOptions = {},
+): string[] {
   const byId = indexIssues(issues);
   const own = issues.filter((t) => t.project === project.key);
   const label = (t: Issue) => `${t.id} ${clip(t.title, 60)}`;
@@ -72,6 +84,10 @@ export function digestLines(project: Project, issues: Issue[], sessions: Session
   const more = ready.length > 3 ? '; …' : '';
   const ideaNote = ideas ? ` (${plural(ideas, 'idea')})` : '';
   out.push(ready.length ? `ready ${ready.length}${ideaNote}: ${ready.slice(0, 3).map(label).join('; ')}${more}` : `ready: none${ideaNote}`);
+  if (bad.length) {
+    const shown = bad.slice(0, 2).map((b) => `${b.file} (${clip(b.error, 60)})`);
+    out.push(`bad files: ${shown.join('; ')}${bad.length > 2 ? '; …' : ''}`);
+  }
   if (goals) out.push(...goalDigest(project, issues, byId, goals));
   if (sessions.length) {
     const recent = sessions.map((s) => {

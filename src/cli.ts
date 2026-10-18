@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { claudeDir, dataDir, DEFAULT_PORT } from './config.ts';
-import { clip, digestLines } from './digest.ts';
+import { clip, digestLines, plural } from './digest.ts';
 import { initHistory } from './gitlog.ts';
 import { grillDir, grillMatches, loadGrillSessions } from './grill.ts';
 import { attachCommits, duration, localStamp, readCommitDays, recentSessions, weekCommits, writeCommitDays } from './history.ts';
@@ -13,6 +13,7 @@ import {
   addIssue,
   addLog,
   addProject,
+  badFileNote,
   commentAuthor,
   deleteComment,
   deleteIssue,
@@ -35,7 +36,7 @@ import { parseLogAddress, type DatedEntry } from './logs.ts';
 import { commitDays, movedDays } from './moved.ts';
 import { filterIssues, issueComparator, isReady, naturalDesc, next, openBlockers, projectCounts, projectForCwd, SORT_FIELDS } from './query.ts';
 import { ACCENT_KEYS, loadSettings } from './settings.ts';
-import { statusLine, withGoals } from './statusline.ts';
+import { statusLine, withBad, withGoals } from './statusline.ts';
 import { ISSUE_STATUSES, normalizeStoredPath, issueFile, SOURCES, type Issue, type IssueStatus } from './store.ts';
 import { serve } from './web.ts';
 import { weekLines, weekSummary } from './week.ts';
@@ -147,6 +148,15 @@ function bodyArg(body: string | undefined, file: string | undefined): string | u
   return file === undefined ? body : readFileSync(file === '-' ? 0 : file, 'utf8');
 }
 
+/** For read commands: skips bad files instead of failing, so one broken file doesn't hide everything. */
+function readCtx(): Ctx {
+  return new Ctx(dataDir(), { lenient: true });
+}
+
+function noteBad(ctx: Ctx): void {
+  if (ctx.bad.length) console.error(`belay: skipped ${plural(ctx.bad.length, 'bad file')}: ${ctx.bad.map(badFileNote).join('; ')}`);
+}
+
 // --- goals ---
 
 /** How far back the digest looks for a quiet goal project's latest note. */
@@ -163,7 +173,8 @@ function goalCommitDays(ctx: Ctx, week: string): Record<string, string[]> {
 
 function cmdNext(argv: string[]): void {
   const { values } = args(argv, { all: { type: 'boolean' } }, 0);
-  const ctx = new Ctx();
+  const ctx = readCtx();
+  noteBad(ctx);
   const day = workDay();
   const goals = goalsProgress(ctx.projects, ctx.issues, ctx.logs(weekStart(day), day), goalCommitDays(ctx, weekStart(day)), day);
   const n = next(ctx.projects, ctx.issues, urgencies(goals));
@@ -293,7 +304,8 @@ function cmdDelete(argv: string[]): void {
 
 function cmdShow(argv: string[]): void {
   const { positionals } = args(argv, {}, 1);
-  const ctx = new Ctx();
+  const ctx = readCtx();
+  noteBad(ctx);
   const t = ctx.issue(positionals[0]);
   const describe = (id: string) => {
     const b = ctx.byId.get(id);
@@ -343,7 +355,8 @@ function cmdList(argv: string[]): void {
   if (values.ready && values.blocked) throw new Error('pass --ready or --blocked, not both');
   if (values.asc && values.desc) throw new Error('pass --asc or --desc, not both');
   if ((values.asc || values.desc) && !values.sort) throw new Error('--asc and --desc need --sort');
-  const ctx = new Ctx();
+  const ctx = readCtx();
+  noteBad(ctx);
   const project = values.project ? ctx.project(values.project).key : undefined;
   const statuses: readonly IssueStatus[] =
     values.status === 'all'
@@ -444,7 +457,7 @@ function cmdLog(argv: string[]): void {
     return print(day === before.day ? `edited ${day}/${n}` : `edited, moved to ${day}/${n}`);
   }
   const { values, positionals } = args(argv, { since: { type: 'string', short: 's' } }, 0, 1);
-  const ctx = new Ctx();
+  const ctx = readCtx();
   const key = positionals[0] ? ctx.project(positionals[0]).key : undefined;
   const to = workDay();
   const since = values.since ?? '7d';
@@ -472,7 +485,7 @@ function cmdLog(argv: string[]): void {
 
 function cmdWeek(argv: string[]): void {
   const { values } = args(argv, { last: { type: 'boolean' } }, 0);
-  const ctx = new Ctx();
+  const ctx = readCtx();
   const day = workDay();
   const week = values.last ? addDays(weekStart(day), -7) : weekStart(day);
   const projects = ctx.projects.filter((p) => p.status !== 'archived');
@@ -489,7 +502,7 @@ function cmdHistory(argv: string[]): void {
   );
   const limit = Number(values.n ?? 10);
   if (!Number.isInteger(limit) || limit < 1) throw new Error(`-n must be a positive integer (got '${values.n}')`);
-  const ctx = new Ctx();
+  const ctx = readCtx();
   const project = positionals[0] ? ctx.project(positionals[0]) : undefined;
   const sessions = recentSessions(claudeDir(), ctx.projects, { project, limit });
   if (!sessions.length) return print('no sessions');
@@ -512,7 +525,7 @@ function cmdHistory(argv: string[]): void {
 function cmdSearch(argv: string[]): void {
   const { positionals } = args(argv, {}, 1, Infinity);
   const words = positionals.map((w) => w.toLowerCase());
-  const ctx = new Ctx();
+  const ctx = readCtx();
   const issues = ctx.issues.filter((t) => {
     const hay = [t.title, t.body, ...t.comments.map((c) => c.text)].join('\n').toLowerCase();
     return words.every((w) => hay.includes(w));
@@ -575,7 +588,7 @@ function cmdDigest(argv: string[]): void {
       }
     }
     const cwd = typeof input.cwd === 'string' ? input.cwd : process.cwd();
-    const ctx = new Ctx();
+    const ctx = readCtx();
     const day = workDay();
     const week = weekStart(day);
     const commits = goalCommitDays(ctx, week);
@@ -597,7 +610,7 @@ function cmdDigest(argv: string[]): void {
       moved: movedDays(project, ctx.issues, logs, commits[project.key] ?? []),
       logs,
     };
-    print(digestLines(project, ctx.issues, sessions, loadGrillSessions(claude), goals));
+    print(digestLines(project, ctx.issues, sessions, loadGrillSessions(claude), goals, { bad: ctx.bad }));
   } catch (e) {
     console.error(`belay digest: ${(e as Error).message}`);
   }
@@ -616,12 +629,12 @@ function cmdStatusline(argv: string[]): void {
       }
     }
     const dir = input.workspace?.current_dir ?? input.cwd;
-    const ctx = new Ctx();
+    const ctx = readCtx();
     const project = projectForCwd(ctx.projects, typeof dir === 'string' ? dir : process.cwd());
     const day = workDay();
     const week = weekStart(day);
     const goals = goalsProgress(ctx.projects, ctx.issues, ctx.logs(week, day), readCommitDays(ctx.dir, week), day);
-    const line = withGoals(project ? statusLine(project, ctx.issues) : '', goals);
+    const line = withBad(withGoals(project ? statusLine(project, ctx.issues) : '', goals), ctx.bad.length);
     if (line) print(line);
   } catch (e) {
     console.error(`belay statusline: ${(e as Error).message}`);
@@ -695,7 +708,7 @@ function projectRekey(argv: string[]): void {
 
 function projectList(argv: string[]): void {
   const { values } = args(argv, { all: { type: 'boolean' } }, 0);
-  const ctx = new Ctx();
+  const ctx = readCtx();
   const projects = ctx.projects
     .filter((p) => values.all || p.status !== 'archived')
     .sort((a, b) => (a.group ?? '').localeCompare(b.group ?? ''));
@@ -724,7 +737,7 @@ function projectList(argv: string[]): void {
 /** Scripts call this to tag things with the cwd's project, so "none" is empty output, not an error. */
 function projectWhich(argv: string[]): void {
   const { positionals } = args(argv, {}, 0, 1);
-  const project = projectForCwd(new Ctx().projects, positionals[0] ?? process.cwd());
+  const project = projectForCwd(readCtx().projects, positionals[0] ?? process.cwd());
   if (project) print(project.key);
 }
 

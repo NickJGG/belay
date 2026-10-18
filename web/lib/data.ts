@@ -8,7 +8,8 @@ import { Ctx } from '../../src/ops.ts';
 import { loadSettings } from '../../src/settings.ts';
 import { addDays } from '../../src/workday.ts';
 
-export const ctx = cache(() => new Ctx(dataDir()));
+/** Lenient: pages render what loaded, and the layout lists `ctx().bad`. Writes (actions.ts) use a strict Ctx. */
+export const ctx = cache(() => new Ctx(dataDir(), { lenient: true }));
 export const settings = cache(() => loadSettings(dataDir()));
 export { dataDir };
 

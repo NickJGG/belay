@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
@@ -14,6 +14,11 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 function belay(...args: string[]) {
+  return belayWith(undefined, ...args);
+}
+
+/** `input` is piped to stdin, as the hooks get it. */
+function belayWith(input: string | undefined, ...args: string[]) {
   const env = {
     ...process.env,
     BELAY_DATA: dir,
@@ -23,7 +28,7 @@ function belay(...args: string[]) {
     GIT_COMMITTER_NAME: 'Test',
     GIT_COMMITTER_EMAIL: 'test@example.com',
   };
-  const r = spawnSync(process.execPath, ['src/cli.ts', ...args], { env, encoding: 'utf8' });
+  const r = spawnSync(process.execPath, ['src/cli.ts', ...args], { env, encoding: 'utf8', input });
   return { code: r.status, out: r.stdout, err: r.stderr };
 }
 
@@ -63,4 +68,20 @@ test('git init starts history once', () => {
   const second = belay('git', 'init');
   assert.equal(second.code, 1);
   assert.match(second.err, /already has git history/);
+});
+
+test('a corrupt issue: read commands carry on and say so, writes refuse', () => {
+  belay('project', 'add', 'PIX', '--name', 'Pixel', '--path', dir);
+  belay('add', 'Draw the map', '--project', 'pix');
+  belay('set', 'pix-1', 'doing');
+  writeFileSync(join(dir, 'issues', 'pix-2.md'), '---\nid: PIX-2\ntitle: a: b: c\n---\n');
+  const status = belayWith(JSON.stringify({ cwd: dir }), 'statusline');
+  assert.equal(status.code, 0, status.err);
+  assert.match(status.out, /PIX-1.*│ ⚠ 1 bad file\n$/);
+  const list = belay('list');
+  assert.match(list.out, /PIX-1/);
+  assert.match(list.err, /^belay: skipped 1 bad file: issues\/pix-2\.md \(line 3: /);
+  const set = belay('set', 'pix-1', 'todo');
+  assert.equal(set.code, 1);
+  assert.match(set.err, /^belay: issues\/pix-2\.md: line 3: /);
 });

@@ -31,6 +31,7 @@ import {
   now,
   today,
   validateKey,
+  type BadFile,
   type Comment,
   type Goal,
   type Project,
@@ -48,6 +49,18 @@ export function idList(values: string[] | undefined): string[] {
   return (values ?? []).flatMap((v) => v.split(',')).map((s) => s.trim()).filter(Boolean);
 }
 
+export const badFileNote = (b: BadFile) => `${b.file} (${b.error})`;
+
+function loadOrderLenient(dir: string, bad: BadFile[] | undefined): string[] {
+  try {
+    return loadOrder(dir);
+  } catch (e) {
+    if (!bad) throw e;
+    bad.push({ file: 'order.yaml', error: (e as Error).message.replace(/^order.yaml:s*/, '') });
+    return [];
+  }
+}
+
 export class Ctx {
   readonly dir: string;
   /** As stored in `order.yaml`; may be partial or hold stale keys. */
@@ -56,14 +69,18 @@ export class Ctx {
   readonly projects: Project[];
   readonly issues: Issue[];
   readonly byId: Map<string, Issue>;
+  /** Files a lenient load skipped; always empty when strict. */
+  readonly bad: BadFile[] = [];
   readonly #logs = new Map<string, DatedEntry[]>();
   #depth = 0;
 
-  constructor(dir = dataDir()) {
+  /** Strict by default: any bad file throws. Lenient is for read paths, which show what loaded and report `bad`. */
+  constructor(dir = dataDir(), { lenient = false } = {}) {
     this.dir = dir;
-    this.order = loadOrder(dir);
-    this.projects = sortByOrder(loadProjects(dir), this.order);
-    this.issues = loadIssues(dir);
+    const bad = lenient ? this.bad : undefined;
+    this.order = loadOrderLenient(dir, bad);
+    this.projects = sortByOrder(loadProjects(dir, { bad }), this.order);
+    this.issues = loadIssues(dir, { bad });
     this.byId = indexIssues(this.issues);
   }
 
@@ -92,6 +109,7 @@ export class Ctx {
    * Nested ops commit once, with the outermost op's message.
    */
   record<T>(fn: () => T, message: (result: T) => string): T {
+    if (this.bad.length) throw new Error(`not writing while files are bad: ${this.bad.map(badFileNote).join('; ')}`);
     this.#depth++;
     let result: T;
     try {

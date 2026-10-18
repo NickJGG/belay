@@ -146,3 +146,15 @@ test('digestLines: a goal project quiet two work days shows its latest note', ()
   const backdated = { ...other, project: 'ELV', at: '2026-10-06T09:00', text: 'logged', day: '2026-10-05' };
   assert.equal(digestLines(goalProject, issues, [], [], { ...quiet, logs: [other, backdated] }).at(-1), 'last: 2026-10-06 logged');
 });
+
+test('digestLines: bad files after ready, at most two', () => {
+  const bad = [
+    { file: 'issues/elv-7.md', error: 'line 4: Nested mappings are not allowed in compact mappings, really' },
+    { file: 'issues/elv-8.md', error: 'missing frontmatter' },
+    { file: 'projects/oth.md', error: "'name' must be a non-empty string" },
+  ];
+  const lines = digestLines(project, [issue('ELV-1')], [], [], undefined, { bad });
+  assert.equal(lines[2], 'bad files: issues/elv-7.md (line 4: Nested mappings are not allowed in compact mappings…); issues/elv-8.md (missing frontmatter); …');
+  assert.equal(digestLines(project, [issue('ELV-1')], [], [], undefined, { bad: bad.slice(1, 2) })[2], 'bad files: issues/elv-8.md (missing frontmatter)');
+  assert.equal(digestLines(project, [issue('ELV-1')], [], []).length, 2);
+});

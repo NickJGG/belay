@@ -6,9 +6,9 @@
  * Keys and IDs are uppercase in memory and in frontmatter (`ELV`, `ELV-12`) and lowercase in
  * file names. Loading uppercases whatever it reads, so files from before that rule still load.
  */
-import { existsSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { parse, stringify } from 'yaml';
+import { YAMLError, parse, stringify } from 'yaml';
 
 export const ISSUE_STATUSES = ['idea', 'todo', 'doing', 'done', 'dropped'] as const;
 export const PROJECT_STATUSES = ['active', 'paused', 'archived'] as const;
@@ -114,10 +114,22 @@ export function normalizeStoredPath(p: string): string {
 
 type Data = Record<string, unknown>;
 
+/** yaml's `parse`, failing as `<where>: line N: <reason>`. `offset` is how many file lines precede `src`. */
+export function parseYaml(src: string, where: string, offset = 0): unknown {
+  try {
+    return parse(src);
+  } catch (e) {
+    if (!(e instanceof YAMLError)) throw e;
+    const line = e.linePos?.[0].line;
+    const reason = e.message.replace(/ at line \d+, column \d+:[\s\S]*$/, '');
+    throw new Error(`${where}: ${line ? `line ${line + offset}: ` : ''}${reason}`);
+  }
+}
+
 export function splitFrontmatter(text: string, where: string): { data: Data; body: string } {
   const m = /^---\r?\n([\s\S]*?)\r?\n?---(?:\r?\n|$)([\s\S]*)$/.exec(text);
   if (!m) throw new Error(`${where}: missing frontmatter`);
-  const data = parse(m[1]) ?? {};
+  const data = (parseYaml(m[1], where, 1) ?? {}) as Data;
   if (typeof data !== 'object' || Array.isArray(data)) throw new Error(`${where}: frontmatter is not a mapping`);
   return { data, body: m[2].trim() };
 }
@@ -314,24 +326,94 @@ export function writeAtomic(file: string, content: string): void {
   renameSync(tmp, file);
 }
 
-export function loadProjects(dir: string): Project[] {
-  const sub = join(dir, 'projects');
-  return mdFiles(sub).map((f) => {
-    const p = parseProject(readFileSync(join(sub, f), 'utf8'), `projects/${f}`);
-    if (`${p.key.toLowerCase()}.md` !== f) throw new Error(`projects/${f}: key '${p.key}' does not match file name`);
-    return p;
-  });
+export interface BadFile {
+  /** Relative to the data dir, `issues/bel-12.md`. */
+  file: string;
+  /** The parse or validation error, without the file name. */
+  error: string;
 }
 
-export function loadIssues(dir: string): Issue[] {
-  const sub = join(dir, 'issues');
-  return mdFiles(sub)
-    .map((f) => {
-      const t = parseIssue(readFileSync(join(sub, f), 'utf8'), `issues/${f}`);
-      if (`${t.id.toLowerCase()}.md` !== f) throw new Error(`issues/${f}: id '${t.id}' does not match file name`);
+/** Passing `bad` makes a load lenient: files that fail are collected there instead of throwing. */
+export interface LoadOptions {
+  bad?: BadFile[];
+}
+
+function loadEach<T>(files: string[], load: (rel: string) => T, bad: BadFile[] | undefined): T[] {
+  const out: T[] = [];
+  for (const rel of files) {
+    try {
+      out.push(load(rel));
+    } catch (e) {
+      if (!bad) throw e;
+      const msg = (e as Error).message;
+      bad.push({ file: rel, error: msg.startsWith(rel) ? msg.slice(rel.length).replace(/^:\s*/, '') : msg });
+    }
+  }
+  return out;
+}
+
+export function loadProjects(dir: string, { bad }: LoadOptions = {}): Project[] {
+  const files = mdFiles(join(dir, 'projects')).map((f) => `projects/${f}`);
+  return loadEach(
+    files,
+    (rel) => {
+      const p = parseProject(readFileSync(join(dir, rel), 'utf8'), rel);
+      if (`projects/${p.key.toLowerCase()}.md` !== rel) throw new Error(`${rel}: key '${p.key}' does not match file name`);
+      return p;
+    },
+    bad,
+  );
+}
+
+/** Bump when the parsed `Issue` shape changes, so old entries aren't served. */
+const ISSUE_CACHE_VERSION = 1;
+
+type IssueCacheEntries = Record<string, { mtimeMs: number; size: number; issue: Issue }>;
+
+export function issueCacheFile(dir: string): string {
+  return join(dir, 'cache', 'issues.json');
+}
+
+function readIssueCache(dir: string): IssueCacheEntries {
+  try {
+    const c = JSON.parse(readFileSync(issueCacheFile(dir), 'utf8'));
+    if (c?.version === ISSUE_CACHE_VERSION && isMapping(c.files)) return c.files as IssueCacheEntries;
+  } catch {
+    // missing or corrupt: rebuild
+  }
+  return {};
+}
+
+/** Parsed issues are cached in `cache/issues.json` by file mtime and size; bad files never are. */
+export function loadIssues(dir: string, { bad }: LoadOptions = {}): Issue[] {
+  const cached = readIssueCache(dir);
+  const fresh: IssueCacheEntries = {};
+  let misses = 0;
+  const files = mdFiles(join(dir, 'issues')).map((f) => `issues/${f}`);
+  const issues = loadEach(
+    files,
+    (rel) => {
+      const file = join(dir, rel);
+      const { mtimeMs, size } = statSync(file);
+      const hit = cached[rel];
+      if (hit && hit.mtimeMs === mtimeMs && hit.size === size) return (fresh[rel] = hit).issue;
+      misses++;
+      const t = parseIssue(readFileSync(file, 'utf8'), rel);
+      if (`issues/${t.id.toLowerCase()}.md` !== rel) throw new Error(`${rel}: id '${t.id}' does not match file name`);
+      fresh[rel] = { mtimeMs, size, issue: t };
       return t;
-    })
-    .sort((a, b) => compareIds(a.id, b.id));
+    },
+    bad,
+  );
+  if (misses || Object.keys(fresh).length !== Object.keys(cached).length) {
+    try {
+      mkdirSync(join(dir, 'cache'), { recursive: true });
+      writeAtomic(issueCacheFile(dir), JSON.stringify({ version: ISSUE_CACHE_VERSION, files: fresh }));
+    } catch {
+      // the cache is only a speedup
+    }
+  }
+  return issues.sort((a, b) => compareIds(a.id, b.id));
 }
 
 export function saveProject(dir: string, p: Project): void {
@@ -347,8 +429,8 @@ export function orderFile(dir: string): string {
 export function loadOrder(dir: string): string[] {
   const file = orderFile(dir);
   if (!existsSync(file)) return [];
-  const data = parse(readFileSync(file, 'utf8')) ?? {};
-  if (typeof data !== 'object' || Array.isArray(data)) throw new Error('order.yaml: not a mapping');
+  const data = parseYaml(readFileSync(file, 'utf8'), 'order.yaml') ?? {};
+  if (!isMapping(data)) throw new Error('order.yaml: not a mapping');
   return textList(data, 'project_order', 'order.yaml').map(canon);
 }
 

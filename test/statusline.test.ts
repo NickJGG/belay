@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { GoalProgress } from '../src/goals.ts';
-import { statusLine, withGoals } from '../src/statusline.ts';
+import { statusLine, withBad, withGoals } from '../src/statusline.ts';
 import type { Issue, Project } from '../src/store.ts';
 
 const project: Project = { key: 'ELV', name: 'Rideable Elevators', paths: [], status: 'active', focus: true, body: '' };
@@ -67,4 +67,10 @@ test('withGoals appends the goal strip, or stands alone outside a project', () =
   assert.equal(withGoals('', goals), 'JOB 6/10 applied · PORT 6 left ▲10d');
   assert.equal(withGoals('▶ ELV-1', []), '▶ ELV-1');
   assert.equal(withGoals('', []), '');
+});
+
+test('withBad appends a bad-file count when there is one', () => {
+  assert.equal(withBad('▶ ELV-1', 0), '▶ ELV-1');
+  assert.equal(withBad('▶ ELV-1', 1), '▶ ELV-1 │ ⚠ 1 bad file');
+  assert.equal(withBad('', 3), '⚠ 3 bad files');
 });

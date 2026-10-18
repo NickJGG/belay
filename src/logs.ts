@@ -5,8 +5,8 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
-import { parse, stringify } from 'yaml';
-import { AT_RE, DAY_RE, SOURCES, canon, isMapping, oneOf, optPositiveInt, optText, writeAtomic, type Source } from './store.ts';
+import { stringify } from 'yaml';
+import { AT_RE, DAY_RE, SOURCES, canon, isMapping, oneOf, optPositiveInt, optText, parseYaml, writeAtomic, type Source } from './store.ts';
 
 export interface LogEntry {
   project: string;
@@ -34,7 +34,7 @@ export function logFile(dir: string, day: string): string {
 }
 
 export function parseLog(src: string, where: string): LogEntry[] {
-  const data = parse(src) ?? {};
+  const data = parseYaml(src, where) ?? {};
   if (!isMapping(data)) throw new Error(`${where}: not a mapping`);
   const v = data.entries ?? [];
   if (!Array.isArray(v)) throw new Error(`${where}: 'entries' must be a list`);

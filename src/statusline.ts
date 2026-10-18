@@ -3,7 +3,7 @@
  * the goal strip, which shows everywhere.
  */
 import { DEFAULT_PORT } from './config.ts';
-import { clip } from './digest.ts';
+import { clip, plural } from './digest.ts';
 import { goalStrip, type GoalProgress } from './goals.ts';
 import { highFirst, indexIssues, isReady, openBlockers, recentFirst } from './query.ts';
 import type { Issue, Project } from './store.ts';
@@ -33,4 +33,9 @@ export function statusLine(project: Project, issues: Issue[]): string {
 /** `line │ JOB 6/10 applied · PORT 6 left ▲10d`; either part may be empty. */
 export function withGoals(line: string, goals: GoalProgress[]): string {
   return [line, goalStrip(goals)].filter(Boolean).join(' │ ');
+}
+
+/** Appends `⚠ N bad files` when a lenient load skipped some. */
+export function withBad(line: string, bad: number): string {
+  return [line, bad ? `⚠ ${plural(bad, 'bad file')}` : ''].filter(Boolean).join(' │ ');
 }

@@ -4,8 +4,8 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parse, stringify } from 'yaml';
-import { writeAtomic } from './store.ts';
+import { stringify } from 'yaml';
+import { isMapping, parseYaml, writeAtomic } from './store.ts';
 
 export const THEMES = ['system', 'dark', 'light'] as const;
 
@@ -56,8 +56,8 @@ function validate(s: Record<string, unknown>): Settings {
 export function loadSettings(dir: string): Settings {
   const file = settingsFile(dir);
   if (!existsSync(file)) return { ...DEFAULT_SETTINGS };
-  const data = parse(readFileSync(file, 'utf8')) ?? {};
-  if (typeof data !== 'object' || Array.isArray(data)) throw new Error('settings.yaml: not a mapping');
+  const data = parseYaml(readFileSync(file, 'utf8'), 'settings.yaml') ?? {};
+  if (!isMapping(data)) throw new Error('settings.yaml: not a mapping');
   return validate(data);
 }
 
