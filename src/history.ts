@@ -2,9 +2,9 @@
  * Session history from Claude Code transcripts (`<claudeDir>/projects/<encoded cwd>/<session id>.jsonl`),
  * mapped to projects by launch cwd, plus the git commits made inside each session's time window.
  */
-import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { git } from './gitlog.ts';
 import { projectForCwd } from './query.ts';
 import { writeAtomic, type Project } from './store.ts';
 import { addDays } from './workday.ts';
@@ -114,14 +114,6 @@ export function recentSessions(claudeDir: string, projects: Project[], q: Sessio
     out.push(s);
   }
   return out;
-}
-
-function git(dir: string, args: string[]): string | undefined {
-  try {
-    return execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-  } catch {
-    return undefined;
-  }
 }
 
 /** The path itself when it's inside a repo, else its immediate child repos (a folder of several repos). */

@@ -5,9 +5,11 @@
 import { createHash } from 'node:crypto';
 import { existsSync, unlinkSync } from 'node:fs';
 import { dataDir } from './config.ts';
+import { commitAll } from './gitlog.ts';
 import { loadLog, loadLogDays, loadLogs, parseLogAddress, saveLog, type DatedEntry, type LogEntry } from './logs.ts';
 import { suggestKey } from './projectkey.ts';
 import { indexIssues, openBlockers } from './query.ts';
+import { ACCENT_KEYS, THEMES, loadSettings, saveSettings, type Settings } from './settings.ts';
 import { reorder, type MoveTarget } from './sidebar.ts';
 import {
   PROJECT_STATUSES,
@@ -55,6 +57,7 @@ export class Ctx {
   readonly issues: Issue[];
   readonly byId: Map<string, Issue>;
   readonly #logs = new Map<string, DatedEntry[]>();
+  #depth = 0;
 
   constructor(dir = dataDir()) {
     this.dir = dir;
@@ -84,6 +87,25 @@ export class Ctx {
     return entries;
   }
 
+  /**
+   * Runs a write op and, if the data dir has git history, commits what it wrote as `<message> - <author>`.
+   * Nested ops commit once, with the outermost op's message.
+   */
+  record<T>(fn: () => T, message: (result: T) => string): T {
+    this.#depth++;
+    let result: T;
+    try {
+      result = fn();
+    } finally {
+      this.#depth--;
+    }
+    if (this.#depth === 0) {
+      const { by, session } = commentAuthor(process.env);
+      commitAll(this.dir, `${message(result)} - ${by}`, session && `Session: ${session}`);
+    }
+    return result;
+  }
+
   /** Returns the blockers in their stored form. */
   checkBlockers(id: string | undefined, blockers: string[]): string[] {
     return blockers.map((b) => {
@@ -97,13 +119,18 @@ export class Ctx {
 const USER: Author = { by: 'user' };
 
 export function setStatus(ctx: Ctx, id: string, value: string, author = USER): { before: IssueStatus; issue: Issue; open: Issue[] } {
-  const current = ctx.issue(id);
-  const status = oneOf(value, ISSUE_STATUSES, 'status');
-  const transitions =
-    status === current.status ? current.transitions : [...(current.transitions ?? []), { at: now(), from: current.status, to: status, ...author }];
-  const issue = { ...current, status, updated: now(), ...(transitions && { transitions }) };
-  saveIssue(ctx.dir, issue);
-  return { before: current.status, issue, open: openBlockers(current, ctx.byId) };
+  return ctx.record(
+    () => {
+      const current = ctx.issue(id);
+      const status = oneOf(value, ISSUE_STATUSES, 'status');
+      const transitions =
+        status === current.status ? current.transitions : [...(current.transitions ?? []), { at: now(), from: current.status, to: status, ...author }];
+      const issue = { ...current, status, updated: now(), ...(transitions && { transitions }) };
+      saveIssue(ctx.dir, issue);
+      return { before: current.status, issue, open: openBlockers(current, ctx.byId) };
+    },
+    (r) => `set ${r.issue.id} ${r.before}->${r.issue.status}`,
+  );
 }
 
 export interface NewIssue {
@@ -119,33 +146,43 @@ export interface NewIssue {
 }
 
 export function addIssue(ctx: Ctx, t: NewIssue, author = USER): Issue {
-  const title = t.title.trim();
-  if (!title) throw new Error('title is empty');
-  const project = ctx.project(t.project);
-  const blockers = ctx.checkBlockers(undefined, t.blockers ?? []);
-  const d = new Date();
-  const status = oneOf(t.status ?? 'todo', ['idea', 'todo'] as const, 'status');
-  return createIssue(ctx.dir, {
-    title,
-    project: project.key,
-    status,
-    blocked_by: blockers,
-    priority: t.priority ? oneOf(t.priority, ['high'] as const, 'priority') : undefined,
-    source: oneOf(t.source ?? 'user', SOURCES, 'source'),
-    grill: t.grill,
-    plan: t.plan,
-    created: today(d),
-    updated: now(d),
-    comments: [],
-    transitions: [{ at: now(d), to: status, ...author }],
-    body: (t.body ?? '').trim(),
-  });
+  return ctx.record(
+    () => {
+      const title = t.title.trim();
+      if (!title) throw new Error('title is empty');
+      const project = ctx.project(t.project);
+      const blockers = ctx.checkBlockers(undefined, t.blockers ?? []);
+      const d = new Date();
+      const status = oneOf(t.status ?? 'todo', ['idea', 'todo'] as const, 'status');
+      return createIssue(ctx.dir, {
+        title,
+        project: project.key,
+        status,
+        blocked_by: blockers,
+        priority: t.priority ? oneOf(t.priority, ['high'] as const, 'priority') : undefined,
+        source: oneOf(t.source ?? 'user', SOURCES, 'source'),
+        grill: t.grill,
+        plan: t.plan,
+        created: today(d),
+        updated: now(d),
+        comments: [],
+        transitions: [{ at: now(d), to: status, ...author }],
+        body: (t.body ?? '').trim(),
+      });
+    },
+    (issue) => `add ${issue.id} "${issue.title}"`,
+  );
 }
 
 export function setPriority(ctx: Ctx, id: string, high: boolean): Issue {
-  const issue = { ...ctx.issue(id), priority: high ? ('high' as const) : undefined, updated: now() };
-  saveIssue(ctx.dir, issue);
-  return issue;
+  return ctx.record(
+    () => {
+      const issue = { ...ctx.issue(id), priority: high ? ('high' as const) : undefined, updated: now() };
+      saveIssue(ctx.dir, issue);
+      return issue;
+    },
+    (issue) => `priority ${issue.id} ${high ? 'high' : 'none'}`,
+  );
 }
 
 export interface IssuePatch {
@@ -161,24 +198,37 @@ export interface IssuePatch {
   body?: string;
 }
 
+/** The keys a patch sets, for a commit subject. */
+function patched(patch: object): string {
+  return Object.entries(patch)
+    .filter(([, v]) => v !== undefined)
+    .map(([k]) => k)
+    .join(',');
+}
+
 export function editIssue(ctx: Ctx, id: string, patch: IssuePatch): Issue {
-  const issue = { ...ctx.issue(id) };
-  if (patch.title !== undefined) {
-    if (!patch.title.trim()) throw new Error('title is empty');
-    issue.title = patch.title.trim();
-  }
-  if (patch.blockers !== undefined) {
-    issue.blocked_by = ctx.checkBlockers(issue.id, patch.blockers);
-  }
-  if (patch.priority !== undefined) {
-    issue.priority = oneOf(patch.priority, ['high', 'none'] as const, 'priority') === 'high' ? 'high' : undefined;
-  }
-  if (patch.grill !== undefined) issue.grill = patch.grill || undefined;
-  if (patch.plan !== undefined) issue.plan = patch.plan || undefined;
-  if (patch.body !== undefined) issue.body = patch.body.trim();
-  issue.updated = now();
-  saveIssue(ctx.dir, issue);
-  return issue;
+  return ctx.record(
+    () => {
+      const issue = { ...ctx.issue(id) };
+      if (patch.title !== undefined) {
+        if (!patch.title.trim()) throw new Error('title is empty');
+        issue.title = patch.title.trim();
+      }
+      if (patch.blockers !== undefined) {
+        issue.blocked_by = ctx.checkBlockers(issue.id, patch.blockers);
+      }
+      if (patch.priority !== undefined) {
+        issue.priority = oneOf(patch.priority, ['high', 'none'] as const, 'priority') === 'high' ? 'high' : undefined;
+      }
+      if (patch.grill !== undefined) issue.grill = patch.grill || undefined;
+      if (patch.plan !== undefined) issue.plan = patch.plan || undefined;
+      if (patch.body !== undefined) issue.body = patch.body.trim();
+      issue.updated = now();
+      saveIssue(ctx.dir, issue);
+      return issue;
+    },
+    (issue) => `edit ${issue.id} ${patched(patch)}`.trimEnd(),
+  );
 }
 
 export function bodyHash(body: string): string {
@@ -198,9 +248,14 @@ export class ConflictError extends Error {
 
 /** With `expectedHash`, refuses to overwrite a body that no longer hashes to it. */
 export function replaceBody(ctx: Ctx, id: string, body: string, expectedHash?: string): Issue {
-  const current = ctx.issue(id).body;
-  if (expectedHash !== undefined && expectedHash !== bodyHash(current)) throw new ConflictError(id, current);
-  return editIssue(ctx, id, { body });
+  return ctx.record(
+    () => {
+      const current = ctx.issue(id).body;
+      if (expectedHash !== undefined && expectedHash !== bodyHash(current)) throw new ConflictError(id, current);
+      return editIssue(ctx, id, { body });
+    },
+    (issue) => `body ${issue.id}`,
+  );
 }
 
 /** Who a comment is credited to. */
@@ -230,11 +285,16 @@ export class CommentConflictError extends Error {
 
 /** Returns the new comment's number. */
 export function addComment(ctx: Ctx, id: string, text: string, author: Author): { issue: Issue; n: number } {
-  const current = ctx.issue(id);
-  const comment = { at: now(), ...author, text: commentText(text) };
-  const issue = { ...current, comments: [...current.comments, comment], updated: now() };
-  saveIssue(ctx.dir, issue);
-  return { issue, n: issue.comments.length };
+  return ctx.record(
+    () => {
+      const current = ctx.issue(id);
+      const comment = { at: now(), ...author, text: commentText(text) };
+      const issue = { ...current, comments: [...current.comments, comment], updated: now() };
+      saveIssue(ctx.dir, issue);
+      return { issue, n: issue.comments.length };
+    },
+    (r) => `comment ${r.issue.id} #${r.n}`,
+  );
 }
 
 /** `n` is 1-based, as `show` numbers them. With `expectAt`, refuses when `#n` isn't the comment that was loaded. */
@@ -247,20 +307,30 @@ function commentIndex(issue: Issue, n: number, expectAt: string | undefined): nu
 }
 
 export function editComment(ctx: Ctx, id: string, n: number, text: string, expectAt?: string): Issue {
-  const current = ctx.issue(id);
-  const i = commentIndex(current, n, expectAt);
-  const comments = current.comments.map((c, j) => (j === i ? { ...c, text: commentText(text) } : c));
-  const issue = { ...current, comments, updated: now() };
-  saveIssue(ctx.dir, issue);
-  return issue;
+  return ctx.record(
+    () => {
+      const current = ctx.issue(id);
+      const i = commentIndex(current, n, expectAt);
+      const comments = current.comments.map((c, j) => (j === i ? { ...c, text: commentText(text) } : c));
+      const issue = { ...current, comments, updated: now() };
+      saveIssue(ctx.dir, issue);
+      return issue;
+    },
+    (issue) => `comment edit ${issue.id} #${n}`,
+  );
 }
 
 export function deleteComment(ctx: Ctx, id: string, n: number, expectAt?: string): Issue {
-  const current = ctx.issue(id);
-  const i = commentIndex(current, n, expectAt);
-  const issue = { ...current, comments: current.comments.filter((_, j) => j !== i), updated: now() };
-  saveIssue(ctx.dir, issue);
-  return issue;
+  return ctx.record(
+    () => {
+      const current = ctx.issue(id);
+      const i = commentIndex(current, n, expectAt);
+      const issue = { ...current, comments: current.comments.filter((_, j) => j !== i), updated: now() };
+      saveIssue(ctx.dir, issue);
+      return issue;
+    },
+    (issue) => `comment delete ${issue.id} #${n}`,
+  );
 }
 
 /**
@@ -269,18 +339,23 @@ export function deleteComment(ctx: Ctx, id: string, n: number, expectAt?: string
  */
 export function deleteIssue(ctx: Ctx, typed: string, author: Author): Issue[] {
   const { id } = ctx.issue(typed);
-  const at = now();
-  const dependents = ctx.issues
-    .filter((t) => t.blocked_by.includes(id))
-    .map((t) => ({
-      ...t,
-      blocked_by: t.blocked_by.filter((b) => b !== id),
-      comments: [...t.comments, { at, ...author, text: `blocker ${id} deleted` }],
-      updated: now(),
-    }));
-  for (const t of dependents) saveIssue(ctx.dir, t);
-  deleteIssueFile(ctx.dir, id);
-  return dependents;
+  return ctx.record(
+    () => {
+      const at = now();
+      const dependents = ctx.issues
+        .filter((t) => t.blocked_by.includes(id))
+        .map((t) => ({
+          ...t,
+          blocked_by: t.blocked_by.filter((b) => b !== id),
+          comments: [...t.comments, { at, ...author, text: `blocker ${id} deleted` }],
+          updated: now(),
+        }));
+      for (const t of dependents) saveIssue(ctx.dir, t);
+      deleteIssueFile(ctx.dir, id);
+      return dependents;
+    },
+    () => `delete ${id}`,
+  );
 }
 
 /** A target's `set` is stamped by `editProject`. */
@@ -355,25 +430,30 @@ function goalFor(p: Project, g: GoalInput, clock: Date): Goal {
 }
 
 export function editProject(ctx: Ctx, key: string, patch: ProjectPatch, clock = new Date()): Project {
-  const p = { ...ctx.project(key) };
-  if (patch.name !== undefined) {
-    if (!patch.name.trim()) throw new Error('name is empty');
-    p.name = patch.name.trim();
-  }
-  if (patch.paths !== undefined) {
-    if (!patch.paths.length) throw new Error('at least one path is required');
-    p.paths = patch.paths.map(normalizeStoredPath);
-  }
-  if (patch.group !== undefined) p.group = patch.group.trim() || undefined;
-  if (patch.status !== undefined) p.status = oneOf(patch.status, PROJECT_STATUSES, 'status');
-  if (patch.focus !== undefined) p.focus = patch.focus;
-  if (patch.kinds !== undefined) p.kinds = kindList(patch.kinds);
-  if (patch.goal !== undefined) p.goal = patch.goal === null ? undefined : goalFor(p, patch.goal, clock);
-  else if (patch.kinds !== undefined && p.goal && 'kind' in p.goal && !p.kinds?.includes(p.goal.kind)) {
-    throw new Error(`${p.key}'s quantity goal counts '${p.goal.kind}': keep that kind or change the goal`);
-  }
-  saveProject(ctx.dir, p);
-  return p;
+  return ctx.record(
+    () => {
+      const p = { ...ctx.project(key) };
+      if (patch.name !== undefined) {
+        if (!patch.name.trim()) throw new Error('name is empty');
+        p.name = patch.name.trim();
+      }
+      if (patch.paths !== undefined) {
+        if (!patch.paths.length) throw new Error('at least one path is required');
+        p.paths = patch.paths.map(normalizeStoredPath);
+      }
+      if (patch.group !== undefined) p.group = patch.group.trim() || undefined;
+      if (patch.status !== undefined) p.status = oneOf(patch.status, PROJECT_STATUSES, 'status');
+      if (patch.focus !== undefined) p.focus = patch.focus;
+      if (patch.kinds !== undefined) p.kinds = kindList(patch.kinds);
+      if (patch.goal !== undefined) p.goal = patch.goal === null ? undefined : goalFor(p, patch.goal, clock);
+      else if (patch.kinds !== undefined && p.goal && 'kind' in p.goal && !p.kinds?.includes(p.goal.kind)) {
+        throw new Error(`${p.key}'s quantity goal counts '${p.goal.kind}': keep that kind or change the goal`);
+      }
+      saveProject(ctx.dir, p);
+      return p;
+    },
+    (p) => `project edit ${p.key} ${patched(patch)}`.trimEnd(),
+  );
 }
 
 export type { MoveTarget };
@@ -382,13 +462,21 @@ export type { MoveTarget };
 export function moveProject(ctx: Ctx, key: string, where: MoveTarget): string[] {
   const moved = ctx.project(key).key;
   const anchor = typeof where === 'string' ? where : 'before' in where ? { before: ctx.project(where.before).key } : { after: ctx.project(where.after).key };
-  const keys = reorder(ctx.projects.map((p) => p.key), moved, anchor);
-  saveOrder(ctx.dir, keys);
-  return keys;
+  return ctx.record(
+    () => {
+      const keys = reorder(ctx.projects.map((p) => p.key), moved, anchor);
+      saveOrder(ctx.dir, keys);
+      return keys;
+    },
+    () => `move ${moved} ${typeof anchor === 'string' ? anchor : 'before' in anchor ? `before ${anchor.before}` : `after ${anchor.after}`}`,
+  );
 }
 
 export function setFocus(ctx: Ctx, key: string, focus: boolean): Project {
-  return editProject(ctx, key, { focus });
+  return ctx.record(
+    () => editProject(ctx, key, { focus }),
+    (p) => `focus ${p.key} ${focus ? 'on' : 'off'}`,
+  );
 }
 
 export interface NewProject {
@@ -401,16 +489,21 @@ export interface NewProject {
 }
 
 export function addProject(ctx: Ctx, n: NewProject): { project: Project; missing: string[] } {
-  const name = n.name.trim();
-  if (!name) throw new Error('name is empty');
-  if (!n.paths.length) throw new Error('at least one path is required');
-  const key = n.key ? canon(n.key) : suggestKey(name, ctx.projects.map((p) => p.key));
-  validateKey(key);
-  if (ctx.projects.some((p) => p.key === key) || existsSync(projectFile(ctx.dir, key))) throw new Error(`project '${key}' already exists`);
-  const paths = n.paths.map(normalizeStoredPath);
-  const project: Project = { key, name, paths, status: 'active', focus: n.focus ?? false, group: n.group?.trim() || undefined, body: '' };
-  saveProject(ctx.dir, project);
-  return { project, missing: paths.filter((p) => !existsSync(p)) };
+  return ctx.record(
+    () => {
+      const name = n.name.trim();
+      if (!name) throw new Error('name is empty');
+      if (!n.paths.length) throw new Error('at least one path is required');
+      const key = n.key ? canon(n.key) : suggestKey(name, ctx.projects.map((p) => p.key));
+      validateKey(key);
+      if (ctx.projects.some((p) => p.key === key) || existsSync(projectFile(ctx.dir, key))) throw new Error(`project '${key}' already exists`);
+      const paths = n.paths.map(normalizeStoredPath);
+      const project: Project = { key, name, paths, status: 'active', focus: n.focus ?? false, group: n.group?.trim() || undefined, body: '' };
+      saveProject(ctx.dir, project);
+      return { project, missing: paths.filter((p) => !existsSync(p)) };
+    },
+    (r) => `project add ${r.project.key} "${r.project.name}"`,
+  );
 }
 
 /**
@@ -419,32 +512,37 @@ export function addProject(ctx: Ctx, n: NewProject): { project: Project; missing
  */
 export function rekeyProject(ctx: Ctx, from: string, to: string): { project: Project; renamed: Map<string, string> } {
   const old = ctx.project(from);
-  const key = canon(to);
-  validateKey(key);
-  if (ctx.projects.some((p) => p.key === key) || existsSync(projectFile(ctx.dir, key))) throw new Error(`project '${key}' already exists`);
-  const own = ctx.issues.filter((t) => t.project === old.key);
-  const renamed = new Map(own.map((t) => [t.id, `${key}-${parseId(t.id)!.n}`]));
-  const remap = (ids: string[]) => ids.map((b) => renamed.get(b) ?? b);
+  return ctx.record(
+    () => {
+      const key = canon(to);
+      validateKey(key);
+      if (ctx.projects.some((p) => p.key === key) || existsSync(projectFile(ctx.dir, key))) throw new Error(`project '${key}' already exists`);
+      const own = ctx.issues.filter((t) => t.project === old.key);
+      const renamed = new Map(own.map((t) => [t.id, `${key}-${parseId(t.id)!.n}`]));
+      const remap = (ids: string[]) => ids.map((b) => renamed.get(b) ?? b);
 
-  const project = { ...old, key };
-  saveProject(ctx.dir, project);
-  for (const t of own) saveIssue(ctx.dir, { ...t, id: renamed.get(t.id)!, project: key, blocked_by: remap(t.blocked_by) });
-  for (const t of ctx.issues) {
-    if (t.project !== old.key && t.blocked_by.some((b) => renamed.has(b))) saveIssue(ctx.dir, { ...t, blocked_by: remap(t.blocked_by) });
-  }
-  for (const day of loadLogDays(ctx.dir)) {
-    const entries = loadLog(ctx.dir, day);
-    if (!entries.some((e) => e.project === old.key || (e.issue && renamed.has(e.issue)))) continue;
-    saveLog(ctx.dir, day, entries.map((e) => ({
-      ...e,
-      project: e.project === old.key ? key : e.project,
-      ...(e.issue && { issue: renamed.get(e.issue) ?? e.issue }),
-    })));
-  }
-  for (const t of own) deleteIssueFile(ctx.dir, t.id);
-  unlinkSync(projectFile(ctx.dir, old.key));
-  if (ctx.order.includes(old.key)) saveOrder(ctx.dir, ctx.order.map((k) => (k === old.key ? key : k)));
-  return { project, renamed };
+      const project = { ...old, key };
+      saveProject(ctx.dir, project);
+      for (const t of own) saveIssue(ctx.dir, { ...t, id: renamed.get(t.id)!, project: key, blocked_by: remap(t.blocked_by) });
+      for (const t of ctx.issues) {
+        if (t.project !== old.key && t.blocked_by.some((b) => renamed.has(b))) saveIssue(ctx.dir, { ...t, blocked_by: remap(t.blocked_by) });
+      }
+      for (const day of loadLogDays(ctx.dir)) {
+        const entries = loadLog(ctx.dir, day);
+        if (!entries.some((e) => e.project === old.key || (e.issue && renamed.has(e.issue)))) continue;
+        saveLog(ctx.dir, day, entries.map((e) => ({
+          ...e,
+          project: e.project === old.key ? key : e.project,
+          ...(e.issue && { issue: renamed.get(e.issue) ?? e.issue }),
+        })));
+      }
+      for (const t of own) deleteIssueFile(ctx.dir, t.id);
+      unlinkSync(projectFile(ctx.dir, old.key));
+      if (ctx.order.includes(old.key)) saveOrder(ctx.dir, ctx.order.map((k) => (k === old.key ? key : k)));
+      return { project, renamed };
+    },
+    (r) => `project rekey ${old.key}->${r.project.key}`,
+  );
 }
 
 export interface NewLog {
@@ -481,28 +579,33 @@ function projectIssue(ctx: Ctx, project: Project, id: string): string {
 }
 
 export function addLog(ctx: Ctx, n: NewLog, author: Author, clock = new Date()): { entry: LogEntry; day: string; n: number } {
-  const project = ctx.project(n.project);
-  const text = n.text.replaceAll('\r\n', '\n').trim();
-  if (!text) throw new Error('log entry text is empty');
-  const kind = n.kind === undefined ? undefined : declaredKind(project, n.kind);
-  if (n.count !== undefined && !kind) throw new Error('a count needs a kind');
-  const count = n.count === undefined ? undefined : positiveInt(n.count, 'count', 1000);
-  const minutes = n.minutes === undefined ? undefined : positiveInt(n.minutes, 'minutes', 24 * 60);
-  const issue = n.issue === undefined ? undefined : projectIssue(ctx, project, n.issue);
-  const day = n.day === undefined ? workDay(clock) : logDay(n.day, clock);
-  const entry: LogEntry = {
-    project: project.key,
-    at: now(clock),
-    ...author,
-    text,
-    ...(kind && { kind }),
-    ...(count && { count }),
-    ...(minutes && { minutes }),
-    ...(issue && { issue }),
-  };
-  const entries = [...loadLog(ctx.dir, day), entry];
-  saveLog(ctx.dir, day, entries);
-  return { entry, day, n: entries.length };
+  return ctx.record(
+    () => {
+      const project = ctx.project(n.project);
+      const text = n.text.replaceAll('\r\n', '\n').trim();
+      if (!text) throw new Error('log entry text is empty');
+      const kind = n.kind === undefined ? undefined : declaredKind(project, n.kind);
+      if (n.count !== undefined && !kind) throw new Error('a count needs a kind');
+      const count = n.count === undefined ? undefined : positiveInt(n.count, 'count', 1000);
+      const minutes = n.minutes === undefined ? undefined : positiveInt(n.minutes, 'minutes', 24 * 60);
+      const issue = n.issue === undefined ? undefined : projectIssue(ctx, project, n.issue);
+      const day = n.day === undefined ? workDay(clock) : logDay(n.day, clock);
+      const entry: LogEntry = {
+        project: project.key,
+        at: now(clock),
+        ...author,
+        text,
+        ...(kind && { kind }),
+        ...(count && { count }),
+        ...(minutes && { minutes }),
+        ...(issue && { issue }),
+      };
+      const entries = [...loadLog(ctx.dir, day), entry];
+      saveLog(ctx.dir, day, entries);
+      return { entry, day, n: entries.length };
+    },
+    (r) => `log add ${r.entry.project} ${r.day}/${r.n}`,
+  );
 }
 
 /** `addr` is `<day>/<n>`. With `expectAt`, refuses when the entry there isn't the one that was loaded. */
@@ -516,9 +619,14 @@ function findLog(ctx: Ctx, addr: string, expectAt: string | undefined): { day: s
 }
 
 export function deleteLog(ctx: Ctx, addr: string, expectAt?: string): LogEntry {
-  const { day, n, entries, entry } = findLog(ctx, addr, expectAt);
-  saveLog(ctx.dir, day, entries.filter((_, i) => i !== n - 1));
-  return entry;
+  return ctx.record(
+    () => {
+      const { day, n, entries, entry } = findLog(ctx, addr, expectAt);
+      saveLog(ctx.dir, day, entries.filter((_, i) => i !== n - 1));
+      return entry;
+    },
+    (entry) => `log delete ${entry.project} ${addr}`,
+  );
 }
 
 /** `''` or `null` clears a field; clearing `kind` clears `count` too. `day` moves the entry to the end of that day. */
@@ -533,40 +641,66 @@ export interface LogPatch {
 
 /** `at`, `by`, `session` and `project` never change. Returns the entry's (possibly new) address. */
 export function editLog(ctx: Ctx, addr: string, patch: LogPatch, expectAt?: string, clock = new Date()): { entry: LogEntry; day: string; n: number } {
-  const { day, n, entries, entry: old } = findLog(ctx, addr, expectAt);
-  const project = ctx.project(old.project);
-  const e: LogEntry = { ...old };
-  if (patch.text !== undefined) {
-    const text = patch.text.replaceAll('\r\n', '\n').trim();
-    if (!text) throw new Error('log entry text is empty');
-    e.text = text;
-  }
-  if (patch.kind !== undefined) {
-    if (patch.kind.trim()) e.kind = declaredKind(project, patch.kind);
-    else {
-      delete e.kind;
-      delete e.count;
-    }
-  }
-  if (patch.count === null) delete e.count;
-  else if (patch.count !== undefined) {
-    if (!e.kind) throw new Error('a count needs a kind');
-    e.count = positiveInt(patch.count, 'count', 1000);
-  }
-  if (patch.minutes === null) delete e.minutes;
-  else if (patch.minutes !== undefined) e.minutes = positiveInt(patch.minutes, 'minutes', 24 * 60);
-  if (patch.issue !== undefined) {
-    if (patch.issue.trim()) e.issue = projectIssue(ctx, project, patch.issue);
-    else delete e.issue;
-  }
-  const target = patch.day === undefined ? day : parseDay(patch.day, clock);
-  if (target === day) {
-    saveLog(ctx.dir, day, entries.map((x, i) => (i === n - 1 ? e : x)));
-    return { entry: e, day, n };
-  }
-  logDay(target, clock);
-  const moved = [...loadLog(ctx.dir, target), e];
-  saveLog(ctx.dir, target, moved);
-  saveLog(ctx.dir, day, entries.filter((_, i) => i !== n - 1));
-  return { entry: e, day: target, n: moved.length };
+  return ctx.record(
+    () => {
+      const { day, n, entries, entry: old } = findLog(ctx, addr, expectAt);
+      const project = ctx.project(old.project);
+      const e: LogEntry = { ...old };
+      if (patch.text !== undefined) {
+        const text = patch.text.replaceAll('\r\n', '\n').trim();
+        if (!text) throw new Error('log entry text is empty');
+        e.text = text;
+      }
+      if (patch.kind !== undefined) {
+        if (patch.kind.trim()) e.kind = declaredKind(project, patch.kind);
+        else {
+          delete e.kind;
+          delete e.count;
+        }
+      }
+      if (patch.count === null) delete e.count;
+      else if (patch.count !== undefined) {
+        if (!e.kind) throw new Error('a count needs a kind');
+        e.count = positiveInt(patch.count, 'count', 1000);
+      }
+      if (patch.minutes === null) delete e.minutes;
+      else if (patch.minutes !== undefined) e.minutes = positiveInt(patch.minutes, 'minutes', 24 * 60);
+      if (patch.issue !== undefined) {
+        if (patch.issue.trim()) e.issue = projectIssue(ctx, project, patch.issue);
+        else delete e.issue;
+      }
+      const target = patch.day === undefined ? day : parseDay(patch.day, clock);
+      if (target === day) {
+        saveLog(ctx.dir, day, entries.map((x, i) => (i === n - 1 ? e : x)));
+        return { entry: e, day, n };
+      }
+      logDay(target, clock);
+      const moved = [...loadLog(ctx.dir, target), e];
+      saveLog(ctx.dir, target, moved);
+      saveLog(ctx.dir, day, entries.filter((_, i) => i !== n - 1));
+      return { entry: e, day: target, n: moved.length };
+    },
+    (r) => {
+      const to = `${r.day}/${r.n}`;
+      return `log edit ${r.entry.project} ${addr}${to === addr ? '' : `->${to}`} ${patched(patch)}`.trimEnd();
+    },
+  );
+}
+
+export interface SettingsPatch {
+  theme?: string;
+  accent?: string;
+}
+
+export function setSettings(ctx: Ctx, patch: SettingsPatch): Settings {
+  return ctx.record(
+    () => {
+      const s = loadSettings(ctx.dir);
+      if (patch.theme !== undefined) s.theme = oneOf(patch.theme, THEMES, 'theme');
+      if (patch.accent !== undefined) s.accent = oneOf(patch.accent, ACCENT_KEYS, 'accent');
+      saveSettings(ctx.dir, s);
+      return s;
+    },
+    (s) => ['settings', ...(['theme', 'accent'] as const).filter((k) => patch[k] !== undefined).map((k) => `${k}=${s[k]}`)].join(' '),
+  );
 }

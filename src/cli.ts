@@ -2,8 +2,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { claudeDir, DEFAULT_PORT } from './config.ts';
+import { claudeDir, dataDir, DEFAULT_PORT } from './config.ts';
 import { clip, digestLines } from './digest.ts';
+import { initHistory } from './gitlog.ts';
 import { grillDir, grillMatches, loadGrillSessions } from './grill.ts';
 import { attachCommits, duration, localStamp, readCommitDays, recentSessions, weekCommits, writeCommitDays } from './history.ts';
 import {
@@ -24,6 +25,7 @@ import {
   moveProject,
   oneOf,
   rekeyProject,
+  setSettings,
   setStatus,
   type GoalInput,
   type MoveTarget,
@@ -32,6 +34,7 @@ import { goalOf, goalSpec, goalStrip, goalsProgress, urgencies } from './goals.t
 import { parseLogAddress, type DatedEntry } from './logs.ts';
 import { commitDays, movedDays } from './moved.ts';
 import { filterIssues, issueComparator, isReady, naturalDesc, next, openBlockers, projectCounts, projectForCwd, SORT_FIELDS } from './query.ts';
+import { ACCENT_KEYS, loadSettings } from './settings.ts';
 import { statusLine, withGoals } from './statusline.ts';
 import { ISSUE_STATUSES, normalizeStoredPath, issueFile, SOURCES, type Issue, type IssueStatus } from './store.ts';
 import { serve } from './web.ts';
@@ -74,6 +77,10 @@ const HELP = `belay — what should I work on?
 
   history [<project>] [-n <count>] [-v]
                                     recent Claude sessions and their commits, newest first
+  settings [--theme system|dark|light] [--accent <name>]
+                                    dashboard theme and accent; prints them with no flags
+  git init                          start git history for the data dir: from then on every change is a
+                                    commit (git log/revert in the data dir to look back or undo)
   search <words>...                 issues (title, description, comments) and grill sessions (slug, topic, project) with every word
   serve [--port <n>] [--no-open] [--dev]
                                     dashboard at http://127.0.0.1:4747/ (Ctrl+C to stop); builds web/
@@ -529,6 +536,22 @@ function cmdSearch(argv: string[]): void {
   print(out.length ? out : 'no matches');
 }
 
+function cmdSettings(argv: string[]): void {
+  const { values } = args(argv, { theme: { type: 'string' }, accent: { type: 'string' } }, 0);
+  const ctx = new Ctx();
+  const s = values.theme === undefined && values.accent === undefined ? loadSettings(ctx.dir) : setSettings(ctx, values);
+  print([`theme:  ${s.theme}`, `accent: ${s.accent}  (${ACCENT_KEYS.join(', ')})`]);
+}
+
+function cmdGit(argv: string[]): void {
+  const [sub, ...rest] = argv;
+  if (sub !== 'init') throw new Error(`unknown 'git ${sub ?? ''}' — expected init`);
+  args(rest, {}, 0);
+  const dir = dataDir();
+  initHistory(dir);
+  print(`started git history in ${normalizeStoredPath(dir)}`);
+}
+
 function cmdServe(argv: string[]): void {
   const { values } = args(argv, { port: { type: 'string' }, open: { type: 'boolean' }, dev: { type: 'boolean' } }, 0);
   const port = Number(values.port ?? DEFAULT_PORT);
@@ -756,6 +779,8 @@ const COMMANDS: Record<string, (argv: string[]) => void> = {
   week: cmdWeek,
   history: cmdHistory,
   search: cmdSearch,
+  settings: cmdSettings,
+  git: cmdGit,
   serve: cmdServe,
   digest: cmdDigest,
   statusline: cmdStatusline,

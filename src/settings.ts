@@ -1,4 +1,7 @@
-/** Dashboard display preferences in `<data dir>/settings.yaml`. Accent names are validated by `web/`, which owns the presets. */
+/**
+ * Dashboard display preferences in `<data dir>/settings.yaml`. `setSettings` (ops.ts) accepts only `ACCENT_KEYS`;
+ * loading takes any name, so a hand-edited file falls back in `web/` (which owns the colours) instead of failing.
+ */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse, stringify } from 'yaml';
@@ -7,6 +10,27 @@ import { writeAtomic } from './store.ts';
 export const THEMES = ['system', 'dark', 'light'] as const;
 
 export type Theme = (typeof THEMES)[number];
+
+export const ACCENT_KEYS = [
+  'amber',
+  'tangerine',
+  'coral',
+  'crimson',
+  'rose',
+  'magenta',
+  'iris',
+  'azure',
+  'cyan',
+  'teal',
+  'jade',
+  'lime',
+  'citron',
+  'copper',
+  'steel',
+  'sand',
+] as const;
+
+export type AccentKey = (typeof ACCENT_KEYS)[number];
 
 export interface Settings {
   accent: string;

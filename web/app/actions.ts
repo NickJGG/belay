@@ -5,13 +5,11 @@ import { redirect } from 'next/navigation';
 import { claudeDir, dataDir } from '../../src/config.ts';
 import { parseGoalSpec } from '../../src/goals.ts';
 import { grillFile, grillPreview, isGrillSlug } from '../../src/grill.ts';
-import { ConflictError, Ctx, addComment, addIssue, addLog, bodyHash, deleteComment, deleteIssue, deleteLog, editComment, editLog, editProject, editIssue, moveProject, replaceBody, setFocus, setPriority, setStatus } from '../../src/ops.ts';
+import { ConflictError, Ctx, addComment, addIssue, addLog, bodyHash, deleteComment, deleteIssue, deleteLog, editComment, editLog, editProject, editIssue, moveProject, replaceBody, setFocus, setPriority, setSettings, setStatus } from '../../src/ops.ts';
 import { logFile } from '../../src/logs.ts';
 import { isLinked, linkedPath, openFile } from '../../src/open.ts';
 import type { DropPatch, MoveTarget } from '../../src/sidebar.ts';
-import { THEMES, saveSettings, type Theme } from '../../src/settings.ts';
 import { isDay } from '../../src/workday.ts';
-import { isAccent } from '@/lib/accents';
 
 export interface Result {
   error?: string;
@@ -232,17 +230,7 @@ export async function moveProjectTo(key: unknown, patch: unknown, move: unknown)
 }
 
 export async function updateSettings(accent: unknown, theme: unknown): Promise<Result> {
-  try {
-    const a = str(accent, 'accent');
-    if (!isAccent(a)) throw new Error(`unknown accent '${a}'`);
-    const t = str(theme, 'theme');
-    if (!THEMES.includes(t as Theme)) throw new Error(`theme must be one of ${THEMES.join('|')}`);
-    saveSettings(dataDir(), { accent: a, theme: t as Theme });
-  } catch (e) {
-    return { error: (e as Error).message };
-  }
-  revalidatePath('/', 'layout');
-  return {};
+  return run((ctx) => void setSettings(ctx, { accent: str(accent, 'accent'), theme: str(theme, 'theme') }));
 }
 
 /** Opens the issue's file, grill session or plan on this machine. The path comes from the issue, never the client. */
