@@ -25,6 +25,8 @@ export interface Project {
   status: ProjectStatus;
   focus: boolean;
   group?: string;
+  /** Image path, absolute or relative to the first of `paths`. */
+  icon?: string;
   /** Log-entry kinds the project declares; absent when none. */
   kinds?: string[];
   goal?: Goal;
@@ -254,6 +256,7 @@ export function parseProject(src: string, where: string): Project {
     status: oneOf(d, 'status', PROJECT_STATUSES, where, 'active'),
     focus: (d.focus as boolean | undefined) ?? false,
     group: optText(d, 'group', where),
+    ...(d.icon != null && { icon: text(d, 'icon', where) }),
     ...(kinds.length && { kinds }),
     ...(d.goal != null && { goal: goal(d, where) }),
     body,
@@ -261,8 +264,8 @@ export function parseProject(src: string, where: string): Project {
 }
 
 export function serializeProject(p: Project): string {
-  const { key, name, paths, status, focus, group, kinds, goal, body } = p;
-  return joinFrontmatter({ key, name, paths, status, focus, group, kinds: kinds?.length ? kinds : undefined, goal }, body);
+  const { key, name, paths, status, focus, group, icon, kinds, goal, body } = p;
+  return joinFrontmatter({ key, name, paths, status, focus, group, icon, kinds: kinds?.length ? kinds : undefined, goal }, body);
 }
 
 // --- issues ---

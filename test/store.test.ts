@@ -99,6 +99,15 @@ test('project round-trips', () => {
   assert.deepEqual(parseProject(serializeProject(p), 'x'), p);
 });
 
+test('project icon round-trips, and is omitted when unset', () => {
+  const p: Project = { key: 'BEL', name: 'Belay', paths: ['C:/b'], status: 'active', focus: false, group: undefined, icon: 'web/public/icon.svg', body: '' };
+  assert.match(serializeProject(p), /^icon: web\/public\/icon\.svg$/m);
+  assert.deepEqual(parseProject(serializeProject(p), 'x'), p);
+  const { icon: _, ...bare } = p;
+  assert.doesNotMatch(serializeProject(bare), /icon/);
+  assert.equal('icon' in parseProject(serializeProject(bare), 'x'), false);
+});
+
 test('project kinds and each goal form round-trip; unset ones are omitted', () => {
   const base: Project = { key: 'JOB', name: 'Job search', paths: [], status: 'active', focus: true, group: undefined, body: '' };
   for (const goal of [{ habit: 5 }, { quantity: 10, kind: 'applied' }, { target: '2026-10-19', set: '2026-10-05' }]) {

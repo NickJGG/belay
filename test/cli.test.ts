@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
@@ -51,6 +51,15 @@ test('project add, add, set, show', () => {
   const show = belay('show', 'PIX-1');
   assert.equal(show.code, 0);
   assert.match(show.out, /^PIX-1 {2}Draw the map\nstatus: {5}doing\n/);
+});
+
+test('project set --icon sets the icon, and an empty one clears it', () => {
+  belay('project', 'add', 'PIX', '--name', 'Pixel', '--path', dir);
+  const file = join(dir, 'projects', 'pix.md');
+  assert.equal(belay('project', 'set', 'PIX', '--icon', 'public/icon.svg').code, 0);
+  assert.match(readFileSync(file, 'utf8'), /^icon: public\/icon\.svg$/m);
+  assert.equal(belay('project', 'set', 'PIX', '--icon', '').code, 0);
+  assert.doesNotMatch(readFileSync(file, 'utf8'), /icon/);
 });
 
 test('settings prints, then updates', () => {

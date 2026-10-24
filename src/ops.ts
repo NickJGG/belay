@@ -383,6 +383,8 @@ export interface ProjectPatch {
   name?: string;
   /** Empty clears. */
   group?: string;
+  /** Empty clears. */
+  icon?: string;
   status?: string;
   focus?: boolean;
   /** Empty clears. */
@@ -460,6 +462,10 @@ export function editProject(ctx: Ctx, key: string, patch: ProjectPatch, clock = 
         p.paths = patch.paths.map(normalizeStoredPath);
       }
       if (patch.group !== undefined) p.group = patch.group.trim() || undefined;
+      if (patch.icon !== undefined) {
+        if (patch.icon.trim()) p.icon = patch.icon.trim();
+        else delete p.icon;
+      }
       if (patch.status !== undefined) p.status = oneOf(patch.status, PROJECT_STATUSES, 'status');
       if (patch.focus !== undefined) p.focus = patch.focus;
       if (patch.kinds !== undefined) p.kinds = kindList(patch.kinds);

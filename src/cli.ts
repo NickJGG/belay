@@ -98,8 +98,9 @@ const HELP = `belay — what should I work on?
   project list [--all]              --all includes archived
   project set <key> [--status active|paused|archived] [--focus|--no-focus] [--name <n>] [--group <g>]
                     [--kinds a,b] [--habit <days> | --quantity "<n> <kind>" | --target YYYY-MM-DD | --no-goal]
-                    [--path <dir>...]
-                                    --path replaces the project's dirs. kinds: log-entry kinds (empty clears). A goal counts per Mon–Sun week while
+                    [--path <dir>...] [--icon <path>]
+                                    --path replaces the project's dirs. --icon: an image, absolute or relative to
+                                    the first dir (empty clears). kinds: log-entry kinds (empty clears). A goal counts per Mon–Sun week while
                                     the project is in focus: habit = moved on N days, quantity = N log counts of
                                     a kind, target = finish the open issues by a date
   project move <key> (--before <key> | --after <key> | --top | --bottom)
@@ -753,6 +754,7 @@ function projectSet(argv: string[]): void {
       focus: { type: 'boolean' },
       name: { type: 'string' },
       group: { type: 'string' },
+      icon: { type: 'string' },
       kinds: { type: 'string' },
       habit: { type: 'string' },
       quantity: { type: 'string' },
