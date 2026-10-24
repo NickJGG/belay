@@ -25,22 +25,22 @@ const line = (issues: Issue[]) => plain(statusLine(project, issues));
 
 test('doing issue wins over ready ones', () => {
   const issues = [issue('ELV-1', { status: 'doing' }), issue('ELV-2'), issue('ELV-3', { status: 'idea' }), issue('FRG-1')];
-  assert.equal(line(issues), '▶ ELV-1 Issue ELV-1');
+  assert.equal(line(issues), '▶ ELV-1 Issue ELV-1 [done]');
 });
 
 test('more doing issues show as +n, most recently updated first', () => {
   const issues = [issue('ELV-1', { status: 'doing' }), issue('ELV-2', { status: 'doing', updated: '2026-10-03' })];
-  assert.equal(line(issues), '▶ ELV-2 Issue ELV-2 +1');
+  assert.equal(line(issues), '▶ ELV-2 Issue ELV-2 [done] +1');
 });
 
 test('doing issues updated the same day fall back to oldest', () => {
   const issues = [issue('ELV-2', { status: 'doing', created: '2026-09-30' }), issue('ELV-1', { status: 'doing' })];
-  assert.equal(line(issues), '▶ ELV-2 Issue ELV-2 +1');
+  assert.equal(line(issues), '▶ ELV-2 Issue ELV-2 [done] +1');
 });
 
 test('blocked doing issue gets a marker', () => {
   const issues = [issue('ELV-1', { status: 'doing', blocked_by: ['ELV-2'] }), issue('ELV-2', { status: 'idea' })];
-  assert.equal(line(issues), '▶ ELV-1 Issue ELV-1 ⛔');
+  assert.equal(line(issues), '▶ ELV-1 Issue ELV-1 [done] ⛔');
 });
 
 test('nothing doing shows the next ready issue, high priority first', () => {
@@ -52,6 +52,12 @@ test('the issue ID links to its dashboard page', () => {
   const link = '\x1b]8;;http://127.0.0.1:4747/i/ELV-1\x07ELV-1\x1b]8;;\x07';
   assert.ok(statusLine(project, [issue('ELV-1', { status: 'doing' })]).includes(link));
   assert.ok(statusLine(project, [issue('ELV-1')]).includes(link));
+});
+
+test('only the doing issue gets a [done] link', () => {
+  const done = '\x1b]8;;belay://done/ELV-1\x07[done]\x1b]8;;\x07';
+  assert.ok(statusLine(project, [issue('ELV-1', { status: 'doing' })]).includes(done));
+  assert.ok(!line([issue('ELV-1')]).includes('[done]'));
 });
 
 test('empty when there is nothing to show', () => {
