@@ -1,15 +1,15 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "sear",
+  "name": "belay",
   "owner": {
     "name": "Nick",
     "email": "nick.gilliam2@gmail.com"
   },
   "plugins": [
     {
-      "name": "sear",
+      "name": "belay",
       "source": "./plugin",
-      "description": "Sear: grill sessions you can read, answer and steer from the browser."
+      "description": "Belay: grills and lessons you can read, answer and steer from the Belay site."
     }
   ]
 }

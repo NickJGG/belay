@@ -1,9 +1,9 @@
 /**
- * Claude's activity, read from its transcript (`~/.claude/projects/<cwd slug>/<sessionId>.jsonl`), trimmed from
- * topo's `session-log.ts` to what the drawer's step groups need. Messages still come from chat.jsonl.
+ * Claude's activity, read from its transcript (`~/.claude/projects/<cwd slug>/<sessionId>.jsonl`), for the drawer's
+ * step groups. Messages still come from chat.jsonl.
  *
  *   turn starts  a user prompt: terminal text, a slash command, or a `<channel>` site message (a meta record)
- *   steps        assistant `tool_use` blocks, labelled by `stepLabel`; Sear's own plumbing reads as session actions
+ *   steps        assistant `tool_use` blocks, labelled by `stepLabel`; Belay's own plumbing reads as session actions
  *   results      `tool_result` blocks, matched by tool_use id: a failure's reason, a search's or edit's count, a
  *                finished agent, a background launch that a later `<task-notification>` finishes
  *   turn ends    system/turn_duration, or an "[Request interrupted by user" user text
@@ -115,10 +115,11 @@ const NOTIFICATION = /^\s*<task-notification\b/;
 /** Commands whose exit 1 means "nothing matched", not a failure. */
 const NO_MATCH = new Set(["grep", "rg", "diff", "test", "["]);
 
-export type LabelContext = { slug: string; sessionsDir: string };
+/** `dir`: the session folder, whose session.json and preview files read as session actions. */
+export type LabelContext = { dir: string };
 
 /**
- * Folds transcript records into busy/step/result/turn events for one Sear session. A tool_result updates its
+ * Folds transcript records into busy/step/result/turn events for one Belay session. A tool_result updates its
  * call's step in place (`result`); a finished agent or background command adds a step of its own.
  */
 export class Turns {
@@ -221,7 +222,7 @@ export class Turns {
       }
       return [];
     }
-    // Sear's friendly steps (Saved the session, Updated the mock) have no target and get no count.
+    // Belay's friendly steps (Saved the session, Updated the mock) have no target and get no count.
     const n = p.hidden || !p.step.target ? undefined : count(p.name, res);
     return n ? this.mark(p, n) : [];
   }
@@ -269,10 +270,10 @@ const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCas
 const short = (p: string) => p.replace(/\\/g, "/").split("/").slice(-2).join("/");
 /** Hidden tools, with the row each would show if it failed. */
 const HIDDEN_TOOLS = new Map([
-  ["mcp__plugin_sear_sear__reply", "Sent a reply"],
-  ["mcp__plugin_sear_sear__choice", "Posted a choice"],
-  ["mcp__plugin_sear_sear__attach", "Attached the session"],
-  ["mcp__plugin_sear_sear__detach", "Detached the session"],
+  ["mcp__plugin_belay_belay__reply", "Sent a reply"],
+  ["mcp__plugin_belay_belay__choice", "Posted a choice"],
+  ["mcp__plugin_belay_belay__attach", "Attached the session"],
+  ["mcp__plugin_belay_belay__detach", "Detached the session"],
   ["ToolSearch", "Loaded tools"],
   ["TodoWrite", "Updated the todo list"],
 ]);
@@ -389,7 +390,7 @@ export function stepLabel(name: string, input: Record<string, unknown>, ctx: Lab
 
   if (filePath && ["Edit", "Write", "MultiEdit"].includes(name)) {
     const p = norm(filePath);
-    const dir = `${norm(ctx.sessionsDir)}/${ctx.slug.toLowerCase()}/`;
+    const dir = `${norm(ctx.dir)}/`;
     if (p === `${dir}session.json`) return parts("Saved the session");
     if (p.startsWith(`${dir}preview.`) && !p.slice(dir.length).includes("/")) {
       const edits = Array.isArray(input.edits) ? (input.edits as Record<string, unknown>[]) : [];
@@ -432,7 +433,7 @@ export function stepLabel(name: string, input: Record<string, unknown>, ctx: Lab
       return parts("Searched the web for", str(input.query));
     case "WebFetch":
       return parts("Fetched", str(input.url));
-    case "mcp__plugin_sear_sear__show": {
+    case "mcp__plugin_belay_belay__show": {
       const opt = str(input.opt);
       return parts("Pointed to", `Q${input.q}${opt ? ` · ${opt}` : ""}`);
     }

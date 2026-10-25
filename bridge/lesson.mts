@@ -1,16 +1,15 @@
 /**
- * Lessons on the bridge (Topo's channel, folded in): the Handhold root, the `show` targets a lesson may point the
- * site at, and the start flow.
+ * Lessons on the bridge: the Handhold root, the `show` targets a lesson may point the site at, and the start flow.
  *
- * Starting a routine from the site restarts into a fresh session: the site writes `~/Sear/start.json`, the lesson's
- * `restart` tool writes `~/Sear/restart` and ends `claude`, the launcher's loop relaunches it, and the new bridge
+ * Starting a routine from the site restarts into a fresh session: the site writes `~/Belay/.run/start.json`, the
+ * lesson's `restart` tool writes `~/Belay/.run/restart` and ends `claude`, `belay claude`'s loop relaunches it, and the new bridge
  * (idle, in the Handhold root) consumes the queue and sends it as a `kind="command"` message.
  */
 import { execFile } from "node:child_process";
-import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
-import { learningRoot, queueFile, restartFile } from "./files.mts";
+import { learningRoot, queueFile, restartFile, runDir } from "./files.mts";
 
 export { learningRoot };
 
@@ -79,9 +78,10 @@ export const clearQueue = () => rmSync(queueFile(), { force: true });
 
 /**
  * Marks the restart and ends the Claude Code process that spawned this server (the plugin runs `node` directly, so
- * it's the parent). `/T` takes this bridge down too; the launcher's next claude starts a new one.
+ * it's the parent). `/T` takes this bridge down too; `belay claude`'s next claude starts a new one.
  */
 export function endClaude(log: (msg: string) => void) {
+  mkdirSync(runDir(), { recursive: true });
   writeFileSync(restartFile(), "");
   const pid = process.ppid;
   if (process.platform !== "win32") return void process.kill(pid, "SIGTERM");

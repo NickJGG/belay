@@ -1,29 +1,32 @@
-/** The bridge's footprint on disk: `bridge.json` and `chat.jsonl` in a session folder, and Claude's transcripts. */
+/** The bridge's footprint on disk: `bridge.json` and `chat.jsonl` in a session folder (`<data>/grills/<slug>` or
+ * `<data>/lessons/<slug>`), and Claude's transcripts. */
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-export const sessionsDir = () => process.env.SEAR_SESSIONS_DIR ?? path.join(os.homedir(), "Sear", "sessions");
-export const sessionDir = (slug: string) => path.join(sessionsDir(), slug);
+export const dataDir = () => path.resolve(process.env.BELAY_DATA || path.join(os.homedir(), "Belay"));
+export const grillsDir = () => path.join(dataDir(), "grills");
+export const lessonsDir = () => path.join(dataDir(), "lessons");
+export const runDir = () => path.join(dataDir(), ".run");
+export const sessionDir = (slug: string, lesson = false) => path.join(lesson ? lessonsDir() : grillsDir(), slug);
 export const learningRoot = () => process.env.HANDHOLD_ROOT || path.join(os.homedir(), "Learning");
 /** Whether `dir` is the Handhold root, where a queued lesson start may run. */
 export const inLearningRoot = (dir: string) => path.relative(path.resolve(learningRoot()), path.resolve(dir)) === "";
-/** The site's queued lesson start (`web/src/lib/start-queue.ts` writes it), beside the sessions folder. */
-export const queueFile = () => path.join(path.dirname(sessionsDir()), "start.json");
-/** While this exists when `claude` exits, the launcher's loop starts it again (lesson.mts). */
-export const restartFile = () => path.join(path.dirname(sessionsDir()), "restart");
+/** The site's queued lesson start (`web/src/lib/start-queue.ts` writes it). */
+export const queueFile = () => path.join(runDir(), "start.json");
+/** While this exists when `claude` exits, `belay claude`'s loop starts it again (lesson.mts). */
+export const restartFile = () => path.join(runDir(), "restart");
 
 export type BridgeFile = { port: number; token: string; sessionId: string | null; pid: number; at: string };
 
-export function writeBridgeFile(slug: string, info: BridgeFile) {
-  const dir = sessionDir(slug);
+export function writeBridgeFile(dir: string, info: BridgeFile) {
   mkdirSync(dir, { recursive: true });
   writeFileSync(path.join(dir, "bridge.json"), JSON.stringify(info, null, 2) + "\n");
 }
 
 /** Only removes the file if this process wrote it: another session may have attached the slug since. */
-export function removeBridgeFile(slug: string, pid = process.pid) {
-  const file = path.join(sessionDir(slug), "bridge.json");
+export function removeBridgeFile(dir: string, pid = process.pid) {
+  const file = path.join(dir, "bridge.json");
   try {
     if (JSON.parse(readFileSync(file, "utf8")).pid !== pid) return;
   } catch {
@@ -33,8 +36,7 @@ export function removeBridgeFile(slug: string, pid = process.pid) {
 }
 
 /** A lesson's session.json (`kind: "lesson"`, see session-format.md): written at its first attach, closed at detach. */
-export function writeLessonSession(slug: string, patch: Record<string, unknown>) {
-  const dir = sessionDir(slug);
+export function writeLessonSession(dir: string, patch: Record<string, unknown>) {
   const file = path.join(dir, "session.json");
   let doc: Record<string, unknown> = {};
   try {
@@ -44,8 +46,7 @@ export function writeLessonSession(slug: string, patch: Record<string, unknown>)
   writeFileSync(file, JSON.stringify({ ...doc, ...patch, kind: "lesson", updated: new Date().toISOString() }, null, 2) + "\n");
 }
 
-export function appendChat(slug: string, entry: Record<string, unknown>) {
-  const dir = sessionDir(slug);
+export function appendChat(dir: string, entry: Record<string, unknown>) {
   mkdirSync(dir, { recursive: true });
   appendFileSync(path.join(dir, "chat.jsonl"), JSON.stringify({ at: new Date().toISOString(), ...entry }) + "\n");
 }

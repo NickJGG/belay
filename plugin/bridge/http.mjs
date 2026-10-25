@@ -1,11 +1,11 @@
 /**
  * The attached bridge's HTTP side, on a free 127.0.0.1 port for one slug and one token:
  *
- *   POST /message  (X-Sear-Token)           a `Message` (see protocol.mts) → `onMessage`
- *   GET  /events   (X-Sear-Token or ?token)  SSE of `BridgeEvent`s; `snapshot()` first
+ *   POST /message  (X-Belay-Token)           a `Message` (see protocol.mts) → `onMessage`
+ *   GET  /events   (X-Belay-Token or ?token)  SSE of `BridgeEvent`s; `snapshot()` first
  *   GET  /status                            up, slug, connected
  *
- * Every request must carry a loopback Host; one with an Origin must come from the Sear site.
+ * Every request must carry a loopback Host; one with an Origin must come from the Belay site.
  */
 import { createServer } from "node:http";
 import { hostAllowed, MAX_BODY, originAllowed, parseMessage, tokenMatches } from "./protocol.mjs";
@@ -35,8 +35,8 @@ export async function startHttp(o) {
         ? { "Access-Control-Allow-Origin": req.headers.origin, Vary: "Origin" }
         : {};
     async function onMessage(req, res) {
-        if (!tokenMatches(req.headers["x-sear-token"], o.token))
-            return send(req, res, 401, { error: "bad or missing X-Sear-Token" });
+        if (!tokenMatches(req.headers["x-belay-token"], o.token))
+            return send(req, res, 401, { error: "bad or missing X-Belay-Token" });
         if (!String(req.headers["content-type"]).startsWith("application/json")) {
             return send(req, res, 415, { error: "expected application/json" });
         }
@@ -47,7 +47,7 @@ export async function startHttp(o) {
         }
         const m = parseMessage(body);
         if (!m)
-            return send(req, res, 400, { error: "not a valid Sear message" });
+            return send(req, res, 400, { error: "not a valid Belay message" });
         if (m.slug !== o.slug)
             return send(req, res, 409, { error: `this session is attached to ${o.slug}`, attached: o.slug });
         const error = await o.onMessage(m);
@@ -56,7 +56,7 @@ export async function startHttp(o) {
         send(req, res, 200, { ok: true });
     }
     function onEvents(req, res, url) {
-        const got = req.headers["x-sear-token"] ?? url.searchParams.get("token") ?? "";
+        const got = req.headers["x-belay-token"] ?? url.searchParams.get("token") ?? "";
         if (!tokenMatches(got, o.token))
             return send(req, res, 401, { error: "bad or missing token" });
         res.writeHead(200, {
@@ -82,7 +82,7 @@ export async function startHttp(o) {
             res.writeHead(204, {
                 ...cors(req),
                 "Access-Control-Allow-Methods": "GET, POST",
-                "Access-Control-Allow-Headers": "Content-Type, X-Sear-Token",
+                "Access-Control-Allow-Headers": "Content-Type, X-Belay-Token",
             });
             res.end();
         }

@@ -1,4 +1,4 @@
-/* Sear mock spec. Copy to <session dir>/preview.spec.js and fill in CONTROLS, BASE, renderScreen and route.
+/* Grill mock spec. Copy to <session dir>/preview.spec.js and fill in CONTROLS, BASE, renderScreen and route.
    Questions, options, patches and per-question mock fields live in session.json (references/session-format.md);
    this file only draws. A plain classic script: no imports, no build step, no framework. */
 

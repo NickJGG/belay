@@ -1,8 +1,8 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
-  "name": "sear",
-  "version": "0.1.0",
-  "description": "Sear: grill sessions you can read, answer and steer from the browser.",
+  "name": "belay",
+  "version": "0.2.0",
+  "description": "Belay: grills and lessons you can read, answer and steer from the Belay site.",
   "author": {
     "name": "Nick",
     "email": "nick.gilliam2@gmail.com"
@@ -11,14 +11,14 @@
     "./"
   ],
   "mcpServers": {
-    "sear": {
+    "belay": {
       "command": "node",
       "args": ["${CLAUDE_PLUGIN_ROOT}/bridge/server.mjs"]
     }
   },
   "channels": [
     {
-      "server": "sear"
+      "server": "belay"
     }
   ]
 }

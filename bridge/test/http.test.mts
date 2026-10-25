@@ -39,7 +39,7 @@ function call(method: string, path: string, headers: Record<string, string> = {}
 }
 
 const post = (body: unknown, headers: Record<string, string> = {}) =>
-  call("POST", "/message", { "Content-Type": "application/json", "X-Sear-Token": TOKEN, ...headers }, JSON.stringify(body));
+  call("POST", "/message", { "Content-Type": "application/json", "X-Belay-Token": TOKEN, ...headers }, JSON.stringify(body));
 
 test("status answers without a token", async () => {
   const r = await call("GET", "/status");
@@ -48,8 +48,8 @@ test("status answers without a token", async () => {
 });
 
 test("message needs the token", async () => {
-  assert.equal((await post({ kind: "chat", slug: "demo", text: "hi" }, { "X-Sear-Token": "" })).status, 401);
-  assert.equal((await post({ kind: "chat", slug: "demo", text: "hi" }, { "X-Sear-Token": "x".repeat(48) })).status, 401);
+  assert.equal((await post({ kind: "chat", slug: "demo", text: "hi" }, { "X-Belay-Token": "" })).status, 401);
+  assert.equal((await post({ kind: "chat", slug: "demo", text: "hi" }, { "X-Belay-Token": "x".repeat(48) })).status, 401);
 });
 
 test("a valid message is forwarded", async () => {
@@ -65,7 +65,7 @@ test("invalid, mismatched, refused and oversized messages are not forwarded", as
   assert.equal((await post({ kind: "chat", slug: "other", text: "hi" })).status, 409);
   assert.equal((await post({ kind: "chat", slug: "demo", text: "refuse" })).status, 409);
   assert.equal((await post({ kind: "chat", slug: "demo", text: "x".repeat(70_000) })).status, 413);
-  const plain = await call("POST", "/message", { "Content-Type": "text/plain", "X-Sear-Token": TOKEN }, "hi");
+  const plain = await call("POST", "/message", { "Content-Type": "text/plain", "X-Belay-Token": TOKEN }, "hi");
   assert.equal(plain.status, 415);
   assert.equal(got.length, before);
 });
@@ -78,7 +78,7 @@ test("origin: the site is allowed with CORS, others are refused", async () => {
   assert.equal((await call("GET", "/status", { Origin: "https://evil.example" })).status, 403);
   const pre = await call("OPTIONS", "/message", { Origin: SITE });
   assert.equal(pre.status, 204);
-  assert.match(String(pre.headers["access-control-allow-headers"]), /X-Sear-Token/);
+  assert.match(String(pre.headers["access-control-allow-headers"]), /X-Belay-Token/);
 });
 
 test("a non-loopback Host is refused (DNS rebinding)", async () => {

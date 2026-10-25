@@ -16,7 +16,7 @@ if (!text) {
   console.log("no text on stdin");
   process.exit(2);
 }
-const dir = path.join(process.env.SEAR_SESSIONS_DIR ?? path.join(os.homedir(), "Sear", "sessions"), slug);
+const dir = path.join(process.env.BELAY_DATA || path.join(os.homedir(), "Belay"), "grills", slug);
 fs.mkdirSync(dir, { recursive: true });
 const entry = who === "terminal" ? { from: "terminal", kind: "chat", text } : { from: "claude", kind: "terminal", text };
 fs.appendFileSync(path.join(dir, "chat.jsonl"), JSON.stringify({ at: new Date().toISOString(), ...entry }) + "\n");

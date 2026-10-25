@@ -1,6 +1,6 @@
 # Session folder format
 
-One folder per session: `C:\Users\Nick\Sear\sessions\<slug>\`.
+One folder per grill: `C:\Users\Nick\Belay\grills\<slug>\` (`BELAY_DATA` moves the root). A folder with only `<slug>.md` is a legacy grill, read-only.
 
 | File | Written by | What |
 |---|---|---|
@@ -19,7 +19,7 @@ One folder per session: `C:\Users\Nick\Sear\sessions\<slug>\`.
   "topic": "One-line topic",
   "about": "The topic expanded, if needed (the .md's ## Topic).",
   "status": "in-progress",
-  "project": "TOPO",
+  "project": "BEL",
   "started": "2026-10-23",
   "updated": "2026-10-23",
   "open": "One line: the next question or current branch, for whoever picks this up.",
@@ -63,7 +63,7 @@ Append in the order asked; `n` is the session's number and never changes.
 }
 ```
 
-- `title`: the question as asked. `short`: the label in Sear's question list (≤4 words).
+- `title`: the question as asked. `short`: the label in the site's question list (≤4 words).
 - `status`: `open` | `resolved` | `deferred` | `dropped` | `see`. `see` means none of these, or superseded by a
   follow-up: set `"see": <n>` as well.
 - `rec`: my recommendation's key (or `null` for a question without options). `pick`: the user's key once
@@ -116,4 +116,4 @@ One object per line, `{at, from, kind, …}`, `at` an ISO timestamp:
 
 ## Lessons
 
-A `/learn` routine attached by course (`attach({course, topic})`) gets a folder `lesson-<course>-<yyyymmdd>-<hhmm>`, made up by the bridge, with `bridge.json`, `chat.jsonl` and a `session.json` the bridge writes itself: `{kind: "lesson", course, topic, status, started, updated}`, `status` `in-progress` until `detach` sets `done`. The site lists lessons only as live Tabs: grill lists skip `kind: "lesson"`.
+A `/learn` routine attached by course (`attach({course, topic})`) gets a folder `C:\Users\Nick\Belay\lessons\lesson-<course>-<yyyymmdd>-<hhmm>\`, made up by the bridge, with `bridge.json`, `chat.jsonl` and a `session.json` the bridge writes itself: `{kind: "lesson", course, topic, status, started, updated}`, `status` `in-progress` until `detach` sets `done`. The site lists lessons only as live Tabs: grill lists skip `kind: "lesson"`.

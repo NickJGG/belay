@@ -49,7 +49,7 @@ test("rejects malformed, unknown and oversized messages", () => {
 
 test("channel content names the site and session; meta carries slug and kind", () => {
   const c = toChannel({ kind: "answer", slug: "my-grill", q: 4, opt: "b", note: "tighter" });
-  assert.match(c.content, /^Sear site, session `my-grill`: picked option b for Q4\./);
+  assert.match(c.content, /^Belay site, grill `my-grill`: picked option b for Q4\./);
   assert.match(c.content, /tighter/);
   assert.deepEqual(c.meta, { slug: "my-grill", kind: "answer", q: "4", opt: "b" });
 
@@ -58,7 +58,7 @@ test("channel content names the site and session; meta carries slug and kind", (
   assert.equal(cm.meta.selector, ".x");
 
   assert.match(toChannel({ kind: "choice", slug: "g", id: "abcdef", option: "Yes" }).content, /chose "Yes"/);
-  assert.match(toChannel({ kind: "chat", slug: "g", text: "hello" }).content, /^Sear site, session `g`:\n\nhello$/);
+  assert.match(toChannel({ kind: "chat", slug: "g", text: "hello" }).content, /^Belay site, grill `g`:\n\nhello$/);
 });
 
 const pic = (i = 0) => `20261024T120000-abcde${i}.png`;
@@ -83,11 +83,11 @@ test("attached pictures are listed as absolute paths to Read", () => {
   const c = toChannel({ kind: "chat", slug: "g", text: "see", images: [pic(), pic(1)] }, dir);
   assert.equal(
     c.content,
-    `Sear site, session \`g\`:\n\nsee\n\nAttached pictures (Read each before answering):\n- ${path.join(dir, pic())}\n- ${path.join(dir, pic(1))}`,
+    `Belay site, grill \`g\`:\n\nsee\n\nAttached pictures (Read each before answering):\n- ${path.join(dir, pic())}\n- ${path.join(dir, pic(1))}`,
   );
   assert.equal(c.meta.images, "2");
   const only = toChannel({ kind: "chat", slug: "g", text: "", images: [pic()] }, dir);
-  assert.match(only.content, /^Sear site, session `g`: sent 1 picture\.\n\nAttached pictures/);
+  assert.match(only.content, /^Belay site, grill `g`: sent 1 picture\.\n\nAttached pictures/);
   assert.match(toChannel({ kind: "comment", slug: "g", q: 1, opt: "a", selector: "p", text: "", note: "n", images: [pic()] }, dir).content, /Attached pictures/);
   assert.equal(toChannel({ kind: "chat", slug: "g", text: "hi" }, dir).meta.images, undefined);
 });

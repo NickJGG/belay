@@ -1,11 +1,11 @@
-/** What the Sear site may send the bridge, and how each message reads as a channel notification. */
+/** What the Belay site may send the bridge, and how each message reads as a channel notification. */
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import path from "node:path";
 import { z } from "zod";
 
 export const SLUG = /^[a-z0-9][a-z0-9-]{0,63}$/;
 export const MAX_BODY = 64 * 1024;
-export const SITE_PORT = Number(process.env.SEAR_SITE_PORT ?? 4747);
+export const SITE_PORT = Number(process.env.BELAY_SITE_PORT ?? 4747);
 /** Mirrors `src/lib/images.ts` (a test checks they agree). */
 export const IMAGE_NAME = /^\d{8}T\d{6}-[0-9a-f]{6}\.(png|jpg|gif|webp)$/;
 export const MAX_IMAGES = 6;
@@ -92,7 +92,7 @@ export function toChannel(m: Exclude<Message, { kind: "permission" }>, imagesDir
 }
 
 function channelOf(m: Exclude<Message, { kind: "permission" }>, lesson?: Lesson): Channel {
-  const head = lesson ? `Belay site, lesson \`${m.slug}\` on ${lesson.course}` : `Sear site, session \`${m.slug}\``;
+  const head = lesson ? `Belay site, lesson \`${m.slug}\` on ${lesson.course}` : `Belay site, grill \`${m.slug}\``;
   const meta: Record<string, string> = { slug: m.slug, kind: m.kind, ...(lesson ? { course: lesson.course } : {}) };
   switch (m.kind) {
     case "attempt":

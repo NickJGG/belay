@@ -15,7 +15,7 @@ const fixture = () => ({
   slug: "card-actions",
   topic: "Card actions: where they sit",
   status: "in-progress",
-  project: "TOPO",
+  project: "BEL",
   started: "2026-10-23",
   updated: "2026-10-23",
   open: "Q2: icon style.",
@@ -41,7 +41,7 @@ const fixture = () => ({
 });
 
 const tmpSession = (s) => {
-  const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "sear-")), s.slug);
+  const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "belay-")), s.slug);
   fs.mkdirSync(dir);
   fs.writeFileSync(path.join(dir, "session.json"), JSON.stringify(s, null, 2));
   return dir;
@@ -55,7 +55,7 @@ test("renders grill's markdown shape", () => {
 slug: card-actions
 topic: "Card actions: where they sit"
 status: in-progress
-project: TOPO
+project: BEL
 started: 2026-10-23
 updated: 2026-10-23
 ---
@@ -80,11 +80,33 @@ Q2: icon style.
   );
 });
 
-test("an existing grill session's headings and Q/A lines match the rendered ones", () => {
-  const grill = path.join(os.homedir(), ".claude", "skills", "grill", "sessions", "grill-preview-bridge", "grill-preview-bridge.md");
-  if (!fs.existsSync(grill)) return;
+// Excerpt of a legacy grill (md-only, written by the old /grill skill); trimmed to its line kinds.
+const LEGACY = `---
+slug: grill-preview-bridge
+topic: Topic line
+status: planned
+project: CLD
+started: 2026-10-23
+updated: 2026-10-23
+---
+
+# Grill session: grill-preview-bridge
+
+## Topic
+Topic text.
+
+## Resolved
+
+- **Q:** Which friction do you actually feel most? (a pointing · b typing picks back)
+  **A:** a and d.
+
+## Open
+None.
+`;
+
+test("a legacy grill's headings and Q/A lines match the rendered ones", () => {
   const shape = (md) => md.split(/\r?\n/).map((l) => /^(---|# Grill session:|## \w+|- \*\*Q:\*\*|  \*\*A:\*\*|[a-z]+:)/.exec(l)?.[1]).filter(Boolean);
-  const old = new Set(shape(fs.readFileSync(grill, "utf8")));
+  const old = new Set(shape(LEGACY));
   for (const line of shape(renderMd(fixture()))) assert.ok(old.has(line), `rendered line kind ${line} not in a grill session`);
 });
 
@@ -153,12 +175,12 @@ test("check-preview passes the templates and catches a broken render", () => {
 });
 
 test("log-chat appends terminal-side entries", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "sear-"));
-  const env = { ...process.env, SEAR_SESSIONS_DIR: root };
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "belay-"));
+  const env = { ...process.env, BELAY_DATA: root };
   assert.equal(run("scripts/log-chat.js", ["x-1", "terminal"], { env, input: "b, but grey\n" }).status, 0);
   assert.equal(run("scripts/log-chat.js", ["x-1", "claude"], { env, input: "Q2 · Icons or words?" }).status, 0);
   assert.equal(run("scripts/log-chat.js", ["../x", "claude"], { env, input: "x" }).status, 2);
-  const lines = fs.readFileSync(path.join(root, "x-1", "chat.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+  const lines = fs.readFileSync(path.join(root, "grills", "x-1", "chat.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
   assert.deepEqual(lines.map(({ at, ...e }) => e), [
     { from: "terminal", kind: "chat", text: "b, but grey" },
     { from: "claude", kind: "terminal", text: "Q2 · Icons or words?" },

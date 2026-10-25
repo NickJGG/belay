@@ -1,14 +1,15 @@
 /*
- * Sear bridge: the `plugin:sear@sear` Claude Code channel, spawned over stdio by the sear plugin. It carries both
- * kinds of live session the Belay site shows: grills (`/sear`) and lessons (`/learn`).
+ * Belay bridge: the `plugin:belay@belay` Claude Code channel, spawned over stdio by the belay plugin. It carries both
+ * kinds of live session the Belay site shows: grills (`/grill`) and lessons (`/learn`).
  *
  * Idle it is MCP only, listing one tool, `attach(slug | course)`. Attaching loads the rest (HTTP, zod, files), binds
- * a free 127.0.0.1 port with a fresh token, writes `<sessions>/<slug>/bridge.json` for the site to find, and
+ * a free 127.0.0.1 port with a fresh token, writes `bridge.json` in the session folder (`~/Belay/grills/<slug>` or
+ * `~/Belay/lessons/<slug>`) for the site to find, and
  * announces the session's tools with tools/list_changed: `reply`, `show`, `choice` and `detach`, plus `restart`
  * for a lesson. `detach` undoes all of it. A lesson's slug is made up at its first attach (`lesson-<course>-<time>`),
  * and its folder gets a `kind: "lesson"` session.json; lesson.mts has the start queue and restart.
  *
- * Site messages (http.mts, protocol.mts) become `<channel source="sear">` notifications; replies, choices,
+ * Site messages (http.mts, protocol.mts) become `<channel source="belay">` notifications; replies, choices,
  * permission prompts and Follow along targets go back as SSE. Both sides are appended to `chat.jsonl`.
  *
  * The attach locks onto the calling session: the id in `~/.claude/sessions/<parent pid>.json`, else the id the
@@ -28,7 +29,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 const STARTED = Date.now();
 const POLL = 2000;
 const TAIL = 250;
-const log = (...args) => console.error("[sear-bridge]", ...args);
+const log = (...args) => console.error("[belay-bridge]", ...args);
 let modules = null;
 const importAll = async () => {
     const [files, protocol, http, transcript, lesson, { z }] = await Promise.all([
@@ -63,7 +64,7 @@ function onTurnEvent(l, e) {
     broadcast(e);
     if (e.type === "turn" && e.steps.length) {
         const { type: _, ...entry } = e;
-        loaded?.files.appendChat(l.slug, { from: "claude", kind: "steps", ...entry });
+        loaded?.files.appendChat(l.dir, { from: "claude", kind: "steps", ...entry });
     }
 }
 function readTail(l) {
@@ -116,7 +117,7 @@ async function lockSession(l, claimed) {
     l.lockedAt = Date.now();
     l.connected = true;
     startTail(l);
-    files.writeBridgeFile(l.slug, {
+    files.writeBridgeFile(l.dir, {
         port: l.http.port,
         token: l.token,
         sessionId: l.sessionId,
@@ -163,7 +164,7 @@ async function onMessage(m) {
     if (!l)
         return "not attached";
     if (!l.connected)
-        return `disconnected: run \`/sear resume ${l.slug}\` in the terminal`;
+        return `disconnected: run \`/grill resume ${l.slug}\` in the terminal`;
     const { files, protocol } = await load();
     if (m.kind === "permission") {
         if (!l.permissions.delete(m.request_id))
@@ -173,7 +174,7 @@ async function onMessage(m) {
             params: { request_id: m.request_id, behavior: m.behavior },
         });
         broadcast({ type: "verdict", request_id: m.request_id, behavior: m.behavior });
-        files.appendChat(l.slug, { from: "site", ...m });
+        files.appendChat(l.dir, { from: "site", ...m });
         return null;
     }
     if (m.kind === "choice") {
@@ -181,7 +182,7 @@ async function onMessage(m) {
         if (error)
             return error;
     }
-    const imagesDir = path.join(files.sessionDir(l.slug), "images");
+    const imagesDir = path.join(l.dir, "images");
     const missing = protocol.imagesOf(m).find((n) => !existsSync(path.join(imagesDir, n)));
     if (missing)
         return `picture ${missing} not found`;
@@ -191,7 +192,7 @@ async function onMessage(m) {
         method: "notifications/claude/channel",
         params: protocol.toChannel(m, imagesDir, l.lesson ? { course: l.lesson.course } : undefined),
     });
-    files.appendChat(l.slug, { from: "site", ...m });
+    files.appendChat(l.dir, { from: "site", ...m });
     setWorking(true);
     return null;
 }
@@ -214,7 +215,7 @@ async function registerPermissionRelay() {
         readTail(l);
         const e = { ...params, ...(l.turns.mode ? { mode: l.turns.mode } : {}) };
         broadcast({ type: "permission", ...e });
-        (await load()).files.appendChat(l.slug, { from: "claude", kind: "permission", ...e });
+        (await load()).files.appendChat(l.dir, { from: "claude", kind: "permission", ...e });
     });
 }
 // --- attach / detach ---------------------------------------------------------
@@ -231,7 +232,7 @@ async function attach(target, sessionId) {
     if (live && again) {
         if (!("slug" in target) && target.topic) {
             live.lesson = { course: target.course, topic: target.topic };
-            files.writeLessonSession(live.slug, { topic: target.topic });
+            files.writeLessonSession(live.dir, { topic: target.topic });
         }
         await lockSession(live, sessionId);
         return `re-attached ${live.slug} to this session (port ${live.http.port}).`;
@@ -240,9 +241,10 @@ async function attach(target, sessionId) {
         await detach();
     const lesson = "slug" in target ? null : { course: target.course, ...(target.topic ? { topic: target.topic } : {}) };
     const slug = "slug" in target ? target.slug : lessonSlug(target.course);
+    const dir = files.sessionDir(slug, !!lesson);
     if (lesson) {
         const now = new Date().toISOString();
-        files.writeLessonSession(slug, { course: lesson.course, topic: lesson.topic ?? `Lesson · ${lesson.course}`, status: "in-progress", started: now });
+        files.writeLessonSession(dir, { course: lesson.course, topic: lesson.topic ?? `Lesson · ${lesson.course}`, status: "in-progress", started: now });
     }
     if (!relayRegistered) {
         await registerPermissionRelay();
@@ -251,6 +253,7 @@ async function attach(target, sessionId) {
     const token = randomBytes(24).toString("hex");
     const l = {
         slug,
+        dir,
         lesson,
         focus: null,
         token,
@@ -264,7 +267,7 @@ async function attach(target, sessionId) {
         permissions: new Set(),
         poll: setInterval(() => void poll().catch((err) => log(`poll failed: ${err}`)), POLL),
         tail: null,
-        turns: new transcript.Turns({ slug, sessionsDir: files.sessionsDir() }),
+        turns: new transcript.Turns({ dir }),
         tailTimer: setInterval(() => {
             try {
                 if (live)
@@ -319,38 +322,38 @@ async function detach() {
     l.choices.clear();
     await l.http.close();
     const { files } = await load();
-    files.removeBridgeFile(l.slug);
+    files.removeBridgeFile(l.dir);
     if (l.lesson)
-        files.writeLessonSession(l.slug, { status: "done" });
+        files.writeLessonSession(l.dir, { status: "done" });
     await mcp.sendToolListChanged();
     log(`detached ${l.slug}`);
     return `detached ${l.slug}`;
 }
 // --- MCP ---------------------------------------------------------------------
 const INSTRUCTIONS = `\
-Belay is the browser view of /sear grills and /learn lessons. Messages in <channel source="sear"> were typed or clicked on the Belay site; the tag's \`slug\` names the session and \`kind\` what happened.
-- Answer every <channel source="sear"> message by calling mcp__plugin_sear_sear__reply: the user is reading the site, not the terminal. When their latest message was typed in the terminal, answer in the terminal instead. After a reply, keep terminal text to one short line.
-- If \`slug\` is not the session you are running, tell the user to run \`/sear resume <slug>\` (a grill) or to start the lesson again in the terminal. Never resume it yourself.
-- Only the /sear and /learn skills call attach.
-Grills (/sear): kind="answer": they picked option \`opt\` for question \`q\`, maybe with a note. kind="comment": a comment on the element at \`selector\` in that option's mock. kind="choice": their answer to a choice you posted, by button (\`option\`) or as free text. Follow the /sear skill for when to use show and choice.
+Belay is the browser view of /grill grills and /learn lessons. Messages in <channel source="belay"> were typed or clicked on the Belay site; the tag's \`slug\` names the session and \`kind\` what happened.
+- Answer every <channel source="belay"> message by calling mcp__plugin_belay_belay__reply: the user is reading the site, not the terminal. When their latest message was typed in the terminal, answer in the terminal instead. After a reply, keep terminal text to one short line.
+- If \`slug\` is not the session you are running, tell the user to run \`/grill resume <slug>\` (a grill) or to start the lesson again in the terminal. Never resume it yourself.
+- Only the /grill and /learn skills call attach.
+Grills (/grill): kind="answer": they picked option \`opt\` for question \`q\`, maybe with a note. kind="comment": a comment on the element at \`selector\` in that option's mock. kind="choice": their answer to a choice you posted, by button (\`option\`) or as free text. Follow the /grill skill for when to use show and choice.
 Lessons (/learn; the tag has \`course\`):
 - kind="attempt": the learner submitted work. Read the file at \`path\` (in the course folder) and respond to it. Never edit it.
 - kind="command" (it can arrive before any attach): the learner pressed a start button on the site. Run \`command\` with the Skill tool (skill \`learn\` or \`learn:<sub>\`, the rest as args). This replaces any earlier topic.
-- kind="restart": the learner wants a fresh session. If wrap="true", first run the learn skill's "Ending early" close for what was covered. Then call mcp__plugin_sear_sear__restart. Don't start anything else.
-- Call mcp__plugin_sear_sear__show with target "claim" when you move on to teaching a new claim, so the learner's page follows you there; not for claims you merely cite. Use "work" or "source" when you start discussing that file, and "whiteboard" after writing now.md. Never point at misconceptions. During a checkpoint, don't show claims or sources.
+- kind="restart": the learner wants a fresh session. If wrap="true", first run the learn skill's "Ending early" close for what was covered. Then call mcp__plugin_belay_belay__restart. Don't start anything else.
+- Call mcp__plugin_belay_belay__show with target "claim" when you move on to teaching a new claim, so the learner's page follows you there; not for claims you merely cite. Use "work" or "source" when you start discussing that file, and "whiteboard" after writing now.md. Never point at misconceptions. During a checkpoint, don't show claims or sources.
 - The site renders Markdown, KaTeX ($…$, $$…$$) and \`\`\`mermaid blocks, so notation and diagrams may go inline in replies.`;
-const mcp = new Server({ name: "sear", version: "0.3.0" }, {
+const mcp = new Server({ name: "belay", version: "0.4.0" }, {
     capabilities: {
         experimental: { "claude/channel": {}, "claude/channel/permission": {} },
         tools: { listChanged: true },
     },
     instructions: INSTRUCTIONS,
 });
-// Deferred behind ToolSearch, Claude answered channel messages in the terminal instead (topo).
+// Deferred behind ToolSearch, Claude answered channel messages in the terminal instead.
 const ALWAYS = { "anthropic/alwaysLoad": true };
 const ATTACH = {
     name: "attach",
-    description: "Attach this session to the Belay site so it can show it and send messages here: a grill by `slug` (the /sear skill, when a grill starts or resumes) or a lesson by `course` (the /learn skills, when a routine starts). Re-attaching the same slug or course after /clear reconnects it.",
+    description: "Attach this session to the Belay site so it can show it and send messages here: a grill by `slug` (the /grill skill, when a grill starts or resumes) or a lesson by `course` (the /learn skills, when a routine starts). Re-attaching the same slug or course after /clear reconnects it.",
     _meta: ALWAYS,
     inputSchema: {
         type: "object",
@@ -364,7 +367,7 @@ const ATTACH = {
 };
 const REPLY = {
     name: "reply",
-    description: 'Send a message to the Belay site\'s conversation drawer. The only way to answer a <channel source="sear"> message. Markdown, KaTeX and mermaid render there.',
+    description: 'Send a message to the Belay site\'s conversation drawer. The only way to answer a <channel source="belay"> message. Markdown, KaTeX and mermaid render there.',
     _meta: ALWAYS,
     inputSchema: {
         type: "object",
@@ -429,7 +432,7 @@ const LESSON_TOOLS = [
     CHOICE,
     {
         name: "restart",
-        description: 'End this Claude session so the launcher relaunches a fresh one that runs the routine the learner started on the site. Only call it for a kind="restart" message, as the last thing in the turn.',
+        description: 'End this Claude session so `belay claude` relaunches a fresh one that runs the routine the learner started on the site. Only call it for a kind="restart" message, as the last thing in the turn.',
         _meta: ALWAYS,
         inputSchema: { type: "object", properties: {} },
     },
@@ -480,7 +483,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
         if (!parsed.success)
             return text("expected {text} (1–64000 chars)", true);
         broadcast({ type: "reply", text: parsed.data.text });
-        files.appendChat(l.slug, { from: "claude", kind: "reply", text: parsed.data.text });
+        files.appendChat(l.dir, { from: "claude", kind: "reply", text: parsed.data.text });
         return text(l.http.clients() ? "sent" : "sent, but no Belay page is open right now; it will show in the history");
     }
     if (name === "show" && l.lesson) {
@@ -520,13 +523,13 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
         return text("options must be distinct", true);
     const id = l.choices.open(parsed.data.options);
     broadcast({ type: "choice", id, ...parsed.data });
-    files.appendChat(l.slug, { from: "claude", kind: "choice", id, ...parsed.data });
+    files.appendChat(l.dir, { from: "claude", kind: "choice", id, ...parsed.data });
     return text(`choice ${id} is up on the site; the answer arrives as a kind="choice" message with id ${id}`);
 });
 /**
  * An idle session in the Handhold root sends the site's queued start as a `kind="command"` message, which runs the
  * routine's skill, which attaches. It checks at startup (a restart's fresh session) and then every second while idle
- * (a `sear learn` started before the button was pressed). Only the files module loads until a start is queued.
+ * (a `belay learn` started before the button was pressed). Only the files module loads until a start is queued.
  */
 async function startQueued() {
     const { queueFile } = await import("./files.mjs");
@@ -572,7 +575,7 @@ process.on("exit", () => {
         return;
     if (live.connected)
         dropTail(live);
-    loaded?.files.removeBridgeFile(live.slug);
+    loaded?.files.removeBridgeFile(live.dir);
 });
 mcp.onclose = () => process.exit(0);
 process.stdin.on("end", () => process.exit(0));

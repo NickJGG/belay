@@ -5,8 +5,8 @@ import path from "node:path";
 import { after, describe, test } from "node:test";
 import { lastMode, lower, stepLabel, Tail, Turns, type Record_ } from "../transcript.mts";
 
-const ctx = { slug: "demo", sessionsDir: "C:\\Users\\Nick\\Sear\\sessions" };
-const S = "C:\\Users\\Nick\\Sear\\sessions\\demo";
+const S = "C:\\Users\\Nick\\Belay\\grills\\demo";
+const ctx = { dir: S };
 
 // Trimmed from real Claude Code 2.1.309 transcripts.
 const at = (s: number) => `2026-10-23T23:21:${String(s).padStart(2, "0")}.000Z`;
@@ -21,7 +21,7 @@ const channel = (s: number): Record_ => ({
   type: "user",
   message: {
     content:
-      '<channel source="plugin:sear:sear" slug="demo" kind="answer" q="6" opt="a">\nSear site, session `demo`: picked option a for Q6.\n</channel>',
+      '<channel source="plugin:belay:belay" slug="demo" kind="answer" q="6" opt="a">\nBelay site, grill `demo`: picked option a for Q6.\n</channel>',
   },
   isMeta: true,
   timestamp: at(s),
@@ -64,7 +64,7 @@ const run = (records: Record_[]) => {
 };
 
 describe("Tail", () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), "sear-tail-"));
+  const dir = mkdtempSync(path.join(os.tmpdir(), "belay-tail-"));
   after(() => rmSync(dir, { recursive: true, force: true }));
 
   test("starts at the file's end, holds a partial line, skips bad JSON", () => {
@@ -93,18 +93,18 @@ describe("Tail", () => {
 describe("Turns", () => {
   test("a terminal turn: prompt, tool_use, tool_result, turn_duration", () => {
     const { t, events } = run([
-      prompt(0, "<command-name>/sear</command-name>\n<command-args>resume demo</command-args>"),
+      prompt(0, "<command-name>/grill</command-name>\n<command-args>resume demo</command-args>"),
       thinking(1),
-      toolUse(2, "Read", { file_path: "C:\\Users\\Nick\\Projects\\sear\\README.md" }),
+      toolUse(2, "Read", { file_path: "C:\\Users\\Nick\\Projects\\belay\\README.md" }),
       toolResult(3),
-      toolUse(4, "mcp__plugin_sear_sear__reply", { text: "hi" }),
+      toolUse(4, "mcp__plugin_belay_belay__reply", { text: "hi" }),
       toolResult(5),
       turnDuration(26),
     ]);
     assert.deepEqual(events, [
       { type: "busy", on: true },
-      { type: "step", label: "Read sear/README.md", verb: "Read", target: "sear/README.md", at: at(2), id: "toolu_2" },
-      { type: "turn", start: at(0), steps: [{ label: "Read sear/README.md", verb: "Read", target: "sear/README.md", at: at(2), id: "toolu_2" }], ms: 26000 },
+      { type: "step", label: "Read belay/README.md", verb: "Read", target: "belay/README.md", at: at(2), id: "toolu_2" },
+      { type: "turn", start: at(0), steps: [{ label: "Read belay/README.md", verb: "Read", target: "belay/README.md", at: at(2), id: "toolu_2" }], ms: 26000 },
       { type: "busy", on: false },
     ]);
     assert.equal(t.busy, false);
@@ -112,7 +112,7 @@ describe("Turns", () => {
   });
 
   test("a <channel> site message starts a turn though it is a meta record", () => {
-    const { t, events } = run([channel(0), toolUse(1, "mcp__plugin_sear_sear__show", { q: 6, opt: "a" })]);
+    const { t, events } = run([channel(0), toolUse(1, "mcp__plugin_belay_belay__show", { q: 6, opt: "a" })]);
     assert.deepEqual(events, [
       { type: "busy", on: true },
       { type: "step", label: "Pointed to Q6 · a", verb: "Pointed to", target: "Q6 · a", at: at(1), id: "toolu_1" },
@@ -230,7 +230,7 @@ describe("Turns results", () => {
   test("a hidden tool shows up only when it fails", () => {
     const { t, events } = run([
       prompt(0, "go"),
-      calls(1, ["r1", "mcp__plugin_sear_sear__reply", { text: "hi" }], ["r2", "mcp__plugin_sear_sear__reply", { text: "again" }]),
+      calls(1, ["r1", "mcp__plugin_belay_belay__reply", { text: "hi" }], ["r2", "mcp__plugin_belay_belay__reply", { text: "again" }]),
       results(2, undefined, ["r1", "sent"], ["r2", "disconnected after /clear: call attach again first", true]),
     ]);
     const step = { label: "Sent a reply", verb: "Sent a reply", at: at(1), id: "r2", meta: "failed", tone: "bad" };
@@ -325,7 +325,7 @@ describe("Turns results", () => {
       assert.equal(meta("Read", { file_path: "a.ts" }, { type: "text", file: { numLines: 9 } }), undefined);
       assert.equal(meta("WebFetch", { url: "https://x" }, { bytes: 9, code: 200, result: "x" }), undefined);
       assert.equal(meta("Bash", { command: "ls" }, { stdout: "a\nb", stderr: "" }), undefined);
-      assert.equal(meta("Edit", { file_path: `${ctx.sessionsDir}\\demo\\session.json` }, { structuredPatch: p }), undefined);
+      assert.equal(meta("Edit", { file_path: `${S}\\session.json` }, { structuredPatch: p }), undefined);
       for (const odd of [undefined, null, "Error", 7, [], {}, { mode: "files_with_matches", numFiles: "3" }, { numFiles: -1 }, { numFiles: 1.5 }]) {
         assert.equal(meta("Grep", grep, odd), undefined, JSON.stringify(odd));
       }
@@ -367,9 +367,9 @@ describe("stepLabel", () => {
       label: "Saved the session",
       verb: "Saved the session",
     });
-    assert.equal(label("Write", { file_path: "c:/users/nick/sear/sessions/DEMO/session.json", content: "{}" }), "Saved the session");
+    assert.equal(label("Write", { file_path: "c:/users/nick/belay/grills/DEMO/session.json", content: "{}" }), "Saved the session");
     assert.equal(label("MultiEdit", { file_path: `${S}\\session.json`, edits: [] }), "Saved the session");
-    assert.equal(label("Edit", { file_path: "C:\\Users\\Nick\\Sear\\sessions\\other\\session.json" }), "Edited other/session.json");
+    assert.equal(label("Edit", { file_path: "C:\\Users\\Nick\\Belay\\grills\\other\\session.json" }), "Edited other/session.json");
   });
 
   test("preview edits update the Qn mock from a Q marker, else the mock", () => {
@@ -379,8 +379,8 @@ describe("stepLabel", () => {
     assert.equal(label("MultiEdit", { file_path: `${S}\\preview.spec.js`, edits: [{ old_string: "a", new_string: "Q2" }] }), "Updated the Q2 mock");
   });
 
-  test("Sear scripts read as session actions; log-chat alone is hidden", () => {
-    const P = '"C:\\Users\\Nick\\Projects\\Websites\\sear\\plugin';
+  test("Grill scripts read as session actions; log-chat alone is hidden", () => {
+    const P = '"C:\\Users\\Nick\\Projects\\Tools\\belay\\plugin';
     assert.deepEqual(step("Bash", { command: `node ${P}\\preview\\check-preview.js" "${S}"` }), { label: "Checked the mock", verb: "Checked the mock" });
     assert.equal(
       label("Bash", { command: `node ${P}\\scripts\\render-md.js" "${S}" && node ${P}\\scripts\\log-chat.js" demo terminal <<'EOF'\nhi\nEOF` }),
@@ -391,12 +391,12 @@ describe("stepLabel", () => {
     assert.equal(label("Bash", { command: `node ${P}\\scripts\\log-chat.js" demo user hi && ls`, description: "List" }), "Ran ls to list");
   });
 
-  test("Sear's own tools, ToolSearch and TodoWrite are hidden", () => {
-    for (const n of ["reply", "choice", "attach", "detach"]) assert.equal(label(`mcp__plugin_sear_sear__${n}`, {}), null);
+  test("Belay's own tools, ToolSearch and TodoWrite are hidden", () => {
+    for (const n of ["reply", "choice", "attach", "detach"]) assert.equal(label(`mcp__plugin_belay_belay__${n}`, {}), null);
     assert.equal(label("ToolSearch", { query: "x" }), null);
     assert.equal(label("TodoWrite", {}), null);
-    assert.deepEqual(step("mcp__plugin_sear_sear__show", { q: 4 }), { label: "Pointed to Q4", verb: "Pointed to", target: "Q4" });
-    assert.deepEqual(step("mcp__plugin_sear_sear__show", { q: 4, opt: "b1" }), { label: "Pointed to Q4 · b1", verb: "Pointed to", target: "Q4 · b1" });
+    assert.deepEqual(step("mcp__plugin_belay_belay__show", { q: 4 }), { label: "Pointed to Q4", verb: "Pointed to", target: "Q4" });
+    assert.deepEqual(step("mcp__plugin_belay_belay__show", { q: 4, opt: "b1" }), { label: "Pointed to Q4 · b1", verb: "Pointed to", target: "Q4 · b1" });
   });
 
   test("identifiers are targets", () => {
@@ -489,7 +489,7 @@ describe("permission mode", () => {
   });
 
   test("lastMode reads the file's last permissionMode", () => {
-    const dir = mkdtempSync(path.join(os.tmpdir(), "sear-mode-"));
+    const dir = mkdtempSync(path.join(os.tmpdir(), "belay-mode-"));
     after(() => rmSync(dir, { recursive: true, force: true }));
     const file = path.join(dir, "t.jsonl");
     assert.equal(lastMode(file), undefined);

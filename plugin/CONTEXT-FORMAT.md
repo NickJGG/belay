@@ -1,6 +1,6 @@
 # CONTEXT.md format
 
-`CONTEXT.md` is a project glossary maintained inline as a `/sear` session resolves domain-specific terms. It is *not* a spec, scratch pad, or implementation-detail record.
+`CONTEXT.md` is a project glossary maintained inline as a `/grill` session resolves domain-specific terms. It is *not* a spec, scratch pad, or implementation-detail record.
 
 ## Structure
 
@@ -70,7 +70,7 @@ _Avoid_: Client, buyer, account
 - **Ordering ↔ Billing**: shared types for `CustomerId` and `Money`
 ```
 
-Detection rules used by `/sear`:
+Detection rules used by `/grill`:
 
 - If `CONTEXT-MAP.md` exists, read it to locate the relevant `CONTEXT.md`.
 - If only a root `CONTEXT.md` exists, treat the repo as a single context.

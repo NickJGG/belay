@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Checks a Sear session's mocks: usage `node check-preview.js <session dir>`.
+/* Checks a grill's mocks: usage `node check-preview.js <session dir>`.
    1. session.json is valid, and its mock flags match the files present.
    2. Syntax-checks preview.spec.js and, if present, preview.data.js.
    3. Runs them, checks CONTROLS / BASE / renderScreen / route, and that every control a question names exists.
@@ -19,7 +19,7 @@ if (!dir) {
 }
 const f = (name) => path.join(dir, name);
 const has = (name) => fs.existsSync(f(name));
-// Classes the Sear stage defines around every mock.
+// Classes the Belay stage defines around every mock.
 const STAGE_CLASSES = new Set(["pv-undecided"]);
 const problems = [];
 const done = () => {

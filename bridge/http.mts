@@ -1,11 +1,11 @@
 /**
  * The attached bridge's HTTP side, on a free 127.0.0.1 port for one slug and one token:
  *
- *   POST /message  (X-Sear-Token)           a `Message` (see protocol.mts) → `onMessage`
- *   GET  /events   (X-Sear-Token or ?token)  SSE of `BridgeEvent`s; `snapshot()` first
+ *   POST /message  (X-Belay-Token)           a `Message` (see protocol.mts) → `onMessage`
+ *   GET  /events   (X-Belay-Token or ?token)  SSE of `BridgeEvent`s; `snapshot()` first
  *   GET  /status                            up, slug, connected
  *
- * Every request must carry a loopback Host; one with an Origin must come from the Sear site.
+ * Every request must carry a loopback Host; one with an Origin must come from the Belay site.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { hostAllowed, MAX_BODY, originAllowed, parseMessage, tokenMatches, type Message } from "./protocol.mts";
@@ -72,7 +72,7 @@ export async function startHttp(o: HttpOptions): Promise<BridgeHttp> {
       : {};
 
   async function onMessage(req: IncomingMessage, res: ServerResponse) {
-    if (!tokenMatches(req.headers["x-sear-token"], o.token)) return send(req, res, 401, { error: "bad or missing X-Sear-Token" });
+    if (!tokenMatches(req.headers["x-belay-token"], o.token)) return send(req, res, 401, { error: "bad or missing X-Belay-Token" });
     if (!String(req.headers["content-type"]).startsWith("application/json")) {
       return send(req, res, 415, { error: "expected application/json" });
     }
@@ -82,7 +82,7 @@ export async function startHttp(o: HttpOptions): Promise<BridgeHttp> {
       return send(req, res, 413, { error: "body too large" });
     }
     const m = parseMessage(body);
-    if (!m) return send(req, res, 400, { error: "not a valid Sear message" });
+    if (!m) return send(req, res, 400, { error: "not a valid Belay message" });
     if (m.slug !== o.slug) return send(req, res, 409, { error: `this session is attached to ${o.slug}`, attached: o.slug });
     const error = await o.onMessage(m);
     if (error) return send(req, res, 409, { error });
@@ -90,7 +90,7 @@ export async function startHttp(o: HttpOptions): Promise<BridgeHttp> {
   }
 
   function onEvents(req: IncomingMessage, res: ServerResponse, url: URL) {
-    const got = req.headers["x-sear-token"] ?? url.searchParams.get("token") ?? "";
+    const got = req.headers["x-belay-token"] ?? url.searchParams.get("token") ?? "";
     if (!tokenMatches(got, o.token)) return send(req, res, 401, { error: "bad or missing token" });
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
@@ -113,7 +113,7 @@ export async function startHttp(o: HttpOptions): Promise<BridgeHttp> {
       res.writeHead(204, {
         ...cors(req),
         "Access-Control-Allow-Methods": "GET, POST",
-        "Access-Control-Allow-Headers": "Content-Type, X-Sear-Token",
+        "Access-Control-Allow-Headers": "Content-Type, X-Belay-Token",
       });
       res.end();
     } else if (route === "POST /message") {
