@@ -9,11 +9,11 @@ import { commitAll } from './gitlog.ts';
 import { loadLog, loadLogDays, loadLogs, parseLogAddress, saveLog, type DatedEntry, type LogEntry } from './logs.ts';
 import { suggestKey } from './projectkey.ts';
 import { indexIssues, openBlockers } from './query.ts';
-import { ACCENT_KEYS, THEMES, loadSettings, saveSettings, type Settings } from './settings.ts';
 import { reorder, type MoveTarget } from './sidebar.ts';
 import {
   PROJECT_STATUSES,
   SOURCES,
+  COLOR_RE,
   ISSUE_STATUSES,
   canon,
   createIssue,
@@ -381,6 +381,8 @@ export interface ProjectPatch {
   group?: string;
   /** Empty clears. */
   icon?: string;
+  /** `#rgb` or `#rrggbb`; empty clears. */
+  color?: string;
   status?: string;
   focus?: boolean;
   /** Empty clears. */
@@ -449,6 +451,12 @@ export function editProject(ctx: Ctx, key: string, patch: ProjectPatch): Project
       if (patch.icon !== undefined) {
         if (patch.icon.trim()) p.icon = patch.icon.trim();
         else delete p.icon;
+      }
+      if (patch.color !== undefined) {
+        const c = patch.color.trim().toLowerCase();
+        if (!c) delete p.color;
+        else if (COLOR_RE.test(c)) p.color = c;
+        else throw new Error(`color must be #rgb or #rrggbb (got '${patch.color}')`);
       }
       if (patch.status !== undefined) p.status = oneOf(patch.status, PROJECT_STATUSES, 'status');
       if (patch.focus !== undefined) p.focus = patch.focus;
@@ -688,23 +696,5 @@ export function editLog(ctx: Ctx, addr: string, patch: LogPatch, expectAt?: stri
       const to = `${r.day}/${r.n}`;
       return `log edit ${r.entry.project} ${addr}${to === addr ? '' : `->${to}`} ${patched(patch)}`.trimEnd();
     },
-  );
-}
-
-export interface SettingsPatch {
-  theme?: string;
-  accent?: string;
-}
-
-export function setSettings(ctx: Ctx, patch: SettingsPatch): Settings {
-  return ctx.record(
-    () => {
-      const s = loadSettings(ctx.dir);
-      if (patch.theme !== undefined) s.theme = oneOf(patch.theme, THEMES, 'theme');
-      if (patch.accent !== undefined) s.accent = oneOf(patch.accent, ACCENT_KEYS, 'accent');
-      saveSettings(ctx.dir, s);
-      return s;
-    },
-    (s) => ['settings', ...(['theme', 'accent'] as const).filter((k) => patch[k] !== undefined).map((k) => `${k}=${s[k]}`)].join(' '),
   );
 }

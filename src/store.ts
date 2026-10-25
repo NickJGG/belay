@@ -27,6 +27,8 @@ export interface Project {
   group?: string;
   /** Image path, absolute or relative to the first of `paths`. */
   icon?: string;
+  /** The app's colour for it, `#rgb` or `#rrggbb`; without one the app derives a hue from the key. */
+  color?: string;
   /** Log-entry kinds the project declares; absent when none. */
   kinds?: string[];
   body: string;
@@ -70,6 +72,9 @@ export interface Transition {
 }
 
 /** What a new key must be: 3–4 letters, like Linear's team keys and JIRA's project keys. */
+/** A project colour as stored: `#rgb` or `#rrggbb`. */
+export const COLOR_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+
 export const KEY_RE = /^[A-Z]{3,4}$/;
 /** Keys from before the 3–4 letter rule (`PZ-ELEVATORS`) still load and save, so `project rekey` can migrate them. */
 const STORED_KEY_RE = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$/;
@@ -231,14 +236,15 @@ export function parseProject(src: string, where: string): Project {
     focus: (d.focus as boolean | undefined) ?? false,
     group: optText(d, 'group', where),
     ...(d.icon != null && { icon: text(d, 'icon', where) }),
+    ...(d.color != null && { color: text(d, 'color', where) }),
     ...(kinds.length && { kinds }),
     body,
   };
 }
 
 export function serializeProject(p: Project): string {
-  const { key, name, paths, status, focus, group, icon, kinds, body } = p;
-  return joinFrontmatter({ key, name, paths, status, focus, group, icon, kinds: kinds?.length ? kinds : undefined }, body);
+  const { key, name, paths, status, focus, group, icon, color, kinds, body } = p;
+  return joinFrontmatter({ key, name, paths, status, focus, group, icon, color, kinds: kinds?.length ? kinds : undefined }, body);
 }
 
 // --- issues ---

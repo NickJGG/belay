@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
 import { hasHistory, initHistory } from '../src/gitlog.ts';
-import { Ctx, addComment, addIssue, addProject, rekeyProject, replaceBody, setSettings, setStatus } from '../src/ops.ts';
+import { Ctx, addComment, addIssue, addProject, rekeyProject, replaceBody, setStatus } from '../src/ops.ts';
 
 let dir: string;
 const ENV_KEYS = ['CLAUDECODE', 'CLAUDE_CODE_SESSION_ID', 'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL'];
@@ -63,7 +63,6 @@ test('one commit per op, with the subject format', () => {
   addComment(new Ctx(dir), a.id, 'note', { by: 'user' });
   replaceBody(new Ctx(dir), a.id, 'new body');
   rekeyProject(new Ctx(dir), 'ELV', 'ELF');
-  setSettings(new Ctx(dir), { theme: 'dark' });
   assert.deepEqual(subjects().reverse(), [
     'init - user',
     'project add ELV "Elven" - user',
@@ -73,7 +72,6 @@ test('one commit per op, with the subject format', () => {
     'comment ELV-1 #1 - user',
     'body ELV-1 - user',
     'project rekey ELV->ELF - user',
-    'settings theme=dark - user',
   ]);
   assert.equal(git('status', '--porcelain'), '');
 });

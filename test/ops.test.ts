@@ -26,10 +26,8 @@ import {
   replaceBody,
   setFocus,
   setPriority,
-  setSettings,
   setStatus,
 } from '../src/ops.ts';
-import { loadSettings } from '../src/settings.ts';
 import { loadLog, saveLog } from '../src/logs.ts';
 import { next } from '../src/query.ts';
 import { AT_RE, createIssue, DAY_RE, loadOrder, loadProjects, loadIssues, saveOrder, saveProject, type Issue } from '../src/store.ts';
@@ -486,14 +484,6 @@ test('logDays lists today back to the backdate limit', () => {
   assert.equal(days.length, 8);
   assert.equal(days[0], '2026-10-05');
   assert.equal(days.at(-1), '2026-09-28');
-});
-
-test('setSettings patches the theme and accent, accepting only known names', () => {
-  assert.deepEqual(setSettings(new Ctx(dir), { accent: 'teal' }), { accent: 'teal', theme: 'system' });
-  assert.deepEqual(setSettings(new Ctx(dir), { theme: 'dark' }), { accent: 'teal', theme: 'dark' });
-  assert.throws(() => setSettings(new Ctx(dir), { theme: 'sepia' }), /theme must be one of system\|dark\|light/);
-  assert.throws(() => setSettings(new Ctx(dir), { accent: 'chartreuse' }), /accent must be one of amber\|/);
-  assert.deepEqual(loadSettings(dir), { accent: 'teal', theme: 'dark' });
 });
 
 test('a lenient Ctx with bad files refuses writes, naming them', () => {

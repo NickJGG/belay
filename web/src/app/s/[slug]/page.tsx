@@ -35,6 +35,7 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
       <div className={cn(styles.page, styles.legacy)}>
         <ShellSlot
           project={{ key: detail.mark?.key ?? UNFILED, name: detail.mark?.name ?? "Unfiled" }}
+          section="Grills"
           detail={{ label: s.slug, href: `/s/${s.slug}` }}
         />
         <header className={styles.header}>

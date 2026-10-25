@@ -2,12 +2,13 @@ import "server-only";
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { watch, type FSWatcher } from "chokidar";
+import { dataDir } from "../../../src/config.ts";
 import type { OpenTurn } from "./chat";
 import { grillDir, searDir } from "./config";
 import { isSlug } from "./sessions";
 import { connectUpstream, readBridgeFile, sameBridge, type BridgeEvent, type Upstream } from "./upstream";
 import { UsageStore, type StatusLine, type Usage } from "./usage";
-import { grillIgnored, locate, searIgnored } from "./watch-paths";
+import { belayIgnored, belayWatched, grillIgnored, locate, searIgnored } from "./watch-paths";
 
 /*
  * The server's one event hub, started by its first user. It watches both session roots and holds an
@@ -18,6 +19,7 @@ import { grillIgnored, locate, searIgnored } from "./watch-paths";
  *   live      a bridge's stream opened or closed, or its working/connected state changed
  *   bridge    one bridge event, tagged with its session's slug
  *   usage     a live session's meters, from the status line's POST to /api/usage (matched by the bridge's sessionId)
+ *   belay     an issue, project, log day or order.yaml in belay's data dir changed (by a page, the CLI or Claude)
  */
 
 export type LiveSession = { slug: string; working: boolean; connected: boolean; sessionId: string | null };
@@ -27,7 +29,8 @@ export type HubEvent =
   | { type: "file"; slug: string; name: string }
   | ({ type: "live"; up: boolean } & LiveSession)
   | { type: "bridge"; slug: string; event: BridgeEvent }
-  | { type: "usage"; slug: string; usage: Usage };
+  | { type: "usage"; slug: string; usage: Usage }
+  | { type: "belay" };
 
 type Listener = (e: HubEvent) => void;
 type Hub = {
@@ -93,7 +96,15 @@ function start(): Hub {
     searWatch.on(ev, onSear);
     grillWatch.on(ev, onGrill);
   }
-  const watchers = [searWatch, grillWatch];
+  const data = dataDir();
+  const belayWatch = watch(data, { ignoreInitial: true, depth: 1, ignored: belayIgnored(data) });
+  for (const ev of ["add", "change", "unlink"] as const) {
+    belayWatch.on(ev, (abs) => {
+      if (belayWatched(data, abs)) emit({ type: "belay" });
+    });
+  }
+
+  const watchers = [searWatch, grillWatch, belayWatch];
   for (const w of watchers) w.on("error", (err) => console.error("[sear] watcher:", err));
 
   // The first page render waits for the existing bridges' first connection attempts, so Live isn't empty.

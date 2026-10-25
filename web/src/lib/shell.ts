@@ -47,8 +47,16 @@ export function selectTab(live: string[], page: string | null, last: string | nu
 export function missing(pathname: string): { what: string; back: { href: string; label: string } } {
   const grill = sessionSlug(pathname);
   if (grill) return { what: `No grill ${grill}.`, back: { href: "/", label: "Back home" } };
-  const project = /^\/p\/([^/?#]+)\/?$/.exec(pathname)?.[1];
+  const project = /^\/p\/([^/?#]+)(\/(grills|activity|logs))?\/?$/.exec(pathname)?.[1];
   if (project) return { what: `No project ${decodeURIComponent(project).toUpperCase()}.`, back: { href: "/p", label: "Back to Projects" } };
+  const issue = /^\/i\/([^/?#]+)\/?$/.exec(pathname)?.[1];
+  if (issue) {
+    const id = decodeURIComponent(issue).toUpperCase();
+    const key = /^([A-Z]+)-\d+$/.exec(id)?.[1];
+    const back = key ? { href: `/p/${key}`, label: `Back to ${key}'s issues` } : { href: "/p", label: "Back to Projects" };
+    return { what: `No issue ${id}.`, back };
+  }
+  if (pathname.startsWith("/l/")) return { what: "No log entry there.", back: { href: "/p", label: "Back to Projects" } };
   return { what: `No page at ${pathname}.`, back: { href: "/", label: "Back home" } };
 }
 

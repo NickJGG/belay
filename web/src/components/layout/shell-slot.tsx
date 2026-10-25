@@ -6,7 +6,9 @@ import * as React from "react";
 export type Slot = {
   /** The open project, nested under Projects with its sections. */
   project?: { key: string; name: string };
-  /** The open detail page (a grill), nested under its section. */
+  /** The project section the page belongs to, lit in the sidebar; a section page's own address otherwise decides. */
+  section?: string;
+  /** The open detail page (a grill, an issue, a log entry), nested under its section. */
   detail?: { label: string; href: string };
   /** Rows for the collapsed rail, between the app nav and its foot (a grill's questions). */
   rail?: React.ReactNode;
@@ -27,10 +29,10 @@ export const useSlot = () => React.useContext(SlotContext).slot;
 /** Rendered by a page to fill the shell's slot while it's open. */
 export function ShellSlot(props: Slot) {
   const { setSlot } = React.useContext(SlotContext);
-  const { project, detail, rail, nav } = props;
+  const { project, section, detail, rail, nav } = props;
   React.useEffect(() => {
-    setSlot({ project, detail, rail, nav });
+    setSlot({ project, section, detail, rail, nav });
     return () => setSlot(null);
-  }, [setSlot, project, detail, rail, nav]);
+  }, [setSlot, project, section, detail, rail, nav]);
   return null;
 }

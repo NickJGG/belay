@@ -62,12 +62,16 @@ test('project set --icon sets the icon, and an empty one clears it', () => {
   assert.doesNotMatch(readFileSync(file, 'utf8'), /icon/);
 });
 
-test('settings prints, then updates', () => {
-  assert.match(belay('settings').out, /^theme: {2}system\naccent: coral/);
-  assert.match(belay('settings', '--theme', 'dark', '--accent', 'teal').out, /^theme: {2}dark\naccent: teal/);
-  const bad = belay('settings', '--accent', 'chartreuse');
+test('project set --color sets a hex colour, refuses anything else, and an empty one clears it', () => {
+  belay('project', 'add', 'PIX', '--name', 'Pixel', '--path', dir);
+  const file = join(dir, 'projects', 'pix.md');
+  assert.equal(belay('project', 'set', 'PIX', '--color', '#8B7CF6').code, 0);
+  assert.match(readFileSync(file, 'utf8'), /^color: "#8b7cf6"$/m);
+  const bad = belay('project', 'set', 'PIX', '--color', 'purple');
   assert.equal(bad.code, 1);
-  assert.match(bad.err, /^belay: accent must be one of/);
+  assert.match(bad.err, /color must be #rgb or #rrggbb/);
+  assert.equal(belay('project', 'set', 'PIX', '--color', '').code, 0);
+  assert.doesNotMatch(readFileSync(file, 'utf8'), /color/);
 });
 
 test('git init starts history once', () => {

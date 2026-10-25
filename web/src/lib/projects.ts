@@ -5,6 +5,7 @@
 import { existsSync } from "node:fs";
 import { extname, isAbsolute, join, resolve } from "node:path";
 import type { Ctx } from "../../../src/ops.ts";
+import { COLOR_RE } from "../../../src/store.ts";
 import type { Issue } from "./issues.ts";
 import type { SessionSummary } from "./sessions.ts";
 
@@ -16,6 +17,8 @@ export type Project = {
   group?: string;
   /** Absolute path to the project's icon file, when it has one. */
   icon?: string;
+  /** belay's `color:`, when it's a valid hex colour. */
+  color?: string;
 };
 
 /** Where a repo's own favicon usually lives, in the order they're tried. */
@@ -55,6 +58,7 @@ export function projectsOf(ctx: Pick<Ctx, "projects">): Project[] {
     focus: p.focus,
     group: p.group,
     icon: resolveIcon(p.icon, p.paths[0]),
+    color: p.color && COLOR_RE.test(p.color) ? p.color : undefined,
   }));
   // ctx.projects is already in order.yaml order, and the sort is stable.
   return projects.sort((a, b) => Number(b.focus) - Number(a.focus) || (a.group ?? "").localeCompare(b.group ?? ""));

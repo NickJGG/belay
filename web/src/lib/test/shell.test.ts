@@ -40,6 +40,10 @@ test("Not found names what's missing and the nearest real page", () => {
   assert.deepEqual(missing("/s/nope"), { what: "No grill nope.", back: { href: "/", label: "Back home" } });
   assert.deepEqual(missing("/p/zzz"), { what: "No project ZZZ.", back: { href: "/p", label: "Back to Projects" } });
   assert.deepEqual(missing("/p/sear/plans"), { what: "No page at /p/sear/plans.", back: { href: "/", label: "Back home" } });
+  assert.deepEqual(missing("/p/zzz/logs"), { what: "No project ZZZ.", back: { href: "/p", label: "Back to Projects" } });
+  assert.deepEqual(missing("/i/sear-99"), { what: "No issue SEAR-99.", back: { href: "/p/SEAR", label: "Back to SEAR's issues" } });
+  assert.deepEqual(missing("/i/nonsense"), { what: "No issue NONSENSE.", back: { href: "/p", label: "Back to Projects" } });
+  assert.deepEqual(missing("/l/2026-10-25/9"), { what: "No log entry there.", back: { href: "/p", label: "Back to Projects" } });
 });
 
 test("drawer prefs default and clamp the width", () => {

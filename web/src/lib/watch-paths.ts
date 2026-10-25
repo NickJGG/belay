@@ -23,3 +23,17 @@ export const grillIgnored = (root: string) => (p: string, stats?: { isFile(): bo
   const hit = locate(root, p);
   return !hit || (!!stats?.isFile() && hit[1] !== `${hit[0]}.md`);
 };
+
+const belayRel = (root: string, p: string) => path.relative(root, p).split(path.sep).join("/");
+
+/** Whether a path under belay's data dir is something the pages show: an issue, a project, a day's log or order.yaml. */
+export function belayWatched(root: string, abs: string): boolean {
+  const rel = belayRel(root, abs);
+  return rel === "order.yaml" || /^(issues|projects)\/[^/]+\.md$/.test(rel) || /^log\/[^/]+\.yaml$/.test(rel);
+}
+
+/** Belay's data dir: its watched files and the folders holding them. Temp files from `writeAtomic` are skipped. */
+export const belayIgnored = (root: string) => (p: string) => {
+  const rel = belayRel(root, p);
+  return rel !== "" && rel !== "issues" && rel !== "projects" && rel !== "log" && !belayWatched(root, p);
+};

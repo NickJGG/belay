@@ -539,5 +539,5 @@ function SessionSlot({ doc, view, nav, pulse }: { doc: SessionDoc; view: View; n
       ))}
     </>
   );
-  return <ShellSlot project={project} detail={detail} rail={rail} nav={<SessionQuestions session={nav} />} />;
+  return <ShellSlot project={project} section="Grills" detail={detail} rail={rail} nav={<SessionQuestions session={nav} />} />;
 }

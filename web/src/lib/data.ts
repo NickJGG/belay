@@ -3,12 +3,21 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { connection } from "next/server";
 import { cache } from "react";
-import { dataDir } from "../../../src/config.ts";
-import { Ctx as BelayCtx } from "../../../src/ops.ts";
+import { dataDir, grillRoots } from "../../../src/config.ts";
+import { activity, type ActivityDay } from "../../../src/home.ts";
+import { loadLog, type DatedEntry, type LogEntry } from "../../../src/logs.ts";
+import { linkedPath } from "../../../src/open.ts";
+import { Ctx as BelayCtx, bodyHash, logDays } from "../../../src/ops.ts";
+import { linkCandidates } from "../../../src/picker.ts";
+import { projectBoard, type Board } from "../../../src/query.ts";
+import { sectionNeighbours, sidebarSections } from "../../../src/sidebar.ts";
+import type { Issue as BelayIssue, Project as BelayProject } from "../../../src/store.ts";
+import { addDays, isDay, workDay } from "../../../src/workday.ts";
 import type { ChatEntry, OpenTurn } from "./chat";
 import { grillDir, searDir, sessionRoots } from "./config";
 import { parseFrontmatter } from "./frontmatter";
 import { isClosed, issuesByGrill, stage, STAGES, type Issue, type Stage } from "./issues";
+import { UNFILED } from "./hrefs";
 import { MOCK_FILES, type MockFile } from "./mock";
 import type { SessionDoc } from "./session-doc";
 import { readChat, readSessionDoc } from "./session-files";
@@ -24,10 +33,13 @@ const memo = () => (g.__searMemo ??= new Map());
 /** Belay's data, loaded once per request. Lenient: pages render what loaded rather than failing on a bad file. */
 export const belay = cache(() => new BelayCtx(dataDir(), { lenient: true }));
 
-export const UNFILED = "unfiled";
+export { UNFILED };
 
-/** The project a session is filed under, for its marker; `iconV` (the icon's mtime) is set when it has an icon. */
-export type Mark = { key: string; name: string; iconV?: number };
+/**
+ * The project a session is filed under, for its marker; `iconV` (the icon's mtime) is set when it has an icon, and
+ * `color` when belay gives it one.
+ */
+export type Mark = { key: string; name: string; iconV?: number; color?: string };
 
 export type SessionItem = Pick<SessionSummary, "slug" | "topic" | "status" | "project" | "updated" | "open"> & {
   live: boolean;
@@ -38,6 +50,8 @@ export type SessionItem = Pick<SessionSummary, "slug" | "topic" | "status" | "pr
   progress?: { done: number; total: number };
   /** Building only: the first open issue in id order. */
   next?: Pick<Issue, "id" | "title" | "status">;
+  /** How many questions it asked; unset without a session.json. */
+  questions?: number;
 };
 
 export type LiveItem = SessionItem & Pick<LiveSession, "working" | "connected">;
@@ -67,7 +81,7 @@ function mark(p: Project): Mark {
   try {
     if (p.icon) iconV = Math.round(statSync(p.icon).mtimeMs);
   } catch {}
-  return { key: p.key, name: p.name, iconV };
+  return { key: p.key, name: p.name, iconV, color: p.color };
 }
 
 /** Each filed session's mark: the first project, in project order, that files it. */
@@ -96,6 +110,7 @@ function item(s: SessionSummary, ctx: Ctx): SessionItem {
     live: ctx.live.has(s.slug),
     mark: ctx.marks.get(s.slug) ?? null,
     stage: st,
+    questions: s.questions?.length,
   };
   if (issues.length) out.progress = { done: issues.filter(isClosed).length, total: issues.length };
   const next = issues.find((i) => !isClosed(i));
@@ -200,34 +215,28 @@ export async function projectData(
   return { ...node, tagged, stages: stages(node) };
 }
 
-export type ProjectTile = Pick<ProjectNode, "key" | "name" | "group" | "mark"> & {
-  focus: boolean;
-  counts: Record<Stage, number>;
-  /** Sessions building, or grilling in Sear: old grill sessions left `in-progress` aren't open work, as on Home. */
+export type ProjectCard = Pick<Project, "key" | "name" | "group" | "status" | "focus"> & {
+  mark: Mark;
+  /** Its todo and doing issues. */
   open: number;
 };
 
-const tile = (p: ProjectNode, sear: Set<string>): ProjectTile => ({
-  key: p.key,
-  name: p.name,
-  group: p.group,
-  mark: p.mark,
-  focus: p.focus ?? false,
-  counts: Object.fromEntries(STAGES.map((st) => [st, p.sessions.filter((s) => s.stage === st).length])) as Record<
-    Stage,
-    number
-  >,
-  open: p.sessions.filter((s) => s.stage === "building" || (s.stage === "grilling" && sear.has(s.slug))).length,
-});
-
-/** The Projects page: every non-archived project in belay's order, and Unfiled. */
-export async function projectsIndex(): Promise<{ projects: ProjectTile[]; unfiled: ProjectTile }> {
+/** The Projects page: every project in belay's order, and how many grills nothing files. */
+export async function projectsIndex(): Promise<{ projects: ProjectCard[]; unfiled: number }> {
   const { sessions, projects, ctx } = await load();
-  const t = tree(sessions, projects, ctx);
-  const sear = new Set(sessions.filter((s) => s.source === "sear").map((s) => s.slug));
+  const open = new Map<string, number>();
+  for (const i of belay().issues) if (i.status === "todo" || i.status === "doing") open.set(i.project, (open.get(i.project) ?? 0) + 1);
   return {
-    projects: t.projects.filter((p) => p.status !== "archived").map((p) => tile(p, sear)),
-    unfiled: tile(t.unfiled, sear),
+    projects: projects.map((p) => ({
+      key: p.key,
+      name: p.name,
+      group: p.group,
+      status: p.status,
+      focus: p.focus,
+      mark: mark(p),
+      open: open.get(p.key) ?? 0,
+    })),
+    unfiled: fileSessions(sessions, projects, ctx.byGrill).unfiled.length,
   };
 }
 
@@ -302,4 +311,128 @@ export async function sessionDetail(slug: string): Promise<SessionDetail | null>
     } catch {}
   }
   return { ...page, doc: readSessionDoc(dir), chat: readChat(dir), turn: openTurn(slug), usage: usageFor(slug), files, legacy: null };
+}
+
+/** An issue as a chip or picker option shows it; `status` is unset when the id names no issue. */
+export type Ref = Pick<BelayIssue, "id"> & Partial<Pick<BelayIssue, "title" | "status" | "project">>;
+
+const ref = (c: BelayCtx, id: string): Ref => {
+  const t = c.byId.get(id);
+  return t ? { id: t.id, title: t.title, status: t.status, project: t.project } : { id };
+};
+
+/** Issues a blocker or a log entry may point at: idea, todo and doing. */
+const openRefs = (c: BelayCtx, except?: string): Ref[] =>
+  c.issues.filter((t) => t.id !== except && (t.status === "idea" || t.status === "todo" || t.status === "doing")).map((t) => ref(c, t.id));
+
+export type ProjectHead = {
+  project: BelayProject;
+  mark: Mark;
+  /** Its neighbours within its sidebar section, for ⋯'s Move up and Move down. */
+  prev?: string;
+  next?: string;
+};
+
+/** A project's header; null for a key belay doesn't know. */
+export async function projectHead(key: string): Promise<ProjectHead | null> {
+  await connection();
+  const c = belay();
+  const project = c.projects.find((p) => p.key === key.toUpperCase());
+  if (!project) return null;
+  const listed = projectsOf(c).find((p) => p.key === project.key)!;
+  return { project, mark: mark(listed), ...sectionNeighbours(sidebarSections(c.projects), project.key) };
+}
+
+/** A project's Issues section: its board, with every done issue when `older`, and open issues for a new one's blockers. */
+export async function projectIssues(key: string, older: boolean): Promise<{ board: Board; candidates: Ref[] }> {
+  await connection();
+  const c = belay();
+  return { board: projectBoard(key, c.issues, { today: workDay(), older }), candidates: openRefs(c) };
+}
+
+/** A project's Activity section: `days` work days back from today, newest first. */
+export async function projectActivity(key: string, days: number): Promise<{ today: string; feed: ActivityDay[] }> {
+  await connection();
+  const c = belay();
+  const today = workDay();
+  const from = addDays(today, -(days - 1));
+  return { today, feed: activity(c.projects, c.issues, c.logs(from, today), from, today, key) };
+}
+
+const LOG_WINDOW_DAYS = 28;
+
+/** A project's Logs section: its entries newest first, the last four weeks unless `all`, and how many are older. */
+export async function projectLogs(key: string, all: boolean): Promise<{ today: string; entries: DatedEntry[]; older: number }> {
+  await connection();
+  const c = belay();
+  const today = workDay();
+  const mine = c.logs("0000-01-01", today).filter((e) => e.project === key).toReversed();
+  const shown = all ? mine : mine.filter((e) => e.day > addDays(today, -LOG_WINDOW_DAYS));
+  return { today, entries: shown, older: mine.length - shown.length };
+}
+
+export type IssueDetail = {
+  issue: BelayIssue;
+  project?: BelayProject;
+  blockers: Ref[];
+  /** Issues it blocks. */
+  blocks: Ref[];
+  candidates: Ref[];
+  hash: string;
+  plan?: string;
+};
+
+/** Everything the issue page shows; null for an id belay doesn't know. */
+export async function issueDetail(id: string): Promise<IssueDetail | null> {
+  await connection();
+  const c = belay();
+  const issue = c.byId.get(id.toUpperCase());
+  if (!issue) return null;
+  return {
+    issue,
+    project: c.projects.find((p) => p.key === issue.project),
+    blockers: issue.blocked_by.map((b) => ref(c, b)),
+    blocks: c.issues.filter((t) => t.blocked_by.includes(issue.id)).map((t) => ref(c, t.id)),
+    candidates: openRefs(c, issue.id),
+    hash: bodyHash(issue.body),
+    plan: linkedPath(issue, "plan", { data: c.dir, ...grillRoots() }),
+  };
+}
+
+export type LogDetail = {
+  day: string;
+  n: number;
+  entry: LogEntry;
+  project?: BelayProject;
+  issue?: Ref;
+  /** Days it may move to, `day` first; empty once its day is past the backdate window. */
+  days: string[];
+  today: string;
+  candidates: Ref[];
+};
+
+/**
+ * The log entry at `<day>/<n>`; `gone` (with the project it was in, when the file still holds it) when `at` names
+ * an entry that has moved or been deleted, null for an address that never held one.
+ */
+export async function logDetail(day: string, n: number, at: string | undefined): Promise<LogDetail | { gone: true; project?: string } | null> {
+  await connection();
+  if (!isDay(day) || !Number.isInteger(n) || n < 1) return null;
+  const c = belay();
+  const entries = loadLog(c.dir, day);
+  const entry = entries[n - 1];
+  if (at !== undefined && entry?.at !== at) return { gone: true, project: entries.find((e) => e.at === at)?.project };
+  if (!entry) return null;
+  const today = workDay();
+  const days = logDays(today);
+  return {
+    day,
+    n,
+    entry,
+    project: c.projects.find((p) => p.key === entry.project),
+    issue: entry.issue ? ref(c, entry.issue) : undefined,
+    days: days.includes(day) ? days : [],
+    today,
+    candidates: linkCandidates(c.issues, entry.project, entry.issue).map((t) => ref(c, t.id)),
+  };
 }

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { FolderOpen, House, LibraryBig, PanelLeftClose, Search, type LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { UNFILED } from "@/lib/hrefs";
 import { cn } from "@/lib/utils";
 import { Mark, Wordmark } from "./logo";
 import { openSearch } from "./search";
@@ -23,8 +24,15 @@ export const NAV: NavItem[] = [
   { href: "/courses", label: "Courses", icon: LibraryBig, on: under("/courses") },
 ];
 
-/** A project's sections, nested under Projects while it's open. Issues, Activity and Logs join in phase 3. */
-const PROJECT_SECTIONS = [{ label: "Grills", suffix: "" }];
+/** A project's sections (grill Q19), nested under Projects while it's open. Unfiled has only Grills. */
+export const PROJECT_SECTIONS = [
+  { label: "Issues", suffix: "" },
+  { label: "Grills", suffix: "/grills" },
+  { label: "Activity", suffix: "/activity" },
+  { label: "Logs", suffix: "/logs" },
+];
+
+export const sectionsOf = (key: string) => (key === UNFILED ? PROJECT_SECTIONS.filter((s) => s.label === "Grills") : PROJECT_SECTIONS);
 
 /**
  * Topo's labelled site nav: a sticky sidebar from 768px, the bottom dock below it. The open project's sections
@@ -81,16 +89,16 @@ export function SiteNav({ collapsed, onCollapse }: { collapsed: boolean; onColla
 }
 
 function ProjectSections({ slot, pathname }: { slot: Slot; pathname: string }) {
-  const { project, detail, nav } = slot;
+  const { project, section, detail, nav } = slot;
   if (!project) return null;
   const base = `/p/${encodeURIComponent(project.key)}`;
   return (
     <div className={styles.course}>
       <span className={styles.subHead}>{project.name}</span>
       <ul className={styles.sub} aria-label="Project sections">
-        {PROJECT_SECTIONS.map((s) => {
+        {sectionsOf(project.key).map((s) => {
           const href = base + s.suffix;
-          const on = pathname === href || !!detail;
+          const on = section ? section === s.label : pathname === href;
           return (
             <li key={s.label}>
               <Link

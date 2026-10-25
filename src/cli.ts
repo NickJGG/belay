@@ -26,13 +26,11 @@ import {
   moveProject,
   oneOf,
   rekeyProject,
-  setSettings,
   setStatus,
   type MoveTarget,
 } from './ops.ts';
 import { parseLogAddress, type DatedEntry } from './logs.ts';
 import { filterIssues, issueComparator, isReady, naturalDesc, next, openBlockers, projectCounts, projectForCwd, SORT_FIELDS } from './query.ts';
-import { ACCENT_KEYS, loadSettings } from './settings.ts';
 import { statusLine, withBad } from './statusline.ts';
 import { ISSUE_STATUSES, normalizeStoredPath, issueFile, SOURCES, type Issue, type IssueStatus } from './store.ts';
 import { serve } from './web.ts';
@@ -74,8 +72,6 @@ const HELP = `belay — what should I work on?
 
   history [<project>] [-n <count>] [-v]
                                     recent Claude sessions and their commits, newest first
-  settings [--theme system|dark|light] [--accent <name>]
-                                    dashboard theme and accent; prints them with no flags
   git init                          start git history for the data dir: from then on every change is a
                                     commit (git log/revert in the data dir to look back or undo)
   search <words>...                 issues (title, description, comments) and grill sessions (slug, topic, project) with every word
@@ -93,9 +89,10 @@ const HELP = `belay — what should I work on?
                                     the name when omitted (3 letters, 4 on a clash)
   project list [--all]              --all includes archived
   project set <key> [--status active|paused|archived] [--focus|--no-focus] [--name <n>] [--group <g>]
-                    [--kinds a,b] [--path <dir>...] [--icon <path>]
+                    [--kinds a,b] [--path <dir>...] [--icon <path>] [--color <#hex>]
                                     --path replaces the project's dirs. --icon: an image, absolute or relative to
-                                    the first dir (empty clears). kinds: log-entry kinds (empty clears)
+                                    the first dir (empty clears). --color: the app's colour for it, #rgb or #rrggbb
+                                    (empty clears). kinds: log-entry kinds (empty clears)
   project move <key> (--before <key> | --after <key> | --top | --bottom)
                                     rearrange the order projects are listed in (here and the sidebar)
   project rekey <key> <new-key>     rename the key and every issue ID in the project, fixing blockers
@@ -529,13 +526,6 @@ function cmdSearch(argv: string[]): void {
   print(out.length ? out : 'no matches');
 }
 
-function cmdSettings(argv: string[]): void {
-  const { values } = args(argv, { theme: { type: 'string' }, accent: { type: 'string' } }, 0);
-  const ctx = new Ctx();
-  const s = values.theme === undefined && values.accent === undefined ? loadSettings(ctx.dir) : setSettings(ctx, values);
-  print([`theme:  ${s.theme}`, `accent: ${s.accent}  (${ACCENT_KEYS.join(', ')})`]);
-}
-
 function cmdGit(argv: string[]): void {
   const [sub, ...rest] = argv;
   if (sub !== 'init') throw new Error(`unknown 'git ${sub ?? ''}' — expected init`);
@@ -714,6 +704,7 @@ function projectSet(argv: string[]): void {
       name: { type: 'string' },
       group: { type: 'string' },
       icon: { type: 'string' },
+      color: { type: 'string' },
       kinds: { type: 'string' },
       path: { type: 'string', multiple: true },
     },
@@ -740,7 +731,6 @@ const COMMANDS: Record<string, (argv: string[]) => void> = {
   week: cmdWeek,
   history: cmdHistory,
   search: cmdSearch,
-  settings: cmdSettings,
   git: cmdGit,
   serve: cmdServe,
   digest: cmdDigest,

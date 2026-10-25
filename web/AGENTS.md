@@ -27,6 +27,10 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - `src/components/layout/shell.tsx` is every page's chrome, mounted by the root layout: the sidebar (`site-nav`),
   its collapsed `rail`, the live Tabs, the Drawer and, on phones, the dock and Strip. Pages say where they sit (and
   a Workspace passes its rail rows) through `<ShellSlot>`. The Drawer's conversation is `live-provider.tsx`'s.
+- Belay's pages: `/p` (project cards), `/p/<key>` (Issues; `?view=ideas`), `/p/<key>/{grills,activity,logs}` under
+  one layout holding the project header, `/i/<id>` and `/l/<day>/<n>?at=`. Their pieces are in
+  `src/components/belay/`; their writes are the server actions in `src/app/actions.ts`, each a thin wrapper around
+  one CLI op on a fresh strict `Ctx`.
 - At the repo root: `bridge/`: the MCP server's TypeScript source. `plugin/`: the plugin (`.claude-plugin/plugin.json` declares the
   `sear` MCP server and binds a `channels` entry to it). `.claude-plugin/marketplace.json`: the local `sear`
   marketplace listing it.
@@ -42,8 +46,12 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - The site runs on port 4747 (`belay serve`), the only site origin the bridge accepts; changing it also needs
   `SEAR_SITE_PORT`.
 - Keep `src/lib/` data modules (`sessions`, `projects`, `issues`, `frontmatter`, `upstream`, `format`, `shell`,
-  `course-art`) free of `server-only` and `@/` imports: `pnpm test:site` runs them under plain `node --test`, which
-  resolves neither. They may import the CLI's `../../../src/*.ts`.
+  `course-art`, `belay-view`, `watch-paths`) free of `server-only` and `@/` imports: `pnpm test:site` runs them under
+  plain `node --test`, which resolves neither. They may import the CLI's `../../../src/*.ts`.
+- Client components take only types from `lib/data`, `lib/belay-view` and the CLI's `store.ts`, whose runtime pulls
+  in `node:fs`. Values they need live in import-free modules: `lib/hrefs`, `lib/collapsed`, and the CLI's `keys`,
+  `picker` and `time`.
+- Every write goes through a CLI op (via `actions.ts`), and adding one to the app means adding it to the CLI first.
 - `src/proxy.ts` applies belay's host guard (`src/guard.ts`) to every request but `/api/usage`, which checks its own.
 - `src/lib/session-doc.ts`'s `decisions`/`context` mirror `plugin/scripts/session.js`, and a test checks that
   they agree, so change both together.
@@ -97,6 +105,10 @@ stream is open. Message kinds live in `bridge/protocol.mts`, event types in `bri
   A legacy session renders its `.md`, with its old preview at `/legacy/sessions/<slug>/preview.html`.
 - Belay's data comes from the CLI's store through one lenient, request-cached `Ctx` (`belay()` in `data.ts`,
   `BELAY_DATA`); `projects.ts` sorts its projects and files untagged sessions by belay's fuzzy match.
+- Live sync: the hub also watches the data dir's issues, projects, log days and `order.yaml` (`belayWatched`) and
+  sends a `belay` event, on which `LiveRefresh` re-renders the page, whether a page, the CLI or Claude wrote it.
+- Collapsible groups keep the ones toggled from their default in the `belay-collapsed` cookie, so the server
+  renders them that way.
 - Usage: `~/.claude/statusline.sh` POSTs every tick to `/api/usage` (no token, loopback `Host`, any `Origin`
   refused). The hub's `UsageStore` keeps limits account-wide and context/cache per `session_id`, so a site
   restart leaves the meters blank until the next tick.

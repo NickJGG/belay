@@ -10,6 +10,9 @@ export function hue(key: string) {
   return h;
 }
 
+/** A project's colour, for its header art, card cover and lettered tile: belay's `color:`, else its key's hue. */
+export const projectColor = (mark: Pick<Mark, "key" | "color">) => mark.color ?? `hsl(${hue(mark.key)} 60% 55%)`;
+
 /**
  * A 14px project marker: the project's icon, else a tile lettered with its key, else (unfiled) an outlined `?`.
  * Decorative: the project is named in the surrounding text or title.
@@ -23,7 +26,7 @@ export function ProjectMark({ mark, className }: { mark: Mark | null; className?
     );
   }
   return (
-    <span className={cn(styles.mark, styles.tile, className)} style={{ "--h": hue(mark.key) } as CSSProperties} aria-hidden>
+    <span className={cn(styles.mark, styles.tile, className)} style={(mark.color ? { background: mark.color } : { "--h": hue(mark.key) }) as CSSProperties} aria-hidden>
       {mark.key[0]}
     </span>
   );
