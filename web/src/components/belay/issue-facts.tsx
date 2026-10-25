@@ -11,7 +11,7 @@ import styles from "./belay.module.css";
 
 const day = (at: string) => (at.length > 10 ? <span title={at.replace("T", " ")}>{at.slice(0, 10)}</span> : at);
 
-/** The issue's facts (grill Q12): the record (Created · Updated · Source), then its links (Grill · Plan · Blocked by, + Blocks). */
+/** The issue's facts: the record (Created · Updated · Source), then its links (Grill · Plan · Blocked by, + Blocks). */
 export function IssueFacts({
   issue,
   plan,

@@ -1,11 +1,11 @@
 /**
- * Comment mode inside a mock frame (Q13 c). The frames are same-origin srcdoc documents, so the page reaches
+ * Comment mode inside a mock frame. The frames are same-origin srcdoc documents, so the page reaches
  * into them directly rather than injecting a script that posts messages back.
  */
 
-export const PIN_ATTR = "data-sear-pin";
-export const HOVER_ATTR = "data-sear-hover";
-export const COMMENT_ATTR = "data-sear-comment";
+export const PIN_ATTR = "data-belay-pin";
+export const HOVER_ATTR = "data-belay-hover";
+export const COMMENT_ATTR = "data-belay-comment";
 
 const cssId = (s: string) => (/^[A-Za-z][\w-]*$/.test(s) ? `#${s}` : `[id="${s.replace(/"/g, '\\"')}"]`);
 

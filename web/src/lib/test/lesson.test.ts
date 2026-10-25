@@ -12,25 +12,26 @@ const tmp = mkdtempSync(path.join(os.tmpdir(), "belay-lesson-"));
 after(() => rmSync(tmp, { recursive: true, force: true }));
 
 describe("lesson sessions", () => {
-  const sear = path.join(tmp, "Sear", "sessions");
-  const write = (slug: string, doc: object) => {
-    mkdirSync(path.join(sear, slug), { recursive: true });
-    writeFileSync(path.join(sear, slug, "session.json"), JSON.stringify(doc));
+  const grills = path.join(tmp, "Belay", "grills");
+  const lessons = path.join(tmp, "Belay", "lessons");
+  const write = (root: string, slug: string, doc: object) => {
+    mkdirSync(path.join(root, slug), { recursive: true });
+    writeFileSync(path.join(root, slug, "session.json"), JSON.stringify(doc));
   };
-  write("a-grill", { topic: "A grill", status: "in-progress" });
-  write("lesson-llm-20261025-1405", { kind: "lesson", course: "llm", topic: "Lesson · chain-rule", status: "in-progress" });
-  const root = { dir: sear, source: "sear" as const };
+  write(grills, "a-grill", { topic: "A grill", status: "in-progress" });
+  write(lessons, "lesson-llm-20261025-1405", { kind: "lesson", course: "llm", topic: "Lesson · chain-rule", status: "in-progress" });
 
-  test("a lesson folder reads with its kind and course, and grill lists leave it out", () => {
-    const l = readSession(root, "lesson-llm-20261025-1405")!;
+  test("a lesson folder reads with its kind and course, and the grill list holds only grills", () => {
+    const l = readSession(lessons, "lesson-llm-20261025-1405")!;
     assert.equal(l.kind, "lesson");
     assert.equal(l.course, "llm");
     assert.equal(l.topic, "Lesson · chain-rule");
-    assert.equal(readSession(root, "a-grill")!.kind, undefined);
+    assert.equal(readSession(grills, "a-grill")!.kind, undefined);
     assert.deepEqual(
-      listSessions([root]).map((s) => s.slug),
+      listSessions(grills).map((s) => s.slug),
       ["a-grill"],
     );
+    assert.deepEqual(listSessions(lessons), []);
   });
 });
 
@@ -65,7 +66,7 @@ describe("Follow along targets", () => {
   test("a lesson's Tab lands on its Now page", () => {
     assert.equal(lessonHref("llm"), "/courses/llm/now");
     assert.equal(coursePage("/courses/llm/knowledge/x"), "llm");
-    assert.equal(coursePage("/p/SEAR"), null);
+    assert.equal(coursePage("/p/KILN"), null);
   });
 });
 
@@ -82,7 +83,7 @@ describe("the shell and lessons", () => {
     assert.equal(pageTab("/s/g", live), "g");
     assert.equal(pageTab("/courses/llm/knowledge/x", live), "lesson-llm-1");
     assert.equal(pageTab("/courses/other", live), null);
-    assert.equal(pageTab("/p/SEAR", live), null);
+    assert.equal(pageTab("/p/KILN", live), null);
   });
 
   test("a missing course's Now page says so", () => {
@@ -91,21 +92,21 @@ describe("the shell and lessons", () => {
 });
 
 describe("the start queue", () => {
-  const sessions = path.join(tmp, "q", "sessions");
+  const run = path.join(tmp, "q", ".run");
 
-  test("writes beside the sessions folder, reads back, goes stale and clears", () => {
-    assert.equal(readQueue(sessions), null);
-    const q = writeQueue(sessions, { label: "Quick review", command: "/learn llm --quick", course: "llm", routine: "quick" }, 1000);
-    assert.equal(queueFile(sessions), path.join(tmp, "q", "start.json"));
-    assert.deepEqual(readQueue(sessions, 2000), q);
-    assert.equal(readQueue(sessions, 1000 + QUEUE_TTL), null);
-    clearQueue(sessions);
-    assert.equal(readQueue(sessions, 2000), null);
+  test("writes in the run folder, reads back, goes stale and clears", () => {
+    assert.equal(readQueue(run), null);
+    const q = writeQueue(run, { label: "Quick review", command: "/learn llm --quick", course: "llm", routine: "quick" }, 1000);
+    assert.equal(queueFile(run), path.join(run, "start.json"));
+    assert.deepEqual(readQueue(run, 2000), q);
+    assert.equal(readQueue(run, 1000 + QUEUE_TTL), null);
+    clearQueue(run);
+    assert.equal(readQueue(run, 2000), null);
   });
 
   test("a malformed queue reads as none", () => {
-    mkdirSync(path.join(tmp, "q"), { recursive: true });
-    writeFileSync(queueFile(sessions), JSON.stringify({ label: "x", command: "y", course: "llm", routine: "nap", at: 1 }));
-    assert.equal(readQueue(sessions, 2), null);
+    mkdirSync(run, { recursive: true });
+    writeFileSync(queueFile(run), JSON.stringify({ label: "x", command: "y", course: "llm", routine: "nap", at: 1 }));
+    assert.equal(readQueue(run, 2), null);
   });
 });

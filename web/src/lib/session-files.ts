@@ -1,4 +1,4 @@
-/** Reading a Sear session folder's session.json and chat.jsonl for the server; the parsing is shared with the browser. */
+/** Reading a session folder's session.json and chat.jsonl for the server; the parsing is shared with the browser. */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseChat, type ChatEntry } from "./chat.ts";

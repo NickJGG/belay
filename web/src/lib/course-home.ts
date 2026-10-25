@@ -2,7 +2,7 @@ import { checkpointLabel, unitFractions, type CourseSummary, type TopicStatus } 
 import type { Routine } from "./routines.ts";
 
 /*
- * Topo's course cards: one per course, with an Up next band led by the course's most urgent routine (grill Q7).
+ * The course cards: one per course, with an Up next band led by the course's most urgent routine.
  */
 
 export type UpNextKind = "Review" | "Checkpoint" | "Lesson" | "Build";

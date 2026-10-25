@@ -4,7 +4,7 @@ import { Toolbar } from "@/components/ui/toolbar";
 import styles from "./page-header.module.css";
 
 /**
- * The header every page shares (grill Q10/Q21): Topo's Toolbar with contour art fading down into the page, and
+ * The header every page shares: the Toolbar with contour art fading down into the page, and
  * only the title row on the art. `hue` defaults to the brand's; `seed` picks the terrain.
  */
 export function PageHeader({

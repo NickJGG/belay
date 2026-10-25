@@ -13,7 +13,7 @@ export type LessonShow = {
   path?: string;
 };
 
-/** Where a lesson's Tab lands (grill Q33). */
+/** Where a lesson's Tab lands. */
 export const lessonHref = (course: string) => courseHref(course, "/now");
 
 const SLUG = /^[a-z0-9][a-z0-9-]*$/;

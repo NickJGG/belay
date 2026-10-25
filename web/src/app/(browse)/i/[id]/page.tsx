@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Props) {
   return { title: `${d ? `${d.issue.id} ${d.issue.title}` : id} — Belay` };
 }
 
-/** An issue (grill Q12): the faded header with its title line, the facts table, the description, then comments. */
+/** An issue: the faded header with its title line, the facts table, the description, then comments. */
 export default async function IssuePage({ params }: Props) {
   const d = await issueDetail(decodeURIComponent((await params).id));
   if (!d) notFound();

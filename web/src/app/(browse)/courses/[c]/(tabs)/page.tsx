@@ -10,7 +10,7 @@ import { courseHref } from "@/lib/hrefs";
 import { cn } from "@/lib/utils";
 
 /**
- * Syllabus (grill Q24): the Goal panel, then a collapsible group per unit (bare number, title, "not built yet" when
+ * Syllabus: the Goal panel, then a collapsible group per unit (bare number, title, "not built yet" when
  * unbuilt), the unit in progress open. Topic rows carry belay's status icons; the checkpoint row comes last.
  */
 export default async function SyllabusTab({ params }: { params: Promise<{ c: string }> }) {

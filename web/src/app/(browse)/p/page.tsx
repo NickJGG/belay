@@ -20,7 +20,7 @@ const card = (p: Card) => (
 );
 
 /**
- * Projects (grill Q20/Q21/Q23): the list header, then a card per project under Working on (focus or open work)
+ * Projects: the list header, then a card per project under Working on (focus or open work)
  * and Everything else, with paused and archived ones in a collapsed group at the foot.
  */
 export default async function ProjectsPage() {

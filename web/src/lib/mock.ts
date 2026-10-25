@@ -5,7 +5,7 @@
  */
 import type { Controls, Patch } from "./session-doc.ts";
 
-/** The mock files a frame or the stage may load from a Sear session folder. */
+/** The mock files a frame or the stage may load from a session folder. */
 export const MOCK_FILES = ["preview.spec.js", "preview.data.js", "preview.app.css", "preview.mock.css"] as const;
 export type MockFile = (typeof MOCK_FILES)[number];
 
@@ -57,9 +57,9 @@ const attr = (t: string) => esc(t).replace(/"/g, "&quot;");
 /* Injected before the app's CSS so the app can override it. .pv-undecided is drawn inside mocks, so the stage provides it. */
 export const FRAME_CSS = `html, body { margin: 0; } html { background: var(--paper, Canvas); color-scheme: light; } :root[data-theme="dark"] { color-scheme: dark; }
 .pv-undecided { display: grid; place-items: center; min-height: 80px; border: 2px dashed var(--faint, #9a948a); border-radius: 10px; background: var(--wash, #f2f0ea); color: var(--muted, #6b665c); font: 600 13px system-ui, -apple-system, "Segoe UI", sans-serif; }
-html[data-sear-comment], html[data-sear-comment] * { cursor: crosshair !important; }
-[data-sear-hover] { outline: 2px dashed oklch(0.72 0.17 45) !important; outline-offset: 2px; }
-[data-sear-pin] { outline: 2px solid oklch(0.72 0.17 45) !important; outline-offset: 2px; box-shadow: 0 0 0 6px color-mix(in srgb, oklch(0.72 0.17 45) 25%, transparent) !important; }`;
+html[data-belay-comment], html[data-belay-comment] * { cursor: crosshair !important; }
+[data-belay-hover] { outline: 2px dashed oklch(0.72 0.17 45) !important; outline-offset: 2px; }
+[data-belay-pin] { outline: 2px solid oklch(0.72 0.17 45) !important; outline-offset: 2px; box-shadow: 0 0 0 6px color-mix(in srgb, oklch(0.72 0.17 45) 25%, transparent) !important; }`;
 
 /** A frame's full document: theme on <html>, the fonts, app and mock CSS (in that order), then the body. */
 export function frameDoc({ body, theme, styles }: { body: string; theme: "light" | "dark"; styles: string[] }): string {

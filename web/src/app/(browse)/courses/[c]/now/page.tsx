@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: Props) {
 }
 
 /**
- * The lesson's workspace (grill Q33), the grill page's counterpart, where a lesson's Tab lands: the header titled with
+ * The lesson's workspace, the grill page's counterpart, where a lesson's Tab lands: the header titled with
  * the live lesson, a facts table (Course · Topic · Board updated), then now.md's board. Follow along leaves it for
  * claims, sources and work.
  */

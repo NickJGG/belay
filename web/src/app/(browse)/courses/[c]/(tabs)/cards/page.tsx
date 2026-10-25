@@ -37,7 +37,7 @@ function Rows({ course, cards, now }: { course: string; cards: CardRow[]; now: s
 }
 
 /**
- * Cards (grill Q28): Due today open, Later collapsed. Rows are the question, its state and when it's due; a card
+ * Cards: Due today open, Later collapsed. Rows are the question, its state and when it's due; a card
  * that has been reviewed opens in place to its answer (unreviewed answers stay hidden).
  */
 export default async function CardsTab({ params }: { params: Promise<{ c: string }> }) {

@@ -22,7 +22,7 @@ export type PickProps = {
 
 export type CommentProps = { on: boolean; disabled: boolean; why?: string; onToggle: () => void };
 
-/** Pick opens a note field (Q13 b): Enter picks, a note ("but grey") is an amendment the skill makes a Yours variant of. */
+/** Pick opens a note field: Enter picks, a note ("but grey") is an amendment the skill makes a Yours variant of. */
 function PickButton({ pick }: { pick: PickProps }) {
   const [note, setNote] = React.useState("");
   const [busy, setBusy] = React.useState(false);

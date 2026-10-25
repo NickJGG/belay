@@ -53,7 +53,7 @@ function TitleEdit({ id, title }: { id: string; title: string }) {
 }
 
 /**
- * The issue page's header (grill Q12): ‹, the status icon (belay's status menu, keys 1–5), the key, the title, a !
+ * The issue page's header: ‹, the status icon (belay's status menu, keys 1–5), the key, the title, a !
  * toggle for high priority (also the ! key), and ⋯ with Open plan, Open file and Delete. The palette lists the
  * status and ! commands first while it's open.
  */

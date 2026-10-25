@@ -19,7 +19,7 @@ function Items({ course, items }: { course: string; items: MisconceptionItem[] }
 }
 
 /**
- * Misconceptions (grill Q27): yours first, then "Known in the field" with a group per topic, the topic in progress
+ * Misconceptions: yours first, then "Known in the field" with a group per topic, the topic in progress
  * open. Each item is the claim with its correction muted under it.
  */
 export default async function MisconceptionsTab({ params }: { params: Promise<{ c: string }> }) {

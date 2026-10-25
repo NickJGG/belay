@@ -7,7 +7,7 @@ import type { HomeRow } from "@/lib/data";
 import { grillHref, issueHref } from "@/lib/hrefs";
 import styles from "./in-flight.module.css";
 
-/** Home's In flight rows (grill Q7): kind, title over the project's hue and the key or slug, then where it stands. */
+/** Home's In flight rows: kind, title over the project's hue and the key or slug, then where it stands. */
 export function InFlight({ rows }: { rows: HomeRow[] }) {
   if (!rows.length) return <p className={styles.empty}>Nothing in flight.</p>;
   return (

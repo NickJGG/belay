@@ -1,7 +1,6 @@
 import "server-only";
 import http from "node:http";
-import path from "node:path";
-import { searDir } from "./config";
+import { sessionDir } from "./config";
 import { readBridgeFile } from "./upstream";
 
 export type BridgeReply = { ok: true } | { ok: false; status: number; error: string };
@@ -14,7 +13,7 @@ function post(port: number, token: string, body: string): Promise<{ status: numb
         port,
         path: "/message",
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Sear-Token": token, "Content-Length": Buffer.byteLength(body) },
+        headers: { "Content-Type": "application/json", "X-Belay-Token": token, "Content-Length": Buffer.byteLength(body) },
         timeout: 5000,
       },
       (res) => {
@@ -32,8 +31,9 @@ function post(port: number, token: string, body: string): Promise<{ status: numb
 
 /** Posts one message to the slug's bridge, adding the slug and the token, which never reach the browser. */
 export async function postToBridge(slug: string, msg: Record<string, unknown>): Promise<BridgeReply> {
-  const bridge = readBridgeFile(path.join(searDir(), slug));
-  if (!bridge) return { ok: false, status: 409, error: `Not attached: run \`/sear resume ${slug}\` in the terminal` };
+  const dir = sessionDir(slug);
+  const bridge = dir ? readBridgeFile(dir) : null;
+  if (!bridge) return { ok: false, status: 409, error: `Not attached: run \`/grill resume ${slug}\` in the terminal` };
   try {
     const res = await post(bridge.port, bridge.token, JSON.stringify({ ...msg, slug }));
     if (res.status === 200 || res.status === 204) return { ok: true };

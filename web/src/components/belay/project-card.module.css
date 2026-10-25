@@ -1,4 +1,4 @@
-/* Topo's course card; --hue is the project's colour. The title link stretches over the card with ::after. */
+/* A project in the course card's look; --hue is the project's colour. The title link stretches over the card with ::after. */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));

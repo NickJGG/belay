@@ -139,7 +139,7 @@ function LiveGroup({ turn }: { turn: OpenTurn | null }) {
   );
 }
 
-/** Topo's tag row: your avatar or Claude's mark, a bold name, and a faint suffix. */
+/** The tag row: your avatar or Claude's mark, a bold name, and a faint suffix. */
 function Speaker({ me, name, extra, className }: { me?: boolean; name: React.ReactNode; extra?: string; className?: string }) {
   return (
     <span className={cn(styles.tag, className)}>
@@ -625,11 +625,11 @@ export function Drawer({
         <p className={styles.banner}>Disconnected: the lesson&apos;s terminal cleared. Start the routine again to reattach.</p>
       ) : link.state === "disconnected" ? (
         <p className={styles.banner}>
-          Disconnected: run <code>/sear resume {slug}</code> in the terminal.
+          Disconnected: run <code>/grill resume {slug}</code> in the terminal.
         </p>
       ) : link.state === "offline" ? (
         <p className={styles.banner}>
-          No terminal attached. Run <code>/sear resume {slug}</code> in a session started with <code>sear</code> to answer from here.
+          No terminal attached. Run <code>/grill resume {slug}</code> in a session started with <code>belay claude</code> to answer from here.
         </p>
       ) : null}
       <div

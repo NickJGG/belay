@@ -16,14 +16,14 @@ import styles from "./belay.module.css";
 
 const PROJECT_STATUSES: Project["status"][] = ["active", "paused", "archived"];
 
-/** The project's sections as chips under its header (grill Q8/Q19), on phones only: the sidebar nests them from 768px. */
+/** The project's sections as chips under its header, on phones only: the sidebar nests them from 768px. */
 function SectionChips({ projectKey }: { projectKey: string }) {
   const pathname = usePathname();
   return (
     <nav className={styles.secChips} aria-label="Project sections">
       {sectionsOf(projectKey).map((s) => {
         const href = projectHref(projectKey, s.suffix);
-        // /p/sear reaches SEAR too.
+        // /p/bel reaches BEL too.
         const on = pathname?.toLowerCase() === href.toLowerCase();
         return (
           <Link key={s.label} href={href} className={cn(styles.secChip, on && styles.secChipOn)} aria-current={on ? "page" : undefined}>
@@ -36,7 +36,7 @@ function SectionChips({ projectKey }: { projectKey: string }) {
 }
 
 /**
- * A project's header (grill Q10): the art fades down in the project's hue; on it the mark, the name, a ☆ focus
+ * A project's header: the art fades down in the project's hue; on it the mark, the name, a ☆ focus
  * toggle and ⋯ holding status, group, kinds and name, then the section chips.
  */
 export function ProjectHead({

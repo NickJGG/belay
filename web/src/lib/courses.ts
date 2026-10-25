@@ -8,7 +8,7 @@ import { visibleParts } from "./course-paths.ts";
 export { visibleParts };
 
 /*
- * Course data, Topo's. Parsing belongs to the learn skill's scripts (formats.md is the contract);
+ * Course data. Parsing belongs to the learn skill's scripts (formats.md is the contract);
  * this module only loads them, and is the one gate between the site and the course folders.
  * Synchronous and uncached: `data.ts` caches it per request.
  */
@@ -361,7 +361,7 @@ function parseMisconception(raw: string): Misconception {
   return m ? { date: m[1] ?? null, topic: m[2], text: m[3] } : { date: null, topic: null, text: raw };
 }
 
-/** A misconception's `claim — correction` text split in two (grill Q27); no dash, no correction. */
+/** A misconception's `claim — correction` text split in two; no dash, no correction. */
 export function splitMisconception(text: string): { claim: string; correction: string | null } {
   const i = text.indexOf(" — ");
   return i < 0 ? { claim: text, correction: null } : { claim: text.slice(0, i).trim(), correction: text.slice(i + 3).trim() || null };
@@ -408,7 +408,7 @@ function itemsUnder(body: string, heading: RegExp): string[] {
 
 export type LessonStats = { exercises: number; alone: number; claims: number; questions: number };
 
-/** A lesson note's counts for its facts table (grill Q31), from formats.md's `lessons/` contents. */
+/** A lesson note's counts for its facts table, from formats.md's `lessons/` contents. */
 export function lessonStats(body: string): LessonStats {
   const exercises = itemsUnder(body, /^exercises?/i).filter((l) => /\be\d+\b/.test(l));
   const claims = new Set([

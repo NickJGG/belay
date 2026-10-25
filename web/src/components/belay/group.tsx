@@ -3,7 +3,7 @@ import { COLLAPSED_COOKIE, parseToggled } from "@/lib/collapsed";
 import { GroupDetails } from "./group-details";
 
 /**
- * A collapsible group under a head (grill Q24): chevron, icon, label, count. Whether it starts open comes from
+ * A collapsible group under a head: chevron, icon, label, count. Whether it starts open comes from
  * the cookie, keyed by `id`, so it renders that way rather than snapping shut on load.
  */
 export async function Group({

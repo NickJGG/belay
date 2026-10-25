@@ -5,7 +5,7 @@ import { ShellSlot } from "@/components/layout/shell-slot";
 import { projectHead } from "@/lib/data";
 import { UNFILED } from "@/lib/hrefs";
 
-/** Every project section's header and chips (grill Q10); Unfiled, which only gathers grills, gets no actions. */
+/** Every project section's header and chips; Unfiled, which only gathers grills, gets no actions. */
 export default async function ProjectLayout({ children, params }: { children: React.ReactNode; params: Promise<{ key: string }> }) {
   const key = decodeURIComponent((await params).key);
   if (key === UNFILED) {

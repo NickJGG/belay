@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: Props) {
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /**
- * A knowledge note (grill Q30), like the issue page: ‹ Notes, the title and ⋯ on the faded art, a facts table
+ * A knowledge note, like the issue page: ‹ Notes, the title and ⋯ on the faded art, a facts table
  * (Unit · Status · Claims / Lessons · Misconceptions · Cards), then the prose in one column.
  */
 export default async function KnowledgePage({ params }: Props) {

@@ -8,10 +8,10 @@ export type Collapsed = Record<PageKind, boolean>;
 
 export const COLLAPSED_DEFAULTS: Collapsed = { workspace: true, reading: false };
 
-/** localStorage keys, beside the per-session `sear:session:<slug>`. */
-export const SIDEBAR_KEY = "sear:sidebar";
-export const TAB_KEY = "sear:tab";
-export const DRAWER_KEY = "sear:drawer";
+/** localStorage keys, beside the per-session `belay:session:<slug>`. */
+export const SIDEBAR_KEY = "belay:sidebar";
+export const TAB_KEY = "belay:tab";
+export const DRAWER_KEY = "belay:drawer";
 
 /** The grill a `/s/<slug>` page shows, else null. */
 export function sessionSlug(pathname: string): string | null {
@@ -54,7 +54,7 @@ export function selectTab(live: string[], page: string | null, last: string | nu
 
 const COURSE_TABS = new Set(["map", "lessons", "notes", "misconceptions", "cards", "work", "now"]);
 
-/** Not found's one line (grill Q36): what's missing, and the nearest real page to go back to. */
+/** Not found's one line: what's missing, and the nearest real page to go back to. */
 export function missing(pathname: string): { what: string; back: { href: string; label: string } } {
   const grill = sessionSlug(pathname);
   if (grill) return { what: `No grill ${grill}.`, back: { href: "/", label: "Back home" } };

@@ -9,7 +9,7 @@ import { issuesByGrill, stage, type Issue } from "../issues.ts";
 import { fileSessions, type Project } from "../projects.ts";
 import type { SessionSummary } from "../sessions.ts";
 
-const tmp = mkdtempSync(path.join(os.tmpdir(), "sear-issues-"));
+const tmp = mkdtempSync(path.join(os.tmpdir(), "belay-issues-"));
 after(() => rmSync(tmp, { recursive: true, force: true }));
 
 function write(rel: string, text: string) {
@@ -34,7 +34,7 @@ const session = (slug: string, status = "planned", project?: string): SessionSum
   project,
   questions: null,
   mock: false,
-  source: "sear",
+  legacy: false,
 });
 
 const project = (key: string, name: string): Project => ({ key, name, status: "active", focus: false });
@@ -43,8 +43,8 @@ describe("belay's issues", () => {
   const head = (id: string, extra: string) =>
     `---\nid: ${id}\ntitle: ${id} title\nproject: ${id.replace(/-\d+$/, "")}\nblocked_by: []\nsource: user\ncreated: 2026-10-20\nupdated: 2026-10-24T20:58\n${extra}---\nbody\n`;
   write("belay/projects/.keep", "");
-  write("belay/issues/sear-10.md", head("SEAR-10", "status: todo\ngrill: some-grill\n"));
-  write("belay/issues/sear-9.md", head("SEAR-9", "status: done\ngrill: some-grill\n"));
+  write("belay/issues/kiln-10.md", head("KILN-10", "status: todo\ngrill: some-grill\n"));
+  write("belay/issues/kiln-9.md", head("KILN-9", "status: done\ngrill: some-grill\n"));
   write("belay/issues/bel-2.md", head("BEL-2", "status: idea\n"));
   write("belay/issues/no-id.md", `---\ntitle: Nothing\n---\n`);
   write("belay/issues/notes.txt", "ignored");
@@ -53,7 +53,7 @@ describe("belay's issues", () => {
   test("a lenient Ctx gives the good issues in belay's id order (numeric within a key) and skips bad files", () => {
     assert.deepEqual(
       ctx.issues.map((i) => i.id),
-      ["BEL-2", "SEAR-9", "SEAR-10"],
+      ["BEL-2", "KILN-9", "KILN-10"],
     );
     assert.deepEqual(ctx.bad.map((b) => b.file), ["issues/no-id.md"]);
   });
@@ -62,7 +62,7 @@ describe("belay's issues", () => {
     const by = issuesByGrill(ctx.issues);
     assert.deepEqual(
       by.get("some-grill")!.map((i) => i.id),
-      ["SEAR-9", "SEAR-10"],
+      ["KILN-9", "KILN-10"],
     );
     assert.equal(stage(session("some-grill"), by.get("some-grill")!), "building");
   });
@@ -100,7 +100,7 @@ describe("stage", () => {
 });
 
 describe("fileSessions by issues", () => {
-  const projects = [project("WIND", "Windfall"), project("SEAR", "Sear"), project("PIX", "Pixel Imperium")];
+  const projects = [project("WIND", "Windfall"), project("KILN", "Kiln"), project("PIX", "Pixel Imperium")];
   const files = (sessions: SessionSummary[], issues: Issue[]) => {
     const { projects: out, unfiled } = fileSessions(sessions, projects, issuesByGrill(issues));
     const by = Object.fromEntries(
@@ -123,10 +123,10 @@ describe("fileSessions by issues", () => {
 
   test("a tag beats issues, and issues beat the name match", () => {
     const { by } = files(
-      [session("pixel-tagged", "planned", "SEAR"), session("pixel-by-issues")],
+      [session("pixel-tagged", "planned", "KILN"), session("pixel-by-issues")],
       [issue("WIND-1", "todo", "pixel-tagged"), issue("WIND-2", "todo", "pixel-by-issues")],
     );
-    assert.deepEqual(by.SEAR.tagged, ["pixel-tagged"]);
+    assert.deepEqual(by.KILN.tagged, ["pixel-tagged"]);
     assert.deepEqual(by.WIND, { tagged: [], byIssues: ["pixel-by-issues"], matched: [] });
     assert.deepEqual(by.PIX, { tagged: [], byIssues: [], matched: [] });
   });
@@ -141,8 +141,8 @@ describe("fileSessions by issues", () => {
   });
 
   test("issues in several known projects file the session under each", () => {
-    const { by } = files([session("both")], [issue("WIND-1", "todo", "both"), issue("SEAR-1", "todo", "both")]);
+    const { by } = files([session("both")], [issue("WIND-1", "todo", "both"), issue("KILN-1", "todo", "both")]);
     assert.deepEqual(by.WIND.byIssues, ["both"]);
-    assert.deepEqual(by.SEAR.byIssues, ["both"]);
+    assert.deepEqual(by.KILN.byIssues, ["both"]);
   });
 });

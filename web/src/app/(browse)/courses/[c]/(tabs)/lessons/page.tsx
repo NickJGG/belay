@@ -9,7 +9,7 @@ import { courseHref } from "@/lib/hrefs";
 import { cn } from "@/lib/utils";
 
 /**
- * Lessons (grill Q25), listed like a project's grills: full-height hairline rows, a dot, the date in a fixed column,
+ * Lessons, listed like a project's grills: full-height hairline rows, a dot, the date in a fixed column,
  * the title, then the topic at the right. The row opens the lesson note. Live lessons arrive with the one bridge.
  */
 export default async function LessonsTab({ params }: { params: Promise<{ c: string }> }) {

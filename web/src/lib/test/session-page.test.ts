@@ -257,22 +257,22 @@ describe("chat", () => {
 
 describe("permission cards", () => {
   test("toolLabel", () => {
-    assert.deepEqual(toolLabel("mcp__plugin_sear_sear__reply"), { label: "sear · reply", server: "sear", tool: "reply" });
+    assert.deepEqual(toolLabel("mcp__plugin_belay_belay__reply"), { label: "belay · reply", server: "belay", tool: "reply" });
     assert.deepEqual(toolLabel("mcp__claude_ai_Claude_Docs__batch"), { label: "claude_ai_Claude_Docs · batch", server: "claude_ai_Claude_Docs", tool: "batch" });
     assert.deepEqual(toolLabel("Bash"), { label: "Bash", tool: "Bash" });
   });
 
   test("permissionLine", () => {
-    assert.equal(permissionLine("mcp__plugin_sear_sear__reply", "The only way to answer…"), "Post a message to this drawer.");
+    assert.equal(permissionLine("mcp__plugin_belay_belay__reply", "The only way to answer…"), "Post a message to this drawer.");
     assert.equal(permissionLine("mcp__claude_ai_Claude_Docs__batch", "Create a doc"), "");
     assert.equal(permissionLine("Bash", "List files"), "List files");
   });
 
-  test("permView: Sear reply and choice render as Markdown", () => {
+  test("permView: Belay reply and choice render as Markdown", () => {
     const reply = JSON.stringify({ text: "See `C:\\Users\\Nick\\x.md`" });
     assert.ok(reply.includes("C:\\\\Users"));
-    assert.deepEqual(permView("mcp__plugin_sear_sear__reply", reply), { kind: "markdown", text: "See `C:\\Users\\Nick\\x.md`" });
-    assert.deepEqual(permView("mcp__plugin_sear_sear__choice", JSON.stringify({ prompt: "Which?", options: ["a", "b"] })), {
+    assert.deepEqual(permView("mcp__plugin_belay_belay__reply", reply), { kind: "markdown", text: "See `C:\\Users\\Nick\\x.md`" });
+    assert.deepEqual(permView("mcp__plugin_belay_belay__choice", JSON.stringify({ prompt: "Which?", options: ["a", "b"] })), {
       kind: "markdown",
       text: "Which?",
       options: ["a", "b"],

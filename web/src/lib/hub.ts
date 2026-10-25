@@ -6,19 +6,19 @@ import { dataDir } from "../../../src/config.ts";
 import type { OpenTurn } from "./chat";
 import type { LessonShow } from "./lesson";
 import type { Queue } from "./start-queue";
-import { grillDir, searDir } from "./config";
+import { grillsDir, lessonsDir } from "./config";
 import { isSlug } from "./sessions";
 import { connectUpstream, readBridgeFile, sameBridge, type BridgeEvent, type Upstream } from "./upstream";
 import { UsageStore, type StatusLine, type Usage } from "./usage";
 import { root as learningRoot } from "./courses";
-import { belayIgnored, belayWatched, courseIgnored, courseLocate, grillIgnored, locate, searIgnored } from "./watch-paths";
+import { belayIgnored, belayWatched, courseIgnored, courseLocate, locate, sessionIgnored } from "./watch-paths";
 
 /*
- * The server's one event hub, started by its first user. It watches both session roots and holds an
+ * The server's one event hub, started by its first user. It watches the grills and lessons roots and holds an
  * upstream to every attached bridge (a `bridge.json` appearing or changing reconnects it), and fans
  * everything out to `/api/events`:
  *   sessions  a session's session.json, <slug>.md or bridge.json changed, or its folder came or went
- *   file      another file of a Sear session folder changed (chat.jsonl, the mock files)
+ *   file      another file of a session folder changed (chat.jsonl, the mock files)
  *   live      a bridge's stream opened or closed, or its working/connected state changed
  *   bridge    one bridge event, tagged with its session's slug
  *   usage     a live session's meters, from the status line's POST to /api/usage (matched by the bridge's sessionId)
@@ -50,7 +50,7 @@ type Hub = {
 };
 
 // On globalThis so dev-mode module reloads reuse the hub instead of leaking another one.
-const g = globalThis as typeof globalThis & { __searHub?: Hub };
+const g = globalThis as typeof globalThis & { __belayHub?: Hub };
 
 const READY_TIMEOUT_MS = 2000;
 const SESSION_FILES = new Set(["session.json", "bridge.json"]);
@@ -62,9 +62,9 @@ function start(): Hub {
     for (const l of listeners) l(e);
   };
 
-  /** Re-reads the slug's bridge.json and (re)connects, drops or keeps its upstream to match. */
-  const syncBridge = (slug: string): Promise<void> => {
-    const file = readBridgeFile(path.join(searDir(), slug));
+  /** Re-reads the slug's bridge.json under `root` and (re)connects, drops or keeps its upstream to match. */
+  const syncBridge = (root: string, slug: string): Promise<void> => {
+    const file = readBridgeFile(path.join(root, slug));
     const old = bridges.get(slug);
     if (old && file && sameBridge(old.file, file)) return old.ready;
     if (old) {
@@ -81,28 +81,20 @@ function start(): Hub {
     return up.ready;
   };
 
-  const sear = searDir();
-  const searWatch = watch(sear, { ignoreInitial: true, depth: 1, ignored: searIgnored(sear) });
-  const onSear = (abs: string) => {
-    const hit = locate(sear, abs);
-    if (!hit) return;
-    const [slug, name] = hit;
-    if (name === "bridge.json" || name === "") void syncBridge(slug);
-    if (!name || SESSION_FILES.has(name) || name === `${slug}.md`) emit({ type: "sessions", slug });
-    else emit({ type: "file", slug, name });
-  };
-
-  const grill = grillDir();
-  const grillWatch = watch(grill, { ignoreInitial: true, depth: 1, ignored: grillIgnored(grill) });
-  const onGrill = (abs: string) => {
-    const hit = locate(grill, abs);
-    if (hit && (!hit[1] || hit[1] === `${hit[0]}.md`)) emit({ type: "sessions", slug: hit[0] });
-  };
-
-  for (const ev of ["add", "change", "unlink", "addDir", "unlinkDir"] as const) {
-    searWatch.on(ev, onSear);
-    grillWatch.on(ev, onGrill);
-  }
+  const roots = [grillsDir(), lessonsDir()];
+  const sessionWatches = roots.map((root) => {
+    const w = watch(root, { ignoreInitial: true, depth: 1, ignored: sessionIgnored(root) });
+    const onSession = (abs: string) => {
+      const hit = locate(root, abs);
+      if (!hit) return;
+      const [slug, name] = hit;
+      if (name === "bridge.json" || name === "") void syncBridge(root, slug);
+      if (!name || SESSION_FILES.has(name) || name === `${slug}.md`) emit({ type: "sessions", slug });
+      else emit({ type: "file", slug, name });
+    };
+    for (const ev of ["add", "change", "unlink", "addDir", "unlinkDir"] as const) w.on(ev, onSession);
+    return w;
+  });
   const data = dataDir();
   const belayWatch = watch(data, { ignoreInitial: true, depth: 1, ignored: belayIgnored(data) });
   for (const ev of ["add", "change", "unlink"] as const) {
@@ -120,20 +112,22 @@ function start(): Hub {
     });
   }
 
-  const watchers = [searWatch, grillWatch, belayWatch, courseWatch];
-  for (const w of watchers) w.on("error", (err) => console.error("[sear] watcher:", err));
+  const watchers = [...sessionWatches, belayWatch, courseWatch];
+  for (const w of watchers) w.on("error", (err) => console.error("[belay] watcher:", err));
 
   // The first page render waits for the existing bridges' first connection attempts, so Live isn't empty.
-  const attached = existsSync(sear)
-    ? readdirSync(sear).filter((s) => isSlug(s) && existsSync(path.join(sear, s, "bridge.json")))
-    : [];
-  const initial = Promise.all(attached.map(syncBridge)).then(() => {});
+  const attached = roots.flatMap((root) =>
+    existsSync(root)
+      ? readdirSync(root).filter((s) => isSlug(s) && existsSync(path.join(root, s, "bridge.json"))).map((s) => syncBridge(root, s))
+      : [],
+  );
+  const initial = Promise.all(attached).then(() => {});
   const ready = Promise.race([initial, new Promise<void>((r) => setTimeout(r, READY_TIMEOUT_MS).unref())]);
 
   return { watchers, bridges, listeners, usage: new UsageStore(), emit, ready };
 }
 
-const hub = () => (g.__searHub ??= start());
+const hub = () => (g.__belayHub ??= start());
 
 /** Calls `listener` for every hub event; returns the unsubscribe. */
 export function subscribeHub(listener: Listener): () => void {

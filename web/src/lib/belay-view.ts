@@ -53,7 +53,7 @@ export type GrillStanding = {
   next?: { id: string };
 };
 
-/** Where a grill stands, for its row (grill Q17): whose turn, its questions, its next issue and progress, or what shipped. */
+/** Where a grill stands, for its row: whose turn, its questions, its next issue and progress, or what shipped. */
 export function grillStanding(g: GrillStanding): string {
   if (g.live) return g.working ? "Claude is working…" : "your turn";
   if (g.stage === "grilling") return g.questions ? (g.questions === 1 ? "1 question" : `${g.questions} questions`) : "started";
@@ -65,7 +65,7 @@ export function grillStanding(g: GrillStanding): string {
   return `✓ ${g.progress ? issues(g.progress.total) : "no issues"}`;
 }
 
-/** The Projects page's groups (grill Q20/Q23): Working on (focus or open work), Everything else, then paused and archived. */
+/** The Projects page's groups: Working on (focus or open work), Everything else, then paused and archived. */
 export function projectGroups<P extends { status: string; focus: boolean; open: number }>(projects: P[]) {
   const active = projects.filter((p) => p.status === "active");
   return {
@@ -90,7 +90,7 @@ export type FlightGrill = {
 
 export type FlightRow = FlightIssue | FlightGrill;
 
-/** What an In flight row says at its right (grill Q7): idle or doing, a live grill's turn, else its open question. */
+/** What an In flight row says at its right: idle or doing, a live grill's turn, else its open question. */
 export function flightWhy(r: FlightRow): string {
   if (r.kind === "issue") return r.idleDays ? `idle ${r.idleDays} days` : "doing";
   if (r.live) return `live · ${r.working ? "Claude is working…" : "your turn"}`;

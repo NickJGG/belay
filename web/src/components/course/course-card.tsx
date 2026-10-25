@@ -23,7 +23,7 @@ function action(i: UpNextItem): string {
   return "Start";
 }
 
-/** Topo's course card (grill Q7/Q21): its terrain cover, trait chips, unit bar and goal, then an Up next band with its most urgent routine. */
+/** A course card: its terrain cover, trait chips, unit bar and goal, then an Up next band with its most urgent routine. */
 export function CourseCard({ card }: { card: CardData }) {
   const { course: c, units, checkpoint, lead, rest, build } = card;
   const showCheckpoint = lead?.kind !== "Checkpoint";

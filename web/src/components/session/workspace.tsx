@@ -95,7 +95,7 @@ function useSpec(slug: string, files: Props["files"], enabled: boolean) {
 const editable = (t: EventTarget | null) =>
   !!t && "tagName" in t && (/^(INPUT|TEXTAREA|SELECT)$/.test((t as Element).tagName) || (t as HTMLElement).isContentEditable);
 
-/** Per-session state from localStorage (Q13 f), loaded after hydration and saved on every change. */
+/** Per-session state from localStorage, loaded after hydration and saved on every change. */
 function useRemembered(slug: string) {
   const [r, setR] = React.useState<Remembered>(REMEMBERED_DEFAULTS);
   const [loaded, setLoaded] = React.useState<string | null>(null);
@@ -271,7 +271,7 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
         }
       : {};
 
-  // Follow along (Q13 d). `followed` is where follow along last put the user (at first, where the page opened).
+  // Follow along. `followed` is where follow along last put the user (at first, where the page opened).
   const followed = React.useRef<string | null>(null);
   const [pill, setPill] = React.useState<string | null>(null);
   const [pulse, setPulse] = React.useState<number | null>(null);
@@ -302,7 +302,7 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
     return () => clearTimeout(t);
   }, [pulse]);
 
-  // Keyboard (Q13 a, e), in a ref so the document listener sees this render. Frames re-dispatch theirs here.
+  // Keyboard, in a ref so the document listener sees this render. Frames re-dispatch theirs here.
   const shortcut = React.useRef<(e: KeyboardEvent) => void>(() => {});
   React.useLayoutEffect(() => {
     shortcut.current = (e) => {
@@ -334,8 +334,8 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  // The grill page holds its /sear resume command (grill Q17) while no terminal is attached; once one is, the Drawer says what to do.
-  const resume = !live && doc.status === "in-progress" ? `/sear resume ${doc.slug}` : null;
+  // The grill page holds its /grill resume command while no terminal is attached; once one is, the Drawer says what to do.
+  const resume = !live && doc.status === "in-progress" ? `/grill resume ${doc.slug}` : null;
   const [copied, setCopied] = React.useState(false);
   const copyResume = React.useCallback(() => {
     if (!resume) return;
@@ -435,7 +435,7 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
             {expl ? <div>{expl}</div> : null}
             {resume ? (
               <div className={styles.resume}>
-                No terminal attached. Run <code>{resume}</code> in a session started with <code>sear</code> to answer from here.
+                No terminal attached. Run <code>{resume}</code> in a session started with <code>belay claude</code> to answer from here.
                 <button type="button" className={styles.more} onClick={copyResume}>
                   {copied ? "Copied" : "Copy"}
                 </button>

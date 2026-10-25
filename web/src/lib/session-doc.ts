@@ -1,7 +1,7 @@
 /**
- * A Sear session's full session.json (plugin/references/session-format.md) and the view logic the session
+ * A grill's full session.json (plugin/references/session-format.md) and the view logic the session
  * page needs from it. `decisions` and `context` mirror plugin/scripts/session.js, which the skill and
- * check-preview.js use, so a mock renders the same in Sear as in the check.
+ * check-preview.js use, so a mock renders the same on the site as in the check.
  */
 import type { QuestionStatus } from "./sessions.ts";
 

@@ -50,7 +50,7 @@ export async function courseCards(): Promise<CardData[]> {
   return byUrgency(await courseList());
 }
 
-/** Home's Your courses (grill Q7): the cards of courses still being learned. */
+/** Home's Your courses: the cards of courses still being learned. */
 export async function homeCourses(): Promise<CardData[]> {
   return byUrgency((await courseList()).filter(inProgress));
 }
@@ -65,7 +65,7 @@ export type CourseIndex = {
   misconceptions: { course: string; topic: string; claim: string }[];
 };
 
-/** The palette's course names (grill Q34): courses, then their lessons, notes, sources and misconceptions. */
+/** The palette's course names: courses, then their lessons, notes, sources and misconceptions. */
 export async function courseIndex(): Promise<CourseIndex> {
   const courses = await courseList();
   const out: CourseIndex = { courses: [], lessons: [], notes: [], sources: [], misconceptions: [] };
@@ -92,7 +92,7 @@ const plain = (md: string) =>
 
 export type MisconceptionItem = { claim: string; correction: string | null; date: string | null };
 
-/** The Misconceptions tab (grill Q27): yours, then the field's grouped by topic in syllabus order. */
+/** The Misconceptions tab: yours, then the field's grouped by topic in syllabus order. */
 export function misconceptionGroups(course: Course): { mine: MisconceptionItem[]; field: { topic: string; items: MisconceptionItem[] }[] } {
   const { mine, field } = listMisconceptions(course.course);
   const item = (m: Misconception): MisconceptionItem => ({ ...splitMisconception(m.text), date: m.date });
@@ -122,7 +122,7 @@ export type KnowledgeDetail = {
   abs: string | null;
 };
 
-/** A knowledge note's page (grill Q30); null when the course has no such note. */
+/** A knowledge note's page; null when the course has no such note. */
 export function knowledgeDetail(course: Course, topic: string): KnowledgeDetail | null {
   const rel = `knowledge/${topic}.md`;
   const text = readCourseFile(course.course, rel);
@@ -154,7 +154,7 @@ export type LessonDetail = LessonEntry & {
   abs: string | null;
 };
 
-/** A lesson note's page (grill Q31); null when the course has no such note. */
+/** A lesson note's page; null when the course has no such note. */
 export function lessonDetail(course: Course, slug: string): LessonDetail | null {
   const entry = listLessons(course.course).find((l) => l.slug === slug);
   const rel = `lessons/${slug}.md`;
@@ -173,7 +173,7 @@ export function lessonDetail(course: Course, slug: string): LessonDetail | null 
 
 export type SourceDetail = SourceDoc & { title: string; citedBy: { claims: number; topics: string[] }; abs: string | null };
 
-/** A source's page (grill Q32); null when the course has no such source. */
+/** A source's page; null when the course has no such source. */
 export function sourceDetail(course: Course, id: string): SourceDetail | null {
   const source = getSource(course.course, id);
   if (!source) return null;

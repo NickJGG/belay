@@ -39,7 +39,7 @@
   font-size: var(--text-sm);
 }
 
-/* Home (grill Q7), from the mock's .mg-h1, .mg-meta and .mg-sectitle. */
+/* Home, from the mock's .mg-h1, .mg-meta and .mg-sectitle. */
 .homeTitle {
   font-family: var(--font-display);
   font-size: var(--text-3xl);

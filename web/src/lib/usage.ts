@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /*
- * The status line's numbers (statusline.sh POSTs every tick to /api/usage), ported from topo's bridge.
+ * The status line's numbers (statusline.sh POSTs every tick to /api/usage).
  * Rate limits are account-wide, so any session's payload updates them; context and cache are per session.
  */
 

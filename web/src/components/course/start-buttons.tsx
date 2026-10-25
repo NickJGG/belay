@@ -24,7 +24,7 @@ export async function copyCommand(command: string, where: string) {
 
 /**
  * Queues the routine for a fresh session (`/api/lesson/start`). A live lesson is asked to restart into it (wrapping
- * up first if `wrap`); with none, `sear learn` in a terminal picks it up.
+ * up first if `wrap`); with none, `belay learn` in a terminal picks it up.
  */
 export async function startRoutine(course: string, routine: Routine, wrap = false) {
   try {
@@ -37,7 +37,7 @@ export async function startRoutine(course: string, routine: Routine, wrap = fals
     if (!r.ok) return toastError(j.error ?? `Couldn't start (${r.status})`);
     if (j.live) return toast(`${j.queued?.label ?? "The routine"} starts once Claude restarts.`);
     if (j.error) toastError(`The live lesson didn't answer (${j.error}). It's queued for the next one.`);
-    await copyCommand("sear learn", "a terminal to start it");
+    await copyCommand("belay learn", "a terminal to start it");
   } catch (err) {
     toastError((err as Error).message);
   }
@@ -86,7 +86,7 @@ export function StartButton({
           "Restarting…"
         ) : (
           <>
-            Queued · run <code>sear learn</code>
+            Queued · run <code>belay learn</code>
           </>
         )}
         <button type="button" className={styles.cancel} onClick={cancelStart} aria-label="Cancel the start">
@@ -138,7 +138,7 @@ export function StartButton({
 
 export type StartOption = { routine: Routine; label: string; primary: boolean };
 
-/** The course header's routines (grill Q16), each left out when it doesn't apply. */
+/** The course header's routines, each left out when it doesn't apply. */
 export function startOptions({ lesson, due, checkpoint }: { lesson: boolean; due: number; checkpoint: number | null }): StartOption[] {
   const out: StartOption[] = [];
   if (lesson) out.push({ routine: "lesson", label: "Start lesson", primary: true });

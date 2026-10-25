@@ -22,7 +22,7 @@ export async function generateMetadata(props: Props) {
   return { title: `${d && !("gone" in d) ? firstLine(d.entry.text).line : `${day}/${n}`} — Belay` };
 }
 
-/** A log entry (grill Q19), built like the issue page: faded header, facts table, then the text after its first line. */
+/** A log entry, built like the issue page: faded header, facts table, then the text after its first line. */
 export default async function LogPage(props: Props) {
   const { day, n, d } = await load(props);
   if (!d) notFound();

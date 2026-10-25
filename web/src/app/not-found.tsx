@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { missing } from "@/lib/shell";
 import styles from "./not-found.module.css";
 
-/** A 404 inside the shell (grill Q36). Not found pages get no params, so the address says what's missing. */
+/** A 404 inside the shell. Not found pages get no params, so the address says what's missing. */
 export default function NotFound() {
   const { what, back } = missing(usePathname() ?? "/");
   return (

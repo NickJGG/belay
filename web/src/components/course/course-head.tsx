@@ -45,7 +45,7 @@ export function CourseTitle({ title, color }: { title: React.ReactNode; color: s
 }
 
 /**
- * A course's header (grill Q16): the art fades down in the course's hue; on it ‹ Courses, the mark and name, ⋯ (the
+ * A course's header: the art fades down in the course's hue; on it ‹ Courses, the mark and name, ⋯ (the
  * folder and course.md), and the start buttons at the right; then the section chips. The palette lists the starts.
  */
 export function CourseHead({

@@ -16,7 +16,7 @@ type Draft = { title: string; status: "todo" | "idea"; high: boolean; blockers: 
 const blank = (status: Draft["status"]): Draft => ({ title: "", status, high: false, blockers: [], body: "" });
 
 /**
- * The + after the Issues · Ideas filter (grill Q10): a new todo, or an idea on Ideas. Closing keeps the draft until
+ * The + after the Issues · Ideas filter: a new todo, or an idea on Ideas. Closing keeps the draft until
  * it's created or discarded. The palette's New issue opens it too.
  */
 export function CreateIssue({ project, status, candidates }: { project: string; status: Draft["status"]; candidates: Ref[] }) {

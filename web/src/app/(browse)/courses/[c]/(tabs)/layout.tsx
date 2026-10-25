@@ -7,7 +7,7 @@ import { courseData } from "@/lib/course-data";
 import { courseColor, courseDir } from "@/lib/courses";
 import { cn } from "@/lib/utils";
 
-/** Every course tab's header and chips (grill Q16); the Work tab keeps them too, so they don't jump (Q29). */
+/** Every course tab's header and chips; the Work tab keeps them too, so they don't jump. */
 export default async function CourseLayout({ children, params }: { children: React.ReactNode; params: Promise<{ c: string }> }) {
   const { c } = await params;
   const course = await courseData(c);

@@ -1,4 +1,4 @@
-/* The session page (grill Q12 e1): bar + stage, inside the shell, which holds the rail and the Drawer. Ported from the .sr-* reference CSS. */
+/* The session page: bar + stage, inside the shell, which holds the rail and the Drawer. Ported from the .sr-* reference CSS. */
 
 .root {
   flex: 1;
@@ -411,7 +411,7 @@ a.chip:hover {
   padding: var(--space-4);
 }
 
-/* Follow along's "Qn is up" pill (topo's follow-pill look). */
+/* Follow along's "Qn is up" pill. */
 .followDock {
   position: absolute;
   left: 50%;
@@ -656,7 +656,7 @@ a.chip:hover {
 
 /* ---------- drawer ---------- */
 
-/* Topo's panel frame. Phone: hidden until the Strip opens it full-screen. Desktop: docked right, the page's height. */
+/* The panel frame. Phone: hidden until the Strip opens it full-screen. Desktop: docked right, the page's height. */
 .drawer {
   display: none;
   position: relative;
@@ -820,7 +820,7 @@ a.chip:hover {
   padding: var(--space-2) var(--space-4) var(--space-4);
 }
 
-/* A message: topo's tag row above a bordered bubble. */
+/* A message: the tag row above a bordered bubble. */
 .msg {
   display: flex;
   flex-direction: column;
@@ -1030,7 +1030,7 @@ a.chip:hover {
   margin-top: var(--space-2);
 }
 
-/* Claude's steps for a turn: topo's muted mono tool lines. */
+/* Claude's steps for a turn: muted mono tool lines. */
 .group {
   align-self: stretch;
   display: flex;
@@ -1260,7 +1260,7 @@ button.groupHead:hover {
   margin: 0 var(--space-4) var(--space-3);
 }
 
-/* Pictures: the composer's tray (Q3), sent ones above the bubble (Q4), and the drop target (Q6). */
+/* Pictures: the composer's tray, sent ones above the bubble, and the drop target. */
 .composerWrap {
   flex-wrap: wrap;
 }
@@ -1375,7 +1375,7 @@ button.groupHead:hover {
   pointer-events: none;
 }
 
-/* The status line's meters (usage.tsx), from topo's chat.module.css. */
+/* The status line's meters (usage.tsx). */
 .meters {
   margin: calc(-1 * var(--space-1)) var(--space-3) var(--space-3);
 }
@@ -1586,7 +1586,7 @@ button.groupHead:hover {
   font-weight: 700;
 }
 
-/* ---------- grill page (Q13 c2) ---------- */
+/* ---------- grill page ---------- */
 
 /* The issue page's spacing, 24px at the sides and top; the outlined bar and the mock frame share its edges. */
 @media (min-width: 768px) {
@@ -1621,7 +1621,7 @@ button.groupHead:hover {
   padding-block: 0;
 }
 
-/* An unattached grill's /sear resume command (grill Q17), under the bar. */
+/* An unattached grill's /grill resume command, under the bar. */
 .resume {
   display: flex;
   flex-wrap: wrap;

@@ -14,7 +14,7 @@ import { Mark } from "./logo";
 import { useSlot } from "./shell-slot";
 import styles from "./palette.module.css";
 
-const OPEN = "sear:search";
+const OPEN = "belay:search";
 
 export const openPalette = () => dispatchEvent(new Event(OPEN));
 
@@ -64,7 +64,7 @@ const ACTIONS: { intent: Intent; label: string; icon: React.ReactNode; section: 
 ];
 
 /**
- * Belay's command palette (grill Q34), opened by `openPalette` or Ctrl K / ⌘K anywhere (mock frames re-dispatch
+ * Belay's command palette, opened by `openPalette` or Ctrl K / ⌘K anywhere (mock frames re-dispatch
  * their key presses to this document): the open page's commands, Actions in the open project, Go to, then projects
  * and courses, and once there's a query, issues, grills, lessons, notes, sources and misconceptions by name. The names
  * are fetched afresh on each opening.

@@ -15,7 +15,7 @@ function loopbackHost(request: Request): boolean {
 }
 
 /**
- * statusline.sh's second POST: the status line JSON, every tick. No token (as topo's bridge); a browser always sends
+ * statusline.sh's second POST: the status line JSON, every tick. No token; a browser always sends
  * `Origin` on a cross-site POST and the status line never does, so any `Origin` is refused.
  */
 export async function POST(request: Request) {

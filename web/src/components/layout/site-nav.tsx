@@ -25,7 +25,7 @@ export const NAV: NavItem[] = [
   { href: "/courses", label: "Courses", icon: LibraryBig, on: under("/courses") },
 ];
 
-/** A project's sections (grill Q19), nested under Projects while it's open. Unfiled has only Grills. */
+/** A project's sections, nested under Projects while it's open. Unfiled has only Grills. */
 export const PROJECT_SECTIONS = [
   { label: "Issues", suffix: "" },
   { label: "Grills", suffix: "/grills" },
@@ -36,7 +36,7 @@ export const PROJECT_SECTIONS = [
 export const sectionsOf = (key: string) => (key === UNFILED ? PROJECT_SECTIONS.filter((s) => s.label === "Grills") : PROJECT_SECTIONS);
 
 /**
- * Topo's labelled site nav: a sticky sidebar from 768px, the bottom dock below it. The open project's sections
+ * The labelled site nav: a sticky sidebar from 768px, the bottom dock below it. The open project's sections
  * nest under Projects and the open course's under Courses, and the open detail page under its section. `collapsed`
  * hides the sidebar for the rail.
  */

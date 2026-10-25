@@ -3,7 +3,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { connection } from "next/server";
 import { cache } from "react";
-import { dataDir, grillsDir } from "../../../src/config.ts";
+import { dataDir } from "../../../src/config.ts";
 import { activity, doingSince, inFlight, type ActivityDay } from "../../../src/home.ts";
 import { loadLog, type DatedEntry, type LogEntry } from "../../../src/logs.ts";
 import { linkedPath } from "../../../src/open.ts";
@@ -15,7 +15,7 @@ import type { Issue as BelayIssue, Project as BelayProject } from "../../../src/
 import { addDays, isDay, workDay } from "../../../src/workday.ts";
 import type { ChatEntry, OpenTurn } from "./chat";
 import { courseIndex, type CourseIndex } from "./course-data";
-import { grillDir, searDir, sessionRoots } from "./config";
+import { grillsDir, lessonsDir } from "./config";
 import { parseFrontmatter } from "./frontmatter";
 import { flightGrills, type FlightRow } from "./belay-view";
 import { isClosed, issuesByGrill, stage, STAGES, type Issue, type Stage } from "./issues";
@@ -30,8 +30,8 @@ import type { Usage } from "./usage";
 import { byUpdated, isSlug, listSessions, readSession, type SessionMemo, type SessionSummary } from "./sessions";
 
 // On globalThis so dev-mode module reloads keep the parsed sessions.
-const g = globalThis as typeof globalThis & { __searMemo?: SessionMemo };
-const memo = () => (g.__searMemo ??= new Map());
+const g = globalThis as typeof globalThis & { __belayMemo?: SessionMemo };
+const memo = () => (g.__belayMemo ??= new Map());
 
 /** Belay's data, loaded once per request. Lenient: pages render what loaded rather than failing on a bad file. */
 export const belay = cache(() => new BelayCtx(dataDir(), { lenient: true }));
@@ -135,10 +135,9 @@ function active(live: LiveSession[], sessions: SessionSummary[], lessons: Map<st
 
 /** The live lessons' folders, which the grill lists leave out. */
 function liveLessons(live: LiveSession[]): Map<string, SessionSummary> {
-  const root = { dir: searDir(), source: "sear" as const };
   const out = new Map<string, SessionSummary>();
   for (const l of live) {
-    const s = readSession(root, l.slug, memo());
+    const s = readSession(lessonsDir(), l.slug, memo());
     if (s?.kind === "lesson" && s.course) out.set(l.slug, s);
   }
   return out;
@@ -148,7 +147,7 @@ const byGrill = () => issuesByGrill(belay().issues);
 
 async function load() {
   await connection();
-  const sessions = listSessions(sessionRoots(), memo()).sort(byUpdated);
+  const sessions = listSessions(grillsDir(), memo()).sort(byUpdated);
   const all = await liveSessions();
   const lessons = liveLessons(all);
   const live = active(all, sessions, lessons);
@@ -205,8 +204,8 @@ export async function navData(): Promise<Nav> {
 export type HomeRow = FlightRow & { mark: Mark | null };
 
 /**
- * Home's In flight (grill Q7): belay's rule, doing issues then grills no issue links to yet, with live grills first.
- * Old grill sessions never count: most were left `in-progress`, and none can be resumed with `/sear resume`.
+ * Home's In flight: belay's rule, doing issues then grills no issue links to yet, with live grills first.
+ * Legacy grills never count: most were left `in-progress`, and none can be resumed with `/grill resume`.
  */
 export async function homeFlight(): Promise<HomeRow[]> {
   const { live, sessions, projects, ctx } = await load();
@@ -214,7 +213,7 @@ export async function homeFlight(): Promise<HomeRow[]> {
   const today = workDay();
   // Back to the oldest doing issue's start, so each one's latest linked log entry is in range.
   const logsFrom = c.issues.filter((t) => t.status === "doing").reduce((min, t) => (doingSince(t) < min ? doingSince(t) : min), today);
-  const flight = inFlight(c.projects, c.issues, c.logs(logsFrom, today), sessions.filter((s) => s.source === "sear"), today);
+  const flight = inFlight(c.projects, c.issues, c.logs(logsFrom, today), sessions.filter((s) => !s.legacy), today);
   const marks = new Map(projects.map((p) => [p.key, mark(p)]));
   const bySlug = new Map(sessions.map((s) => [s.slug, s]));
   const working = new Map(live.map((l) => [l.slug, l.working]));
@@ -301,7 +300,7 @@ export type SearchIndex = CourseIndex & {
 };
 
 /**
- * The command palette's names: every session (Sear and legacy grill), non-archived project and issue, and every
+ * The command palette's names: every grill (legacy ones too), non-archived project and issue, and every
  * course with its lessons, notes, sources and misconceptions.
  */
 export async function searchIndex(): Promise<SearchIndex> {
@@ -322,13 +321,11 @@ export async function searchIndex(): Promise<SearchIndex> {
 
 export type SessionPage = { session: SessionSummary; live: LiveItem | null; projectName?: string; mark: Mark | null };
 
-/** One session for its page and the drill-in sidebar; null when no root has it. */
+/** One grill for its page and the drill-in sidebar; null when there's none. */
 export async function sessionData(slug: string): Promise<SessionPage | null> {
   if (!isSlug(slug)) return null;
   await connection();
-  const session = sessionRoots()
-    .map((root) => readSession(root, slug, memo()))
-    .find((s) => s != null);
+  const session = readSession(grillsDir(), slug, memo());
   if (!session || session.kind === "lesson") return null;
   const live = (await liveSessions()).filter((l) => l.slug === slug);
   const projects = projectsOf(belay());
@@ -340,30 +337,29 @@ export async function sessionData(slug: string): Promise<SessionPage | null> {
 }
 
 export type SessionDetail = SessionPage & {
-  /** Null for a legacy grill session, or a fresh one with only bridge.json. */
+  /** Null for a legacy grill, or a fresh one with only bridge.json. */
   doc: SessionDoc | null;
   chat: ChatEntry[];
   turn: OpenTurn | null;
   usage: Usage | null;
   /** Each mock file present, with its mtime (a cache-buster for the frames' URLs). */
   files: Partial<Record<MockFile, number>>;
-  /** A legacy grill session: its markdown body, and whether it has an old preview.html. */
+  /** A legacy grill: its markdown body, and whether it has an old preview.html. */
   legacy: { markdown: string; preview: boolean } | null;
 };
 
-/** Everything the session page renders; null when no root has the slug. */
+/** Everything the grill page renders; null when there's no such grill. */
 export async function sessionDetail(slug: string): Promise<SessionDetail | null> {
   const page = await sessionData(slug);
   if (!page) return null;
-  if (page.session.source === "grill") {
-    const dir = path.join(grillDir(), slug);
+  const dir = path.join(grillsDir(), slug);
+  if (page.session.legacy) {
     let markdown = "";
     try {
       markdown = parseFrontmatter(readFileSync(path.join(dir, `${slug}.md`), "utf8")).body;
     } catch {}
     return { ...page, doc: null, chat: [], turn: null, usage: null, files: {}, legacy: { markdown, preview: existsSync(path.join(dir, "preview.html")) } };
   }
-  const dir = path.join(searDir(), slug);
   const files: SessionDetail["files"] = {};
   for (const name of MOCK_FILES) {
     try {

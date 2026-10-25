@@ -4,7 +4,7 @@ import type { TopicStatus, Unit } from "@/lib/courses";
 
 const AS_ISSUE = { todo: "todo", "in-progress": "doing", done: "done" } as const;
 
-/** A syllabus topic's status as belay's icon (grill Q24): todo, doing for in progress, done. */
+/** A syllabus topic's status as belay's icon: todo, doing for in progress, done. */
 export function TopicIcon({ status }: { status: TopicStatus }) {
   return <StatusIcon status={AS_ISSUE[status]} label={statusLabel(status)} />;
 }

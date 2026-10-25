@@ -20,7 +20,7 @@ function Row({ href, title, id, backbone }: { href: string; title: string; id: s
   );
 }
 
-/** Notes (grill Q26): Knowledge open and Sources collapsed, backbone sources first; each row the title, then its id. */
+/** Notes: Knowledge open and Sources collapsed, backbone sources first; each row the title, then its id. */
 export default async function NotesTab({ params }: { params: Promise<{ c: string }> }) {
   const { c } = await params;
   if (!(await courseData(c))) notFound();

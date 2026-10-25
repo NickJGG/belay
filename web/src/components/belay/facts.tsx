@@ -2,7 +2,7 @@ import styles from "./belay.module.css";
 
 export type Fact = [label: string, value: React.ReactNode];
 
-/** A detail page's facts table (grill Q12): three columns, small uppercase labels above values, a hairline under it. */
+/** A detail page's facts table: three columns, small uppercase labels above values, a hairline under it. */
 export function Facts({ facts }: { facts: Fact[] }) {
   return (
     <dl className={styles.facts}>

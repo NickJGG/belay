@@ -5,9 +5,9 @@ import { COLLAPSED_DEFAULTS, DRAWER_DEFAULTS, missing, pageKind, parseCollapsed,
 
 describe("page kinds", () => {
   test("a grill page is a workspace; everything else reads", () => {
-    assert.equal(pageKind("/s/merge-belay-sear-topo"), "workspace");
+    assert.equal(pageKind("/s/one-grills-root"), "workspace");
     assert.equal(pageKind("/s/x/"), "workspace");
-    for (const p of ["/", "/p", "/p/SEAR", "/courses", "/nope"]) assert.equal(pageKind(p), "reading");
+    for (const p of ["/", "/p", "/p/KILN", "/courses", "/nope"]) assert.equal(pageKind(p), "reading");
   });
 
   test("sessionSlug reads /s/<slug> only", () => {
@@ -39,9 +39,9 @@ describe("selectTab", () => {
 test("Not found names what's missing and the nearest real page", () => {
   assert.deepEqual(missing("/s/nope"), { what: "No grill nope.", back: { href: "/", label: "Back home" } });
   assert.deepEqual(missing("/p/zzz"), { what: "No project ZZZ.", back: { href: "/p", label: "Back to Projects" } });
-  assert.deepEqual(missing("/p/sear/plans"), { what: "No page at /p/sear/plans.", back: { href: "/", label: "Back home" } });
+  assert.deepEqual(missing("/p/kiln/plans"), { what: "No page at /p/kiln/plans.", back: { href: "/", label: "Back home" } });
   assert.deepEqual(missing("/p/zzz/logs"), { what: "No project ZZZ.", back: { href: "/p", label: "Back to Projects" } });
-  assert.deepEqual(missing("/i/sear-99"), { what: "No issue SEAR-99.", back: { href: "/p/SEAR", label: "Back to SEAR's issues" } });
+  assert.deepEqual(missing("/i/kiln-99"), { what: "No issue KILN-99.", back: { href: "/p/KILN", label: "Back to KILN's issues" } });
   assert.deepEqual(missing("/i/nonsense"), { what: "No issue NONSENSE.", back: { href: "/p", label: "Back to Projects" } });
   assert.deepEqual(missing("/l/2026-10-25/9"), { what: "No log entry there.", back: { href: "/p", label: "Back to Projects" } });
 });
@@ -73,5 +73,5 @@ test("drawer prefs default and clamp the width", () => {
 
 test("terrain is the same for the same seed", () => {
   assert.deepEqual(terrain("belay", 900, 100), terrain("belay", 900, 100));
-  assert.notDeepEqual(terrain("belay", 900, 100), terrain("sear", 900, 100));
+  assert.notDeepEqual(terrain("belay", 900, 100), terrain("kiln", 900, 100));
 });

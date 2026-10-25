@@ -19,7 +19,7 @@
   flex-direction: column;
 }
 
-/* A Reading page: 24px sides from 768px (Q10). The pad vars let a sticky Toolbar bleed back out to the edges. */
+/* A Reading page: 24px sides from 768px. The pad vars let a sticky Toolbar bleed back out to the edges. */
 .main {
   --main-pad-top: var(--space-6);
   --main-pad-x: var(--space-4);

@@ -6,7 +6,7 @@ import { courseData } from "@/lib/course-data";
 import { readCourseFile, splitTitle, topicIndex } from "@/lib/courses";
 import { cn } from "@/lib/utils";
 
-/** Map (grill Q25): map.md's Mermaid graph, topic nodes coloured by status. */
+/** Map: map.md's Mermaid graph, topic nodes coloured by status. */
 export default async function MapTab({ params }: { params: Promise<{ c: string }> }) {
   const { c } = await params;
   const course = await courseData(c);

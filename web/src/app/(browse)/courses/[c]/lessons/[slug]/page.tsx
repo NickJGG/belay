@@ -25,7 +25,7 @@ function weekDay(date: string) {
 }
 
 /**
- * A lesson note (grill Q31), in the knowledge note's layout: a facts table (Date · Topic · Unit / Exercises · Claims ·
+ * A lesson note, in the knowledge note's layout: a facts table (Date · Topic · Unit / Exercises · Claims ·
  * Open questions), then the note. ⋯ holds Resume conversation and Open file.
  */
 export default async function LessonPage({ params }: Props) {

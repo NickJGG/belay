@@ -36,7 +36,7 @@ function Event({ e }: { e: ActivityEvent }) {
 }
 
 /**
- * Belay's Activity (grill Q18): work days newest first, each a collapsible group of every issue move and log entry,
+ * Belay's Activity: work days newest first, each a collapsible group of every issue move and log entry,
  * with a ring per day on the rail to the left; runs of empty days collapse to one muted line.
  */
 export function Activity({ feed, today, scope, earlierHref }: { feed: ActivityDay[]; today: string; scope: string; earlierHref: string }) {

@@ -9,11 +9,11 @@ import type { Routine } from "./routines.ts";
  * Claude Code session logs (`~/.claude/projects/<cwd slug>/<sessionId>.jsonl`): the only module
  * that knows their format. One JSON record per line; a conversation is the non-sidechain
  * `user`/`assistant` records, each assistant content block in a record of its own.
- *   site turns      user records (isMeta) holding <channel source="topo" …>text</channel>,
- *                   answered by `mcp__topo__reply` tool calls
+ *   site turns      user records (isMeta) holding <channel source="belay" …>text</channel>,
+ *                   answered by `mcp__plugin_belay_belay__reply` tool calls
  *   terminal turns  plain user strings / slash commands, answered by assistant text blocks
  *   tools           tool_use blocks, shown as one-liners; results and thinking are hidden
- *   focus           an `mcp__topo__show` call, once its result comes back without an error, or a
+ *   focus           an `mcp__plugin_belay_belay__show` call, once its result comes back without an error, or a
  *                   now.md write (the whiteboard): what the site's follow-along keeps on screen
  *   turn ends      system/turn_duration, or an "[Request interrupted…" user text
  * Assistant text after a `reply` in the same turn is hidden: Claude Code forces visible terminal
@@ -64,8 +64,11 @@ export type SessionState = {
   focus: Focus | null;
 };
 
-const REPLY_TOOL = "mcp__topo__reply";
-const SHOW_TOOL = "mcp__topo__show";
+/** The channel's tool prefixes from before it was named belay, so past transcripts still parse. */
+export const LEGACY_TOOLS = ["mcp__plugin_sear_sear__", "mcp__topo__"];
+const TOOL_PREFIXES = ["mcp__plugin_belay_belay__", ...LEGACY_TOOLS];
+const REPLY_TOOLS = new Set(TOOL_PREFIXES.map((p) => `${p}reply`));
+const SHOW_TOOLS = new Set(TOOL_PREFIXES.map((p) => `${p}show`));
 const SLUG = /^[a-z0-9][a-z0-9-]*$/;
 const CHANNEL = /<channel\s+([^>]*)>\n?([\s\S]*?)\n?<\/channel>/g;
 const ATTR = /([\w-]+)="([^"]*)"/g;
@@ -233,13 +236,13 @@ export class SessionParser {
       this.state.pendingTools = this.open.size;
     }
     const input = b.input ?? {};
-    if (b.name === REPLY_TOOL) {
+    if (REPLY_TOOLS.has(b.name)) {
       const text = typeof input.text === "string" ? input.text.trim() : "";
       if (text) this.add({ kind: "message", id, role: "assistant", surface: "site", text, at });
       this.replied = true;
       return;
     }
-    if (b.name === SHOW_TOOL) {
+    if (SHOW_TOOLS.has(b.name)) {
       const show = this.show(id, at, input);
       if (show && b.id) this.shows.set(b.id, show);
       return;
@@ -416,7 +419,7 @@ const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 /** Claude Code names a cwd's log folder by replacing every non-alphanumeric character with "-". */
 const slugDir = (cwd: string) => path.join(PROJECTS, cwd.replace(/[^a-zA-Z0-9]/g, "-"));
 
-/** Where `topo` sessions log: they are launched from the Learning root. */
+/** Where lesson sessions log: `belay learn` launches them from the Learning root. */
 export const liveLogDir = () => slugDir(root());
 
 /**
@@ -430,10 +433,10 @@ const sources = () => [
 
 type Cached = { size: number; offset: number; mtime: number; parser: SessionParser; used: number };
 const g = globalThis as typeof globalThis & {
-  __topoLogs?: Map<string, Cached>;
-  __topoLogIndex?: Map<string, { size: number; mtime: number; summary: SessionState | null }>;
+  __lessonLogs?: Map<string, Cached>;
+  __lessonLogIndex?: Map<string, { size: number; mtime: number; summary: SessionState | null }>;
 };
-const cache = (g.__topoLogs ??= new Map());
+const cache = (g.__lessonLogs ??= new Map());
 const MAX_CACHED = 4;
 
 function findFile(sessionId: string): string | null {
@@ -498,7 +501,7 @@ export function readSession(sessionId: string, from = 0): SessionPage | null {
   };
 }
 
-/** The most recently written session in the live log folder (the last `topo` session). */
+/** The most recently written session in the live log folder (the last lesson session). */
 export function latestLiveSession(): string | null {
   let best: { id: string; mtime: number } | null = null;
   try {
@@ -514,7 +517,7 @@ export function latestLiveSession(): string | null {
 
 /** Summaries of every Handhold session with at least one message, newest first. */
 export function listSessions(): SessionState[] {
-  const index = (g.__topoLogIndex ??= new Map());
+  const index = (g.__lessonLogIndex ??= new Map());
   const out: SessionState[] = [];
   for (const { dir, all } of sources()) {
     let names: string[] = [];

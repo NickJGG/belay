@@ -8,7 +8,7 @@ import styles from "./belay.module.css";
 /** Sizes every row's key column under it to the longest of `ids`. */
 export const keyColumn = (ids: string[]) => ({ "--key-w": `${Math.max(0, ...ids.map((id) => id.length))}ch` }) as React.CSSProperties;
 
-/** Belay's issue rows (grill Q8): status icon, mono key, title, and ! when high priority. The row opens the issue. */
+/** Belay's issue rows: status icon, mono key, title, and ! when high priority. The row opens the issue. */
 export function IssueRows({ issues, status = true }: { issues: Pick<Issue, "id" | "title" | "status" | "priority">[]; status?: boolean }) {
   return (
     <ul className={styles.rows}>

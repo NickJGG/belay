@@ -8,7 +8,7 @@ import { useLive } from "./live-provider";
 import styles from "./follow.module.css";
 
 /*
- * Follow along for a live lesson (Topo's, moved in): the main column keeps the lesson's last `show` on screen. A new
+ * Follow along for a live lesson: the main column keeps the lesson's last `show` on screen. A new
  * show navigates there while following; the learner navigating or scrolling the page pauses it, and Follow jumps
  * back. A show that lands while something is being written (the Drawer's composer, a work file, a note) waits in the
  * pill instead, since the jump would discard it.

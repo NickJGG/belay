@@ -12,7 +12,7 @@ const decode = (s: string) => {
   }
 };
 
-/** Work (grill Q29): a Workspace under the course header, Topo's file tree and editor. */
+/** Work: a Workspace under the course header, the file tree and editor. */
 export default async function WorkTab({ params }: { params: Promise<{ c: string; path?: string[] }> }) {
   const { c, path } = await params;
   const course = await courseData(c);

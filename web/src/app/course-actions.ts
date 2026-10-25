@@ -7,7 +7,7 @@ import { sessionFor } from "@/lib/session-log";
 const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /**
- * Resume conversation on a lesson note (grill Q31): a terminal in the course folder running `claude --resume <id>`
+ * Resume conversation on a lesson note: a terminal in the course folder running `claude --resume <id>`
  * for the session that wrote the note. `command` comes back for copying when no terminal could start; `error`
  * when no session is known.
  */

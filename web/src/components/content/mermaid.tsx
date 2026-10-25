@@ -39,10 +39,10 @@ export function Mermaid({ chart }: { chart: string }) {
       });
       const ok = v("--ok");
       const statusDefs = [
-        `classDef topo-done fill:${ok}33,stroke:${ok},color:${v("--text")}`,
-        `classDef topo-in-progress stroke:${ok},stroke-width:2px`,
+        `classDef course-done fill:${ok}33,stroke:${ok},color:${v("--text")}`,
+        `classDef course-in-progress stroke:${ok},stroke-width:2px`,
       ].join("\n");
-      const text = /^\s*(graph|flowchart)\b/.test(chart) && chart.includes(" topo-")
+      const text = /^\s*(graph|flowchart)\b/.test(chart) && chart.includes(" course-")
         ? `${chart}\n${statusDefs}\n`
         : chart;
       try {

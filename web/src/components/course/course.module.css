@@ -1,4 +1,4 @@
-/* Course pages in grill Q16 and Q24–Q33's grammar, from the mock's rules (preview.mock.css `.mg-syl*`, `.mg-misc`). */
+/* Course pages in the lists' and records' grammar, from the mock's rules (preview.mock.css `.mg-syl*`, `.mg-misc`). */
 
 /* ---- header ---- */
 .title {
@@ -211,7 +211,7 @@
   padding: var(--space-4) 0 var(--space-8);
 }
 
-/* ---- Courses and Home: Topo's course cards (mock `.mg-ccards`) ---- */
+/* ---- Courses and Home: course cards (mock `.mg-ccards`) ---- */
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -219,7 +219,7 @@
   list-style: none;
 }
 
-/* The Work tab is a Workspace (Q29), whose main column has no padding, but it keeps the course header: the course
+/* The Work tab is a Workspace, whose main column has no padding, but it keeps the course header: the course
    pads and scrolls itself there, with the Reading page's spacing, so nothing jumps between tabs. */
 main[data-kind="workspace"] > .coursePage {
   --main-pad-top: var(--space-6);

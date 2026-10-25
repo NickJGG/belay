@@ -1,16 +1,15 @@
 import "server-only";
-import os from "node:os";
+import { existsSync } from "node:fs";
 import path from "node:path";
-import type { SessionRoot } from "./sessions";
+import { grillsDir, lessonsDir, runDir } from "../../../src/config.ts";
 
-/** Where Sear sessions live; the bridge honours the same override. */
-export const searDir = () => process.env.SEAR_SESSIONS_DIR ?? path.join(os.homedir(), "Sear", "sessions");
+export { grillsDir, lessonsDir, runDir };
 
-/** Old grill sessions: a frozen archive, read in place and shown read-only. */
-export const grillDir = () =>
-  process.env.SEAR_GRILL_DIR ?? path.join(os.homedir(), ".claude", "skills", "grill", "sessions");
-
-export const sessionRoots = (): SessionRoot[] => [
-  { dir: searDir(), source: "sear" },
-  { dir: grillDir(), source: "grill" },
-];
+/** A session's folder: its grill, else its lesson; null when neither root has the slug. */
+export function sessionDir(slug: string): string | null {
+  for (const root of [grillsDir(), lessonsDir()]) {
+    const dir = path.join(root, slug);
+    if (existsSync(dir)) return dir;
+  }
+  return null;
+}

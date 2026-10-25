@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import styles from "./project-card.module.css";
 
 /**
- * A project as Topo's course card (grill Q20): a terrain cover in its hue with its icon over it (a lettered tile when
+ * A project as a course card: a terrain cover in its hue with its icon over it (a lettered tile when
  * it has none, a `?` for Unfiled), the name and a facts line.
  */
 export function ProjectCard({ projectKey, name, mark, facts }: { projectKey: string; name: string; mark: Mark | null; facts: string }) {

@@ -19,7 +19,7 @@ async function resume(course: string, slug: string) {
 }
 
 /**
- * A course detail page's header (grill Q30–Q32), in the issue page's grammar with no chips: ‹ back, the title, and
+ * A course detail page's header, in the issue page's grammar with no chips: ‹ back, the title, and
  * ⋯ holding Open file (and, on a lesson note, Resume conversation, also offered first in the palette).
  */
 export function DetailHead({

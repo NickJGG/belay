@@ -25,7 +25,7 @@ const movesOn = (e: ChatEntry) => (e.from === "claude" && e.kind !== "permission
 
 /**
  * Choice ids and permission request ids that can still be answered from the site: not answered from the
- * site, and nothing has happened since that means the terminal moved past them (Q14: typing in the terminal
+ * site, and nothing has happened since that means the terminal moved past them (typing in the terminal
  * dismisses a choice; a permission prompt answered there leaves no entry, but Claude's next message follows it).
  */
 export function openPrompts(entries: ChatEntry[]): { choices: Set<string>; permissions: Set<string> } {
@@ -122,7 +122,7 @@ export function toolLabel(name: string): { label: string; server?: string; tool:
   return m ? { label: `${m[1]} · ${m[2]}`, server: m[1], tool: m[2] } : { label: name, tool: name };
 }
 
-const SEAR_TOOL_LINES: Record<string, string> = {
+const BELAY_TOOL_LINES: Record<string, string> = {
   reply: "Post a message to this drawer.",
   choice: "Post a choice to this drawer as buttons.",
   show: "Point the page at a question.",
@@ -130,15 +130,15 @@ const SEAR_TOOL_LINES: Record<string, string> = {
   detach: "Detach this terminal session from Belay.",
 };
 
-const searTool = (name: string) => {
+const belayTool = (name: string) => {
   const t = toolLabel(name);
-  return t.server === "sear" && Object.hasOwn(SEAR_TOOL_LINES, t.tool) ? t.tool : undefined;
+  return t.server === "belay" && Object.hasOwn(BELAY_TOOL_LINES, t.tool) ? t.tool : undefined;
 };
 
-/** A permission card's description: ours for Sear's tools, none for other MCP tools (their docs address Claude), Claude Code's for built-ins. */
+/** A permission card's description: ours for Belay's tools, none for other MCP tools (their docs address Claude), Claude Code's for built-ins. */
 export function permissionLine(name: string, description: string): string {
-  const sear = searTool(name);
-  if (sear) return SEAR_TOOL_LINES[sear];
+  const own = belayTool(name);
+  if (own) return BELAY_TOOL_LINES[own];
   return toolLabel(name).server ? "" : description;
 }
 
@@ -161,9 +161,9 @@ export function permView(name: string, raw: string): PermView {
   }
   if (!input || typeof input !== "object" || Array.isArray(input)) return { kind: "raw", text: raw };
   const o = input as Record<string, unknown>;
-  const sear = searTool(name);
-  if (sear === "reply" && isStr(o.text)) return { kind: "markdown", text: o.text };
-  if (sear === "choice" && isStr(o.prompt) && Array.isArray(o.options) && o.options.every(isStr)) return { kind: "markdown", text: o.prompt, options: o.options };
+  const own = belayTool(name);
+  if (own === "reply" && isStr(o.text)) return { kind: "markdown", text: o.text };
+  if (own === "choice" && isStr(o.prompt) && Array.isArray(o.options) && o.options.every(isStr)) return { kind: "markdown", text: o.prompt, options: o.options };
   if ((name === "Bash" || name === "PowerShell") && isStr(o.command)) {
     return { kind: "command", command: o.command, ...(isStr(o.description) ? { description: o.description } : {}) };
   }

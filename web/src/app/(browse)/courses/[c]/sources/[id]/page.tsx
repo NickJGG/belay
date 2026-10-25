@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props) {
 const shortUrl = (url: string) => url.replace(/^https?:\/\/(www\.)?/, "");
 
 /**
- * A source (grill Q32), in the knowledge note's layout: a facts table (Role · Accessed · Licence / Link · Id · Cited
+ * A source, in the knowledge note's layout: a facts table (Role · Accessed · Licence / Link · Id · Cited
  * by), then the excerpt. Cited by counts the citing claims and links the topics they're in.
  */
 export default async function SourcePage({ params }: Props) {

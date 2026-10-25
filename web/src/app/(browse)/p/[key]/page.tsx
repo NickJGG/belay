@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: Props) {
   return { title: `${decodeURIComponent((await params).key).toUpperCase()} — Belay` };
 }
 
-/** A project's Issues (grill Q8/Q10): an Issues · Ideas filter with +, then issue rows in collapsible status groups. */
+/** A project's Issues: an Issues · Ideas filter with +, then issue rows in collapsible status groups. */
 export default async function ProjectIssues({ params, searchParams }: Props) {
   const key = decodeURIComponent((await params).key).toUpperCase();
   if (key === UNFILED.toUpperCase()) redirect(projectHref(UNFILED, "/grills"));

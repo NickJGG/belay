@@ -14,7 +14,7 @@ import { CodeEditor, type CodeEditorHandle } from "./code-editor";
 import styles from "./work.module.css";
 
 /*
- * The Work tab (grill Q29), Topo's: work/'s file tree and an editor that autosaves to disk. Claude is told about a
+ * The Work tab: work/'s file tree and an editor that autosaves to disk. Claude is told about a
  * file only on Send to Claude (or Done), never on save, and only while a lesson is live to send to. A change on disk (VS Code, or a task file
  * Claude created) reloads silently when the editor has no unsaved edits, else asks.
  */

@@ -43,7 +43,7 @@ export function followAction(here: string, lastFollowed: string, target: string)
 
 export type ViewState = { opt?: string; ctl: Record<string, unknown>; vs?: string };
 
-/** What a session page remembers between visits (Q13 f). The view itself lives in the URL hash. */
+/** What a session page remembers between visits. The view itself lives in the URL hash. */
 export type Remembered = {
   states: Record<string, ViewState>;
   device: "desktop" | "phone";
@@ -55,7 +55,7 @@ export type Remembered = {
 
 export const REMEMBERED_DEFAULTS: Remembered = { states: {}, device: "desktop", compare: false, drawerOpen: true, drawerW: 460, split: 0.5 };
 
-export const rememberKey = (slug: string) => `sear:session:${slug}`;
+export const rememberKey = (slug: string) => `belay:session:${slug}`;
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));

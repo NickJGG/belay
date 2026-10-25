@@ -19,7 +19,7 @@ import { resolveWikiTarget } from "./wiki-target";
  * Markdown → React: GFM, KaTeX math, and ```mermaid blocks drawn client-side. Raw HTML is dropped, as remark-rehype
  * does by default. Runs on both sides: course and legacy pages on the server, the drawer in the browser.
  *
- * Given a course, Topo's Obsidian syntax is lifted out of the raw text before parsing (so `$`, `\(` and `*` inside
+ * Given a course, its Obsidian syntax is lifted out of the raw text before parsing (so `$`, `\(` and `*` inside
  * quotes and link targets survive) and put back as tokens:
  *   [[sources/x]] "quote"  → source chip with the quote on hover
  *   [[path]] [[path#^cN]] [[path|alias]] → site link (block refs become #cN anchors)
@@ -173,7 +173,7 @@ function withStatuses(chart: string, topics: MarkdownContext["topics"]): string 
     if (t.href) lines.push(`  click ${slug} href "${t.href}"`);
   }
   for (const [status, slugs] of Object.entries(byStatus)) {
-    lines.push(`  class ${slugs.join(",")} topo-${status}`);
+    lines.push(`  class ${slugs.join(",")} course-${status}`);
   }
   return lines.length ? `${chart.replace(/\s+$/, "")}\n${lines.join("\n")}\n` : chart;
 }

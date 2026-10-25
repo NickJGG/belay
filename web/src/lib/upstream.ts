@@ -117,7 +117,7 @@ export function connectUpstream(
     };
     let buffer = "";
     req = http.get(
-      { host: "127.0.0.1", port: file.port, path: "/events", headers: { "X-Sear-Token": file.token }, timeout: CONNECT_TIMEOUT_MS },
+      { host: "127.0.0.1", port: file.port, path: "/events", headers: { "X-Belay-Token": file.token }, timeout: CONNECT_TIMEOUT_MS },
       (res) => {
         if (res.statusCode !== 200) {
           res.resume();

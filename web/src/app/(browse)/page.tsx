@@ -14,7 +14,7 @@ function longDay(day: string) {
   return new Date(y, m - 1, d).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 }
 
-/** Home (grill Q7): one column, In flight then Your courses, each course's card with its Up next band. */
+/** Home: one column, In flight then Your courses, each course's card with its Up next band. */
 export default async function HomePage() {
   const [rows, courses] = await Promise.all([homeFlight(), homeCourses()]);
   return (

@@ -7,14 +7,14 @@ import path from "node:path";
 import { after, test } from "node:test";
 import { connectUpstream, readBridgeFile, type BridgeEvent, type BridgeFile, type UpstreamState } from "../upstream.ts";
 
-const tmp = mkdtempSync(path.join(os.tmpdir(), "sear-upstream-"));
+const tmp = mkdtempSync(path.join(os.tmpdir(), "belay-upstream-"));
 after(() => rmSync(tmp, { recursive: true, force: true }));
 
 /** A stand-in bridge: `/events` needs the token and streams whatever `push` sends. */
 async function fakeBridge(token: string) {
   const streams = new Set<http.ServerResponse>();
   const server = http.createServer((req, res) => {
-    if (req.url !== "/events" || req.headers["x-sear-token"] !== token) {
+    if (req.url !== "/events" || req.headers["x-belay-token"] !== token) {
       res.writeHead(401).end();
       return;
     }

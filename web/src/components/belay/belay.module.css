@@ -1,4 +1,4 @@
-/* Belay's lists and records in grill Q24's grammar: collapsible groups, full-height hairline rows, facts tables. */
+/* Belay's lists and records in one grammar: collapsible groups, full-height hairline rows, facts tables. */
 
 /* ---- status icons ---- */
 .statusIcon {
@@ -331,7 +331,7 @@
   font-size: var(--text-sm);
 }
 
-/* ---- facts table (grill Q12): three columns, small uppercase labels above values ---- */
+/* ---- facts table: three columns, small uppercase labels above values ---- */
 .facts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -764,7 +764,7 @@ a.chipBody:hover {
   font-size: 12px;
 }
 
-/* Topo's course chips: the phone's stand-in for the sidebar's nested sections, hidden from 768px. */
+/* Course chips: the phone's stand-in for the sidebar's nested sections, hidden from 768px. */
 .secChips {
   flex-basis: 100%;
   min-width: 0;

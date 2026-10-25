@@ -7,7 +7,7 @@ import { root } from "@/lib/courses";
 
 export const metadata = { title: "Courses — Belay" };
 
-/** Courses (grill Q21): the list header, then Topo's course cards, most urgent first. */
+/** Courses: the list header, then the course cards, most urgent first. */
 export default async function CoursesPage() {
   const cards = await courseCards();
   return (

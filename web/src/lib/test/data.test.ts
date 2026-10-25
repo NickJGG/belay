@@ -9,7 +9,7 @@ import { Ctx } from "../../../../src/ops.ts";
 import { fileSessions, projectsOf, projectTerms, resolveIcon } from "../projects.ts";
 import { byUpdated, listSessions, type SessionMemo, type SessionSummary } from "../sessions.ts";
 
-const tmp = mkdtempSync(path.join(os.tmpdir(), "sear-site-"));
+const tmp = mkdtempSync(path.join(os.tmpdir(), "belay-site-"));
 after(() => rmSync(tmp, { recursive: true, force: true }));
 
 function write(rel: string, text: string) {
@@ -26,9 +26,9 @@ const md = (fields: Record<string, string>) =>
 describe("parseFrontmatter", () => {
   test("reads plain, double- and single-quoted scalars and skips lists", () => {
     const { data, body } = parseFrontmatter(
-      `---\nkey: SEAR\ntopic: "A: quoted \\"one\\""\nname: 'It''s'\npaths:\n  - C:/x\nfocus: false # c\n---\nbody`,
+      `---\nkey: KILN\ntopic: "A: quoted \\"one\\""\nname: 'It''s'\npaths:\n  - C:/x\nfocus: false # c\n---\nbody`,
     );
-    assert.deepEqual(data, { key: "SEAR", topic: 'A: quoted "one"', name: "It's", focus: "false" });
+    assert.deepEqual(data, { key: "KILN", topic: 'A: quoted "one"', name: "It's", focus: "false" });
     assert.equal(body, "body");
   });
 
@@ -82,15 +82,14 @@ describe("resolveIcon", () => {
 });
 
 describe("listSessions", () => {
-  const sear = path.join(tmp, "sear");
-  const grill = path.join(tmp, "grill");
+  const grills = path.join(tmp, "grills");
   write(
-    "sear/new-one/session.json",
+    "grills/new-one/session.json",
     JSON.stringify({
       slug: "new-one",
       topic: "New",
       status: "in-progress",
-      project: "sear",
+      project: "kiln",
       started: "2026-10-20",
       updated: "2026-10-23",
       open: "Q2 next",
@@ -101,36 +100,34 @@ describe("listSessions", () => {
       ],
     }),
   );
-  write("sear/md-only/md-only.md", md({ slug: "md-only", topic: '"Rendered"', status: "planned", started: "2026-10-01" }));
-  write("sear/fresh/bridge.json", "{}");
-  write("sear/broken/session.json", "{not json");
-  write("sear/Not-A-Slug/session.json", "{}");
-  write("grill/old-one/old-one.md", md({ topic: "Old grill", status: "abandoned", project: "TOPO", updated: "2026-09-01" }));
-  write("grill/md-only/md-only.md", md({ topic: "Shadowed" }));
-  write("grill/no-file/preview.html", "");
-  const roots = [
-    { dir: sear, source: "sear" as const },
-    { dir: grill, source: "grill" as const },
-  ];
+  write("grills/new-one/new-one.md", md({ topic: "Rendered plan" }));
+  write("grills/fresh/bridge.json", "{}");
+  write("grills/broken/session.json", "{not json");
+  write("grills/Not-A-Slug/session.json", "{}");
+  write("grills/old-one/old-one.md", md({ topic: '"Old grill"', status: "abandoned", project: "MAPS", started: "2026-09-01" }));
+  write("grills/no-file/preview.html", "");
+  write("grills/lesson-llm-20261025-1405/session.json", JSON.stringify({ kind: "lesson", course: "llm" }));
 
-  test("reads session.json, markdown and bare bridge.json folders; the first root wins", () => {
-    const bySlug = new Map(listSessions(roots).map((s) => [s.slug, s]));
-    assert.deepEqual([...bySlug.keys()].sort(), ["fresh", "md-only", "new-one", "old-one"]);
+  test("reads session.json, legacy markdown and bare bridge.json folders, and skips lessons", () => {
+    const bySlug = new Map(listSessions(grills).map((s) => [s.slug, s]));
+    assert.deepEqual([...bySlug.keys()].sort(), ["fresh", "new-one", "old-one"]);
 
     const n = bySlug.get("new-one")!;
-    assert.equal(n.project, "SEAR");
+    assert.equal(n.topic, "New");
+    assert.equal(n.project, "KILN");
     assert.equal(n.open, "Q2 next");
     assert.equal(n.mock, true);
+    assert.equal(n.legacy, false);
     assert.deepEqual(n.questions, [
       { n: 1, title: "First?", short: "First", status: "resolved" },
       { n: 2, title: "Second?", short: "Second?", status: "open" },
     ]);
 
-    const m = bySlug.get("md-only")!;
-    assert.equal(m.topic, "Rendered");
-    assert.equal(m.source, "sear");
-    assert.equal(m.updated, "2026-10-01");
-    assert.equal(m.questions, null);
+    const o = bySlug.get("old-one")!;
+    assert.equal(o.topic, "Old grill");
+    assert.equal(o.legacy, true);
+    assert.equal(o.updated, "2026-09-01");
+    assert.equal(o.questions, null);
 
     assert.deepEqual(bySlug.get("fresh"), {
       slug: "fresh",
@@ -138,30 +135,29 @@ describe("listSessions", () => {
       status: "in-progress",
       questions: [],
       mock: false,
-      source: "sear",
+      legacy: false,
     });
-    assert.equal(bySlug.get("old-one")!.source, "grill");
   });
 
   test("the memo reuses a parse until the file's mtime changes", () => {
     const memo: SessionMemo = new Map();
-    const first = listSessions(roots, memo).find((s) => s.slug === "old-one");
-    assert.equal(listSessions(roots, memo).find((s) => s.slug === "old-one"), first);
+    const first = listSessions(grills, memo).find((s) => s.slug === "old-one");
+    assert.equal(listSessions(grills, memo).find((s) => s.slug === "old-one"), first);
   });
 
   test("byUpdated puts the newest first", () => {
     assert.deepEqual(
-      listSessions(roots)
+      listSessions(grills)
         .sort(byUpdated)
         .map((s) => s.slug),
-      ["new-one", "md-only", "old-one", "fresh"],
+      ["new-one", "old-one", "fresh"],
     );
   });
 });
 
 describe("projects", () => {
   const belay = path.join(tmp, "belay");
-  write("belay/projects/topo.md", md({ key: "TOPO", name: "Topo", status: "active", group: "Websites" }));
+  write("belay/projects/maps.md", md({ key: "MAPS", name: "Maps", status: "active", group: "Websites" }));
   write("belay/projects/pix.md", md({ key: "PIX", name: "Pixel Imperium", status: "active", focus: "true" }));
   write("belay/projects/cld.md", md({ key: "CLD", name: "Claude config", status: "active" }));
   write("belay/projects/elv.md", md({ key: "ELV", name: "Rideable Elevators", status: "paused", group: "PZ Mods" }));
@@ -171,16 +167,16 @@ describe("projects", () => {
 
   test("projectsOf resolves each project's icon against its first path", () => {
     write("belay-icons/projects/bel.md", `---\nkey: BEL\nname: Belay\npaths:\n  - ${tmp.replaceAll("\\", "/")}/repo\nicon: 42/icon.png\n---\n`);
-    write("belay-icons/projects/topo.md", md({ key: "TOPO", name: "Topo" }));
+    write("belay-icons/projects/maps.md", md({ key: "MAPS", name: "Maps" }));
     const by = Object.fromEntries(projectsOf(new Ctx(path.join(tmp, "belay-icons"), { lenient: true })).map((p) => [p.key, p.icon]));
     assert.equal(by.BEL, path.join(tmp, "repo", "42", "icon.png"));
-    assert.equal(by.TOPO, undefined);
+    assert.equal(by.MAPS, undefined);
   });
 
   test("projectsOf orders focused, then ungrouped, then groups, each by the manual order", () => {
     assert.deepEqual(
       projectsOf(new Ctx(belay, { lenient: true })).map((p) => p.key),
-      ["PIX", "CLD", "ELV", "TOPO"],
+      ["PIX", "CLD", "ELV", "MAPS"],
     );
   });
 
@@ -199,21 +195,21 @@ describe("projects", () => {
       project,
       questions: null,
       mock: false,
-      source: "grill",
+      legacy: true,
     });
     const sessions = [
       s("pz-buildable-elevators", "Elevators you can build"),
       s("claude-hooks", "Hooks", "CLD"),
       s("misc", "Something else"),
       s("ghost", "Tagged with an unknown key", "NOPE"),
-      s("pixel-tiles", "Mentions pixels but is tagged", "TOPO"),
+      s("pixel-tiles", "Mentions pixels but is tagged", "MAPS"),
     ];
     const { projects, unfiled } = fileSessions(sessions, projectsOf(new Ctx(belay, { lenient: true })));
     const by = Object.fromEntries(projects.map((p) => [p.project.key, p]));
     assert.deepEqual(by.ELV.matched.map((x) => x.slug), ["pz-buildable-elevators"]);
     assert.deepEqual(by.CLD.tagged.map((x) => x.slug), ["claude-hooks"]);
     assert.deepEqual(by.PIX.matched, []);
-    assert.deepEqual(by.TOPO.tagged.map((x) => x.slug), ["pixel-tiles"]);
+    assert.deepEqual(by.MAPS.tagged.map((x) => x.slug), ["pixel-tiles"]);
     assert.deepEqual(unfiled.map((x) => x.slug), ["misc", "ghost"]);
   });
 });

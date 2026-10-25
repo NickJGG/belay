@@ -34,7 +34,7 @@ test("a grill row says where it stands", () => {
   assert.equal(grillStanding({ ...base, questions: 1 }), "1 question");
   assert.equal(grillStanding(base), "started");
   const planned = { live: false, status: "planned" };
-  assert.equal(grillStanding({ ...planned, stage: "building", progress: { done: 0, total: 1 }, next: { id: "SEAR-7" } }), "SEAR-7 · 0/1");
+  assert.equal(grillStanding({ ...planned, stage: "building", progress: { done: 0, total: 1 }, next: { id: "KILN-7" } }), "KILN-7 · 0/1");
   assert.equal(grillStanding({ ...planned, stage: "shipped", progress: { done: 3, total: 3 } }), "✓ 3 issues");
   assert.equal(grillStanding({ ...planned, stage: "shipped" }), "✓ no issues");
   assert.equal(grillStanding({ live: false, status: "abandoned", stage: "shipped" }), "abandoned");
@@ -59,11 +59,11 @@ test("belay's watcher sees issues, projects, log days and order.yaml, in either 
   const slash = (p: string) => p.replaceAll("\\", "/");
   for (const form of [(p: string) => p, slash]) {
     const at = (...parts: string[]) => form(path.join(root, ...parts));
-    assert.equal(belayWatched(root, at("issues", "sear-1.md")), true);
-    assert.equal(belayWatched(root, at("projects", "sear.md")), true);
+    assert.equal(belayWatched(root, at("issues", "kiln-1.md")), true);
+    assert.equal(belayWatched(root, at("projects", "kiln.md")), true);
     assert.equal(belayWatched(root, at("log", "2026-10-25.yaml")), true);
     assert.equal(belayWatched(root, at("order.yaml")), true);
-    assert.equal(belayWatched(root, at("issues", "sear-1.md.123.tmp")), false);
+    assert.equal(belayWatched(root, at("issues", "kiln-1.md.123.tmp")), false);
     assert.equal(belayWatched(root, at("cache", "issues.json")), false);
     assert.equal(belayIgnored(root)(form(root)), false);
     assert.equal(belayIgnored(root)(at("issues")), false);
@@ -73,7 +73,7 @@ test("belay's watcher sees issues, projects, log days and order.yaml, in either 
 });
 
 test("an In flight row says idle or doing, a live grill's turn, else its open question", () => {
-  const issue = { kind: "issue" as const, id: "SEAR-7", title: "t", project: "SEAR" };
+  const issue = { kind: "issue" as const, id: "KILN-7", title: "t", project: "KILN" };
   assert.equal(flightWhy(issue), "doing");
   assert.equal(flightWhy({ ...issue, idleDays: 4 }), "idle 4 days");
   const grill = { kind: "grill" as const, slug: "g", topic: "t", live: false };

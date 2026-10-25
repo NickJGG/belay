@@ -1,5 +1,5 @@
 import { postToBridge } from "@/lib/bridge-post";
-import { searDir } from "@/lib/config";
+import { runDir } from "@/lib/config";
 import { getCourse } from "@/lib/courses";
 import { navData } from "@/lib/data";
 import { announceStart } from "@/lib/hub";
@@ -11,13 +11,13 @@ import { clearQueue, readQueue, writeQueue } from "@/lib/start-queue";
  * The routine queued for a fresh session (start-queue.ts).
  *   GET     the queue, or null
  *   POST    `{course, routine, wrap?}`: queues it and, if a lesson is live, asks it to restart (wrapping up first if
- *           `wrap`); returns `{queued, live}`. With no live lesson, `sear learn` in a terminal picks it up.
+ *           `wrap`); returns `{queued, live}`. With no live lesson, `belay learn` in a terminal picks it up.
  *   DELETE  cancels: a later `restart` with no queue does nothing
  * Every change is announced to all pages as a `start` event.
  */
 
 export async function GET() {
-  return Response.json(readQueue(searDir()));
+  return Response.json(readQueue(runDir()));
 }
 
 const ROUTINES = new Set<Routine>(["lesson", "quick", "review", "checkpoint"]);
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   if (!course) return Response.json({ error: `no course ${c}` }, { status: 404 });
 
   const { label, command } = routineCommand(routine, c, course.next?.topic, course.checkpoint?.unit);
-  const queued = writeQueue(searDir(), { label, command, course: c, routine });
+  const queued = writeQueue(runDir(), { label, command, course: c, routine });
   announceStart(queued);
 
   const lesson = (await navData()).live.find((l) => l.kind === "lesson" && l.connected);
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   if (!sameOrigin(request)) return Response.json({ error: "cross-origin" }, { status: 403 });
-  clearQueue(searDir());
+  clearQueue(runDir());
   announceStart(null);
   return Response.json({ ok: true });
 }

@@ -44,7 +44,7 @@ function Entry({ e }: { e: DatedEntry }) {
   );
 }
 
-/** A project's Logs (grill Q19): the "Log what you did" composer, then its entries newest first, by work day. */
+/** A project's Logs: the "Log what you did" composer, then its entries newest first, by work day. */
 export default async function ProjectLogs({ params, searchParams }: Props) {
   const key = decodeURIComponent((await params).key).toUpperCase();
   if (key === UNFILED.toUpperCase()) notFound();

@@ -23,7 +23,7 @@ import {
 } from "../courses.ts";
 import { relativeDue } from "../format.ts";
 import { routineCommand } from "../routines.ts";
-import { SessionParser } from "../session-log.ts";
+import { LEGACY_TOOLS, SessionParser } from "../session-log.ts";
 import { courseIgnored, courseLocate } from "../watch-paths.ts";
 import { resolveWikiTarget } from "../wiki-target.ts";
 import { listWork, workPath, writeWork } from "../work.ts";
@@ -173,7 +173,7 @@ describe("course links", () => {
     assert.deepEqual(sectionOf("/courses/llm/sources/x"), { course: "llm", section: "Notes", detail: true });
     assert.deepEqual(sectionOf("/courses/llm/lessons/x"), { course: "llm", section: "Lessons", detail: true });
     assert.deepEqual(sectionOf("/courses/llm/work/a/b.py"), { course: "llm", section: "Work", detail: false });
-    assert.equal(sectionOf("/p/SEAR"), null);
+    assert.equal(sectionOf("/p/KILN"), null);
   });
 
   test("the course watcher reports visible paths only", () => {
@@ -263,3 +263,20 @@ test("the session log records the course files a session wrote", () => {
   assert.equal(p.state.startedAt, "2026-10-24T10:00:00Z");
   assert.equal(p.state.endedAt, "2026-10-24T10:05:00Z");
 });
+
+for (const prefix of ["mcp__plugin_belay_belay__", ...LEGACY_TOOLS]) {
+  test(`the session log reads ${prefix}reply as a site reply and ${prefix}show as focus`, () => {
+    const p = new SessionParser("s1", tmp);
+    const at = "2026-10-24T10:00:00Z";
+    const call = (id: string, name: string, input: object) =>
+      JSON.stringify({ type: "assistant", uuid: id, timestamp: at, message: { content: [{ type: "tool_use", id, name, input }] } });
+    p.push(call("r1", `${prefix}reply`, { text: "Hi there" }));
+    p.push(call("s1", `${prefix}show`, { course: "llm", target: "claim", topic: "chain-rule", id: "c4" }));
+    p.push(JSON.stringify({ type: "user", timestamp: at, message: { content: [{ type: "tool_result", tool_use_id: "s1" }] } }));
+    const reply = p.items.find((i) => i.kind === "message");
+    assert.equal(reply?.kind === "message" && reply.surface, "site");
+    assert.equal(reply?.kind === "message" && reply.text, "Hi there");
+    assert.equal(p.state.focus?.target, "claim");
+    assert.equal(p.state.focus?.label, "chain-rule · c4");
+  });
+}

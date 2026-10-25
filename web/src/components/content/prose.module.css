@@ -1,4 +1,4 @@
-/* Topo's prose. The spacing selectors use :nth-child to outrank the reset's `margin: 0`. */
+/* Prose. The spacing selectors use :nth-child to outrank the reset's `margin: 0`. */
 .prose {
   color: var(--text);
   font-size: 17px;

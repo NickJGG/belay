@@ -12,7 +12,7 @@ import styles from "./belay.module.css";
 export type DayOption = [value: string, label: string];
 
 /**
- * "Log what you did" atop a project's Logs (grill Q19): the text (its first line is the entry's title), the
+ * "Log what you did" atop a project's Logs: the text (its first line is the entry's title), the
  * project's kinds as chips with a count, and the day it counts toward.
  */
 export function LogComposer({ project, kinds, days }: { project: string; kinds: string[]; days: DayOption[] }) {

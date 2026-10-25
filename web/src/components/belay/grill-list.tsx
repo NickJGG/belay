@@ -30,7 +30,7 @@ const subscribeHash = (cb: () => void) => {
 };
 
 /**
- * A project's grills (grill Q17/Q25) under a Still grilling · Building · Shipped filter, kept in the hash. Rows are
+ * A project's grills under a Still grilling · Building · Shipped filter, kept in the hash. Rows are
  * one line: the date, a live dot, the topic, then where it stands; the slug shows on hover.
  */
 export function GrillList({ stages }: { stages: Record<Stage, GrillRow[]> }) {

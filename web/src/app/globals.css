@@ -1,5 +1,5 @@
 /* ============================================================
-   Belay — Topo's design tokens, plus Sear's --edge and --accent-strong
+   Belay's design tokens
    ------------------------------------------------------------
    Quiet monochrome: greys plus one ink. Hierarchy comes from size
    and contrast; colour only carries meaning (--ok, --warn, --bad) or brand.
@@ -16,7 +16,7 @@
   --panel-hover: #1e1e20;
   --line: #262628;
   --line-strong: #353538;
-  /* control outlines (seg, ghost buttons); brighter than --line-strong, which mirrors topo */
+  /* control outlines (seg, ghost buttons); brighter than --line-strong */
   --edge: #45454a;
 
   /* text */

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import styles from "./session.module.css";
 
 /*
- * The status line's numbers in the drawer (topo's chat panel meters): context and plan-limit pills, shown exactly
+ * The status line's numbers in the drawer: context and plan-limit pills, shown exactly
  * as the last payload had them, and a prompt cache ring that drains client-side towards `expiresAt`.
  */
 

@@ -13,7 +13,7 @@ import { Facts, None, type Fact } from "./facts";
 import type { DayOption } from "./log-composer";
 import styles from "./belay.module.css";
 
-/** A log entry's header (grill Q19): the faded art, its first line as the title, ⋯ with Open file and Delete. */
+/** A log entry's header: the faded art, its first line as the title, ⋯ with Open file and Delete. */
 export function LogHead({ title, address, day, at, project }: { title: string; address: string; day: string; at: string; project: string }) {
   const [deleting, setDeleting] = React.useState(false);
   const [pending, run] = useAction();
@@ -80,7 +80,7 @@ function numPatch(v: string): number | null {
 }
 
 /**
- * A log entry's facts (grill Q19): Day · Logged · Issue · Minutes, with Kind and Count only on a project that
+ * A log entry's facts: Day · Logged · Issue · Minutes, with Kind and Count only on a project that
  * declares kinds. Each saves on its own; a day move goes to the entry's new address.
  */
 export function LogFacts({
