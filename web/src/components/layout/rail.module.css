@@ -1,0 +1,164 @@
+/* The collapsed sidebar (≥768px): square 40×40 rows that widen in place to labels. */
+
+.railWrap {
+  position: relative;
+  flex: none;
+  z-index: 40;
+}
+
+.rail {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .railWrap {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    width: var(--rail-w);
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .rail {
+    position: absolute;
+    inset: 0 auto 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: var(--rail-w);
+    padding: var(--space-3) 6px;
+    border-right: 1px solid var(--line);
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  /* The page's rows scroll between the pinned nav and foot, with no visible bar. */
+  .railScroll {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden auto;
+    scrollbar-width: none;
+  }
+
+  .railScroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Keyboard focus only: a clicked row keeps focus, which would hold the rail open after the pointer leaves. */
+  .railWrap:hover .rail,
+  .rail:has(:focus-visible) {
+    width: var(--side-w);
+    box-shadow: 14px 0 40px rgb(0 0 0 / 0.35);
+  }
+
+  .railWrap:hover .railLabel,
+  .rail:has(:focus-visible) .railLabel {
+    display: flex;
+  }
+}
+
+.railRow {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 5px;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.railRow:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.railRow.on {
+  background: color-mix(in srgb, var(--brand) 22%, transparent);
+  color: var(--text);
+}
+
+.railKey {
+  flex: none;
+  width: 30px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.railLabel {
+  display: none;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.railLabel kbd {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--faint);
+}
+
+.railLogo {
+  margin-bottom: 4px;
+}
+
+.railMark {
+  width: 26px;
+  height: 26px;
+}
+
+.railLogo:hover {
+  background: none;
+}
+
+.railLogo .railLabel {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--text);
+}
+
+.railRule {
+  flex: none;
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--line-strong);
+}
+
+.railFoot {
+  margin-top: auto;
+  padding-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+}
+
+/* A question Claude just showed. */
+.railRow.pulse {
+  animation: railPulse 1.2s var(--ease) 3;
+}
+
+@keyframes railPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 0%, transparent);
+  }
+  40% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--brand) 45%, transparent);
+  }
+}

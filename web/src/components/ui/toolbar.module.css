@@ -1,0 +1,137 @@
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin: calc(-1 * var(--main-pad-top)) calc(-1 * var(--main-pad-x))
+    var(--space-8);
+  padding: var(--space-4) var(--main-pad-x);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+
+.hasBackdrop {
+  overflow: hidden;
+}
+
+.hasBackdrop > :not(.backdrop) {
+  position: relative;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin: 0 calc(-1 * var(--space-2)) 0 -6px;
+  border-radius: var(--radius-full);
+  color: var(--muted);
+  transition:
+    color var(--t-fast) var(--ease),
+    background-color var(--t-fast) var(--ease);
+}
+
+.back:hover {
+  color: var(--text);
+  background: var(--panel-hover);
+}
+
+.back:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.title {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+/* One line; long descriptions truncate rather than grow the sticky bar. */
+.meta {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  color: var(--faint);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.action,
+.actionQuiet {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 7px 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease);
+}
+
+.action {
+  background: var(--brand-gradient);
+  color: var(--brand-fg);
+}
+
+.action:hover {
+  background: var(--brand-gradient-hover);
+}
+
+.actionQuiet {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.actionQuiet:hover {
+  background: var(--panel-hover);
+  border-color: var(--text);
+}
+
+.action:focus-visible,
+.actionQuiet:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+
+@media (min-width: 768px) {
+  .bar {
+    padding-block: var(--space-5);
+  }
+}

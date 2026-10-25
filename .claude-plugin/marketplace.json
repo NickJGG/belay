@@ -1,0 +1,15 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "sear",
+  "owner": {
+    "name": "Nick",
+    "email": "nick.gilliam2@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "sear",
+      "source": "./plugin",
+      "description": "Sear: grill sessions you can read, answer and steer from the browser."
+    }
+  ]
+}

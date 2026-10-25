@@ -1,0 +1,121 @@
+/* Phone: top bar, page, then the Strip and dock fixed at the foot. Desktop: sidebar · tabs + page · Drawer. */
+.shell {
+  --dock-stack-h: var(--dock-h);
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.hasStrip {
+  --dock-stack-h: calc(var(--dock-h) + var(--strip-h));
+}
+
+.col {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* A Reading page: 24px sides from 768px (Q10). The pad vars let a sticky Toolbar bleed back out to the edges. */
+.main {
+  --main-pad-top: var(--space-6);
+  --main-pad-x: var(--space-4);
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--main-pad-top) var(--main-pad-x) calc(var(--dock-stack-h) + var(--space-8) + env(safe-area-inset-bottom));
+}
+
+/* A Workspace fills the column itself. */
+.workspace .main {
+  --main-pad-top: 0;
+  --main-pad-x: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 calc(var(--dock-stack-h) + env(safe-area-inset-bottom));
+}
+
+.strip {
+  position: fixed;
+  inset: auto 0 calc(var(--dock-h) + env(safe-area-inset-bottom)) 0;
+  z-index: 29;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--strip-h);
+  padding-inline: var(--space-4) var(--space-3);
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+
+.stripMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 100%;
+  text-align: left;
+}
+
+.switchChip {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-full);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.switchList {
+  list-style: none;
+  min-width: 260px;
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.switchRow:hover,
+.switchOn {
+  background: var(--panel-hover);
+}
+
+@media (min-width: 768px) {
+  .shell {
+    flex-direction: row;
+  }
+
+  .main {
+    --main-pad-top: var(--space-6);
+    --main-pad-x: var(--space-6);
+    padding: var(--main-pad-top) var(--main-pad-x) var(--space-16);
+  }
+
+  .workspace {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .workspace .main {
+    --main-pad-top: 0;
+    --main-pad-x: 0;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .strip {
+    display: none;
+  }
+}

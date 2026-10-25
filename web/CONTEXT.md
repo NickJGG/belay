@@ -1,0 +1,64 @@
+# Belay (Sear, belay and Topo merged)
+
+One local app for a developer's projects, design grills and courses, each worked through Claude Code sessions with a browser view beside them.
+
+## Language
+
+### Claude work
+
+**Session**:
+One Claude Code conversation, from launch until quit or `/clear`.
+_Avoid_: transcript (for this meaning), Sear session
+
+**Grill**:
+A persisted `/sear` interview (`~/Sear/sessions/<slug>/`), which can span several Sessions.
+_Avoid_: Sear session, grill session, session (for this meaning)
+
+**Lesson**:
+One sitting of a Course's lesson routine on one Topic, inside a Session.
+_Avoid_: session (for this meaning)
+
+**Build**:
+A Session working on a project's Issues, with no Grill or Lesson.
+
+### Shell
+
+**Tab**:
+A live Grill or Lesson in the strip above the page, showing its kind, title and state.
+_Avoid_: live card
+
+**Drawer**:
+The docked conversation panel showing the selected Tab, on every page while a Tab is live.
+
+**Strip**:
+The narrow layout's bar for the selected Tab, above the bottom dock.
+
+**In flight**:
+Every `doing` Issue plus every in-progress Grill not yet linked to an Issue.
+
+**Workspace**:
+A page you work in rather than read (a Grill, a Lesson, a Course's Work), which opens with the sidebar collapsed to the rail.
+_Avoid_: session page
+
+**Reading page**:
+Any page that isn't a Workspace (Home, Projects, an Issue, a Course's tabs), which opens with the sidebar expanded.
+
+**Whiteboard**:
+A Course's `now.md`, which Claude rewrites with notation during a Lesson and which fills the Lesson's Workspace.
+_Avoid_: Now page
+
+## Relationships
+
+- A **Grill** spans one or more **Sessions**; a **Session** belongs to at most one **Grill**
+- A **Session** holds zero or more **Lessons**
+- A **Build** is a **Session** with neither a **Grill** nor a **Lesson**, so it gets no **Tab**
+- Each live **Grill** or **Lesson** has exactly one **Tab**; the **Drawer** shows one **Tab** at a time
+
+## Example dialogue
+
+> **Dev:** "Nick resumed yesterday's **Grill** this morning. Is that a second **Grill**?"
+> **Domain expert:** "No: one **Grill**, two **Sessions**. The project's Grills list shows it once, and the **Tab** is the same **Grill** reattached."
+
+## Flagged ambiguities
+
+- "session" meant a Claude conversation in belay and Topo but a grill in Sear: resolved, a **Session** is the conversation and a **Grill** is the interview.

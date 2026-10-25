@@ -1,4 +1,7 @@
 node_modules/
-.next/
+/.next/
+/out/
 next-env.d.ts
 *.tsbuildinfo
+.env*
+bash.exe.stackdump

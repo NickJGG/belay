@@ -1,0 +1,133 @@
+/* Topo's prose. The spacing selectors use :nth-child to outrank the reset's `margin: 0`. */
+.prose {
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.7;
+  max-width: 68ch;
+}
+
+.prose > :nth-child(n + 2) {
+  margin-top: var(--space-5);
+}
+
+.prose > :is(h1, h2, h3, h4) {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.prose > :nth-child(n + 2):is(h1, h2, h3, h4) {
+  margin-top: var(--space-10);
+}
+
+.prose > :is(h1, h2, h3, h4) + :nth-child(n) {
+  margin-top: var(--space-2);
+}
+
+.prose > h1 { font-size: var(--text-3xl); }
+.prose > h2 { font-size: var(--text-2xl); }
+.prose > h3 { font-size: var(--text-xl); }
+.prose > h4 { font-size: var(--text-lg); }
+
+.prose a:not([class]) {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+}
+
+.prose a:not([class]):hover {
+  text-decoration-color: var(--text);
+}
+
+.prose :not(pre) > code {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 0.1em 0.35em;
+  border-radius: var(--radius-sm);
+  font-size: 0.88em;
+}
+
+.prose > pre {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  overflow-x: auto;
+  font-size: var(--text-sm);
+}
+
+.prose > :is(ul, ol) {
+  padding-inline-start: var(--space-6);
+}
+
+.prose > :is(ul, ol) li + li {
+  margin-top: var(--space-1);
+}
+
+.prose strong {
+  font-weight: 600;
+}
+
+.prose > blockquote {
+  padding-inline-start: var(--space-4);
+  border-inline-start: 2px solid var(--line-strong);
+  color: var(--muted);
+}
+
+.prose > hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin-block: var(--space-8);
+}
+
+.prose > table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  display: block;
+  overflow-x: auto;
+}
+
+.prose > table :is(th, td) {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.prose > table th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.prose :global(.katex-display) {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: var(--space-1);
+}
+
+.mermaid {
+  min-height: 80px;
+  overflow-x: auto;
+}
+
+.mermaid :global(svg) {
+  margin-inline: auto;
+}
+
+.mermaidError {
+  color: var(--muted);
+}
+
+.compact {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+.compact > :nth-child(n + 2) {
+  margin-top: var(--space-2);
+}
+
+.wide {
+  max-width: none;
+}

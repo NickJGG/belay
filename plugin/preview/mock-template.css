@@ -1,0 +1,22 @@
+/* Sear mock styles. Copy to <session dir>/preview.mock.css. Loads inside the mock frames only, after preview.app.css.
+   The frame's <html> carries data-theme="light|dark" and, in dark, the class "dark". */
+
+/* ---------- FILL: the project's design tokens. Light first, dark under [data-theme="dark"]. ---------- */
+:root {
+  --paper: #fbfaf7; --wash: #f2f0ea; --raised: #ffffff; --ink: #1d1b17; --muted: #6b665c; --faint: #9a948a;
+  --rule: #e2ded4; --accent: #3b6fd8;
+  --ui: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+:root[data-theme="dark"] {
+  --paper: #1a1916; --wash: #222120; --raised: #2a2926; --ink: #ece9e2; --muted: #a8a297; --faint: #77726a;
+  --rule: #38362f; --accent: #7aa2f7;
+}
+
+/* ---------- FILL: mock styles (or the app's own classes via preview.app.css). ---------- */
+.ex-page { padding: 28px 32px; background: var(--paper); color: var(--ink); font-family: var(--ui); }
+.ex-page h1 { margin: 0 0 18px; font-size: 24px; }
+.ex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.ex-card { border: 1px solid var(--rule); border-radius: 12px; background: var(--raised); overflow: hidden; }
+.ex-card .cv { height: 110px; background: var(--wash); }
+.ex-card .t { padding: 10px 12px 12px; font-weight: 600; }
+.ex-card .acts { display: flex; gap: 6px; padding: 0 12px 12px; font-size: 13px; color: var(--muted); }

@@ -1,0 +1,34 @@
+/* Q10's fade: no hairline, the art fades downward into the page, and about 32px to what follows. */
+.wrap > header {
+  border-bottom: 0;
+  background: var(--bg);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.wrap > header > :first-child {
+  -webkit-mask-image: linear-gradient(to bottom, #000 25%, transparent 80%);
+  mask-image: linear-gradient(to bottom, #000 25%, transparent 80%);
+}
+
+.art {
+  position: absolute;
+  inset: 0;
+  color: var(--hue);
+  background: color-mix(in srgb, var(--hue) 5%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.1) 10%, #000 60%);
+  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.1) 10%, #000 60%);
+}
+
+.art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0.45;
+}
+
+.count {
+  margin-left: 0.4em;
+  color: var(--muted);
+  font-weight: 500;
+}

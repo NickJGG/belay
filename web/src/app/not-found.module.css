@@ -1,0 +1,16 @@
+/* A Workspace's address (a missing grill) leaves the page unpadded, so the 404 pads itself there. */
+:global([data-kind="workspace"]) > .wrap {
+  --main-pad-top: var(--space-6);
+  --main-pad-x: var(--space-6);
+  padding: var(--main-pad-top) var(--main-pad-x);
+}
+
+.line {
+  color: var(--muted);
+}
+
+.back {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

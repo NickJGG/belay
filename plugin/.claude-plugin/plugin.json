@@ -1,0 +1,24 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "sear",
+  "version": "0.1.0",
+  "description": "Sear: grill sessions you can read, answer and steer from the browser.",
+  "author": {
+    "name": "Nick",
+    "email": "nick.gilliam2@gmail.com"
+  },
+  "skills": [
+    "./"
+  ],
+  "mcpServers": {
+    "sear": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bridge/server.mjs"]
+    }
+  },
+  "channels": [
+    {
+      "server": "sear"
+    }
+  ]
+}

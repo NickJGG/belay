@@ -1,0 +1,64 @@
+/* Desktop only: the narrow layout shows the selected Tab in the Strip instead. */
+.tabs {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .tabs {
+    flex: none;
+    display: flex;
+    gap: 2px;
+    height: 36px;
+    padding: 0 12px;
+    align-items: flex-end;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+  }
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.tab:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.tab.on {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--brand);
+}
+
+/* Shared with the Strip: kind in small mono caps, then the title, then a faint state. */
+.kind {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--faint);
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.state {
+  color: var(--faint);
+}
+
+.state::before {
+  content: "· ";
+}

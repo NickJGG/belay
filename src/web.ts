@@ -71,7 +71,7 @@ export async function serve({ port, open, dev }: { port: number; open: boolean; 
   const web = join(ROOT, 'web');
   // Run Next's JS entry with this Node rather than `.bin/next`, which is a .cmd shim on Windows.
   const next = join(web, 'node_modules', 'next', 'dist', 'bin', 'next');
-  if (!existsSync(next)) throw new Error(`web/ dependencies missing — run 'npm install' in ${web}`);
+  if (!existsSync(next)) throw new Error(`web/ dependencies missing — run 'pnpm install' in ${web}`);
   if (!(await portFree(port))) throw new Error(`port ${port} is in use — already running? (try --port)`);
 
   // dataDir() resolves BELAY_DATA to an absolute path, so a relative one survives the cwd change.

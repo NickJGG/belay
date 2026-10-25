@@ -1,0 +1,109 @@
+/* Lifted from the portfolio's AppTile (src/components/app/app.module.css). */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 112px);
+  gap: var(--space-6) var(--space-4);
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  text-align: center;
+}
+
+.icon {
+  --size: 84px;
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--size);
+  height: var(--size);
+  overflow: hidden;
+  border-radius: calc(var(--size) * 0.235);
+  background: var(--panel);
+  transition: transform var(--t-fast) var(--ease);
+}
+
+/* Hairline so white tiles (Iris) keep an edge on the light theme. */
+.icon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 8%, transparent);
+  pointer-events: none;
+}
+
+.icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tile:hover .icon {
+  transform: translateY(-2px);
+}
+
+.letter {
+  font: 800 22px/1 var(--font-display);
+  letter-spacing: -0.02em;
+  color: #fff;
+  background: linear-gradient(160deg, hsl(var(--h) 55% 48%), hsl(var(--h) 55% 34%));
+}
+
+.glyph {
+  background: transparent;
+  color: var(--muted);
+  border: 1px dashed var(--line-strong);
+  font: 700 28px/1 var(--font-display);
+}
+
+.glyph::after {
+  content: none;
+}
+
+.tile:hover .glyph {
+  color: var(--text);
+}
+
+.name {
+  max-width: 100%;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: var(--leading-tight);
+}
+
+.badge {
+  position: absolute;
+  top: -3px;
+  left: calc(50% + 34px);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 0 3px var(--bg);
+}
+
+@media (max-width: 700px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+    gap: var(--space-5) var(--space-3);
+  }
+
+  .icon {
+    --size: 64px;
+  }
+
+  .name {
+    font-size: var(--text-sm);
+  }
+
+  .badge {
+    left: calc(50% + 25px);
+  }
+}

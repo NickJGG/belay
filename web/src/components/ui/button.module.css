@@ -1,0 +1,88 @@
+.base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  font-size: var(--text-sm);
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    background-color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease),
+    opacity var(--t-fast) var(--ease);
+  user-select: none;
+}
+
+.base:disabled,
+.base[aria-disabled="true"] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* sizes */
+.sizeSm {
+  height: 28px;
+  padding-inline: var(--space-3);
+  font-size: var(--text-xs);
+}
+.sizeMd {
+  height: 36px;
+  padding-inline: var(--space-4);
+}
+.sizeLg {
+  height: 42px;
+  padding-inline: var(--space-5);
+  font-size: var(--text-base);
+}
+.sizeIcon {
+  height: 36px;
+  width: 36px;
+  padding: 0;
+}
+.sizeIconSm {
+  height: 28px;
+  width: 28px;
+  padding: 0;
+}
+
+/* variants */
+.variantDefault {
+  background: var(--brand-gradient);
+  color: var(--brand-fg);
+  border: 1px solid transparent;
+}
+.variantDefault:hover {
+  background: var(--brand-gradient-hover);
+}
+
+.variantOutline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+}
+.variantOutline:hover {
+  background: var(--panel-hover);
+  border-color: var(--text);
+}
+
+.variantGhost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid transparent;
+}
+.variantGhost:hover {
+  background: var(--panel-hover);
+}
+
+.variantSubtle {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+.variantSubtle:hover {
+  background: var(--panel-hover);
+}
