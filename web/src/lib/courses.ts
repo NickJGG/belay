@@ -153,7 +153,7 @@ export const today = () => fsrsJs.today();
 const createdOf = (fm: Frontmatter) => (typeof fm.created === "string" && fm.created ? fm.created : null);
 
 /** Palette slots in creation order (slug breaks ties), so a new course never recolours the others. */
-function hues(): Map<string, number> {
+export function hues(): Map<string, number> {
   if (!fs.existsSync(root())) return new Map();
   const courses = fs
     .readdirSync(root(), { withFileTypes: true })

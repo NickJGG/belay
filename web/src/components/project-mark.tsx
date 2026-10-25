@@ -31,3 +31,12 @@ export function ProjectMark({ mark, className }: { mark: Mark | null; className?
     </span>
   );
 }
+
+/** A 14px open book in its course's colour: a lesson's marker where a grill shows its ProjectMark. Decorative. */
+export function CourseBook({ color, className }: { color?: string; className?: string }) {
+  return (
+    <svg className={cn(styles.mark, className)} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" style={{ color }} aria-hidden>
+      <path d="M2 3.5c2-.8 4-.8 6 .5v9c-2-1.3-4-1.3-6-.5zM14 3.5c-2-.8-4-.8-6 .5v9c2-1.3 4-1.3 6-.5z" />
+    </svg>
+  );
+}

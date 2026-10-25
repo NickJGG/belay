@@ -14,7 +14,7 @@ import type { DrawerSeed, LiveItem } from "@/lib/data";
 import { clampDrawer, COLLAPSED_DEFAULTS, pageKind, parseCollapsed, SIDEBAR_KEY, type Collapsed } from "@/lib/shell";
 import { cn } from "@/lib/utils";
 import tabStyles from "./live-tabs.module.css";
-import { LiveTabs, tabTitle, turnState } from "./live-tabs";
+import { LiveTabs, TabMark, tabHover, tabTitle } from "./live-tabs";
 import { PaletteProvider } from "./palette";
 import { Rail } from "./rail";
 import { SlotProvider } from "./shell-slot";
@@ -120,11 +120,10 @@ function Strip() {
   if (!selected) return null;
   return (
     <div className={styles.strip} data-session-strip>
-      <button type="button" className={styles.stripMain} onClick={() => setSheet(true)} aria-label="Open the conversation">
+      <button type="button" className={styles.stripMain} onClick={() => setSheet(true)} aria-label="Open the conversation" title={tabHover(selected)}>
         <TurnDot working={selected.working} />
-        <span className={tabStyles.kind}>{selected.kind}</span>
+        <TabMark s={selected} />
         <span className={tabStyles.title}>{tabTitle(selected)}</span>
-        <span className={tabStyles.state}>{turnState(selected)}</span>
       </button>
       {live.length > 1 ? (
         <Popover
@@ -143,15 +142,15 @@ function Strip() {
                 <Link
                   href={s.href}
                   className={cn(styles.switchRow, s.slug === selected.slug && styles.switchOn)}
+                  title={tabHover(s)}
                   onClick={() => {
                     select(s.slug);
                     setSwitching(false);
                   }}
                 >
                   <TurnDot working={s.working} />
-                  <span className={tabStyles.kind}>{s.kind}</span>
+                  <TabMark s={s} />
                   <span className={tabStyles.title}>{tabTitle(s)}</span>
-                  <span className={tabStyles.state}>{turnState(s)}</span>
                 </Link>
               </li>
             ))}

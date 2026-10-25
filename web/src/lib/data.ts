@@ -15,6 +15,7 @@ import type { Issue as BelayIssue, Project as BelayProject } from "../../../src/
 import { addDays, isDay, workDay } from "../../../src/workday.ts";
 import type { ChatEntry, OpenTurn } from "./chat";
 import { courseIndex, type CourseIndex } from "./course-data";
+import { courseColor, hues } from "./courses";
 import { grillsDir, lessonsDir } from "./config";
 import { parseFrontmatter } from "./frontmatter";
 import { flightGrills } from "./belay-view";
@@ -57,9 +58,9 @@ export type SessionItem = Pick<SessionSummary, "slug" | "topic" | "status" | "pr
   questions?: number;
 };
 
-/** A live Tab: a grill, or a lesson (with its `course`). `href` is the page its Tab opens. */
+/** A live Tab: a grill, or a lesson (with its `course` and the course's `color`). `href` is the page its Tab opens. */
 export type LiveItem = SessionItem &
-  Pick<LiveSession, "working" | "connected"> & { kind: "grill" | "lesson"; course?: string; href: string };
+  Pick<LiveSession, "working" | "connected"> & { kind: "grill" | "lesson"; course?: string; color?: string; href: string };
 
 /** A row of the work lists (Home, a project's stages); `working` is set on the live ones. */
 export type WorkItem = SessionItem & Partial<Pick<LiveSession, "working">>;
@@ -159,12 +160,13 @@ async function load() {
 
 function liveItems(live: LiveSession[], sessions: SessionSummary[], ctx: Ctx, lessons = new Map<string, SessionSummary>()): LiveItem[] {
   const bySlug = new Map(sessions.map((s) => [s.slug, s]));
+  const slots = lessons.size ? hues() : new Map<string, number>();
   return live.map((l) => {
     const state = { working: l.working, connected: l.connected };
     const lesson = lessons.get(l.slug);
     if (lesson?.course) {
       const base: SessionItem = { slug: l.slug, topic: lesson.topic, status: lesson.status, live: true, mark: null, stage: "grilling" };
-      return { ...base, ...state, kind: "lesson", course: lesson.course, href: lessonHref(lesson.course) };
+      return { ...base, ...state, kind: "lesson", course: lesson.course, color: courseColor({ hue: slots.get(lesson.course) ?? 0 }), href: lessonHref(lesson.course) };
     }
     const s = bySlug.get(l.slug);
     const base: SessionItem = s
