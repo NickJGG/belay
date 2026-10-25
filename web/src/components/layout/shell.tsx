@@ -22,7 +22,7 @@ import { SiteNav } from "./site-nav";
 import styles from "./shell.module.css";
 
 /**
- * Every page's chrome: the sidebar (or its rail, or the phone's dock), the live Tabs over the page, and the Drawer
+ * Every page's chrome: the sidebar (pinned open or collapsed to its rail; the phone's dock), the live Tabs over the page, and the Drawer
  * docked beside it while a Tab is live, and the command palette. Re-renders the page on session and Live changes.
  */
 export function AppShell({ live, seeds, children }: { live: LiveItem[]; seeds: Record<string, DrawerSeed>; children: React.ReactNode }) {
@@ -68,8 +68,8 @@ function Frame({ children }: { children: React.ReactNode }) {
       <LiveRefresh />
       {/* Only course pages anchor claims: a grill keeps its view (`#q-3`) in the hash. */}
       {pathname.startsWith("/courses/") ? <FocusHighlight /> : null}
-      <SiteNav collapsed={collapsed[kind]} onCollapse={toggle} />
-      {collapsed[kind] ? <Rail onExpand={toggle} /> : null}
+      <SiteNav />
+      <Rail open={!collapsed[kind]} onToggle={toggle} />
       <div className={styles.col}>
         <LiveTabs />
         <main className={styles.main} data-kind={kind}>

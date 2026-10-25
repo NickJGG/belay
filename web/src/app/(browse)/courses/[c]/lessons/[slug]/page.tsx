@@ -37,7 +37,7 @@ export default async function LessonPage({ params }: Props) {
   const { exercises, alone, claims, questions } = d.stats;
   return (
     <div className={belay.page}>
-      <ShellSlot course={{ slug: c, title: course.title }} section="Lessons" detail={{ label: d.title, href: courseHref(c, `/lessons/${slug}`) }} />
+      <ShellSlot course={{ slug: c, title: course.title }} section="Lessons" />
       <DetailHead
         title={d.title}
         back={{ href: `${base}/lessons`, label: "Lessons" }}

@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ShellSlot } from "@/components/layout/shell-slot";
 import { dayLabel } from "@/lib/belay-view";
 import { logDetail } from "@/lib/data";
-import { logHref, projectHref } from "@/lib/hrefs";
+import { projectHref } from "@/lib/hrefs";
 
 type Props = { params: Promise<{ day: string; n: string }>; searchParams: Promise<{ at?: string }> };
 
@@ -44,11 +44,7 @@ export default async function LogPage(props: Props) {
   const title = firstLine(entry.text).line;
   return (
     <div className={styles.page}>
-      <ShellSlot
-        project={{ key: entry.project, name: d.project?.name ?? entry.project }}
-        section="Logs"
-        detail={{ label: title, href: logHref(day, d.n, entry.at) }}
-      />
+      <ShellSlot project={{ key: entry.project, name: d.project?.name ?? entry.project }} section="Logs" />
       <LogHead title={title} address={address} day={day} at={entry.at} project={entry.project} />
       <LogFacts
         address={address}

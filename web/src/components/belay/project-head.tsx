@@ -6,17 +6,17 @@ import { MoreHorizontal, Star } from "lucide-react";
 import type { Project } from "../../../../src/store.ts";
 import { moveProjectBy, setProjectColor, setProjectFocus, setProjectGroup, setProjectKinds, setProjectName, setProjectStatus } from "@/app/actions";
 import { PageHeader } from "@/components/layout/page-header";
-import { sectionsOf } from "@/components/layout/site-nav";
 import { projectColor, ProjectMark } from "@/components/project-mark";
 import type { Mark } from "@/lib/data";
 import { projectHref } from "@/lib/hrefs";
+import { sectionsOf } from "@/lib/sidebar";
 import { cn } from "@/lib/utils";
 import { MenuButton, TextEdit, useAction, useOptimisticAction } from "./controls";
 import styles from "./belay.module.css";
 
 const PROJECT_STATUSES: Project["status"][] = ["active", "paused", "archived"];
 
-/** The project's sections as chips under its header, on phones only: the sidebar nests them from 768px. */
+/** The project's sections as chips under its header, on phones only: the sidebar lists them from 768px. */
 function SectionChips({ projectKey }: { projectKey: string }) {
   const pathname = usePathname();
   return (

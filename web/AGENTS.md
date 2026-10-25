@@ -24,9 +24,10 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - After a fresh clone, run `npm install` in `plugin/`: nothing else installs the plugin's runtime deps.
 
 ## Layout
-- `src/components/layout/shell.tsx` is every page's chrome, mounted by the root layout: the sidebar (`site-nav`),
-  its collapsed `rail`, the live Tabs, the Drawer and, on phones, the dock and Strip. Pages say where they sit (and
-  a Workspace passes its rail rows) through `<ShellSlot>`. The Drawer's conversation is `live-provider.tsx`'s.
+- `src/components/layout/shell.tsx` is every page's chrome, mounted by the root layout: the sidebar (`rail`, pinned
+  open or collapsed to icons), the live Tabs, the Drawer and, on phones, the dock (`site-nav`) and Strip. Pages pass
+  their project or course and section (a Reading page's section rows, `lib/sidebar.ts`) and a Workspace its own rail
+  rows through `<ShellSlot>`. The Drawer's conversation is `live-provider.tsx`'s.
 - `layout/palette.tsx` is belay's cmdk command palette, mounted by the shell. A page lists its own commands first with
   `<PageCommands>` (an issue's status keys and !, a grill's resume command, a course's starts, a lesson note's Resume
   conversation). Its New issue and Log what you did reach
@@ -62,7 +63,7 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   `BELAY_SITE_PORT`.
 - Keep `src/lib/` data modules (`sessions`, `projects`, `issues`, `frontmatter`, `upstream`, `format`, `shell`,
   `course-art`, `belay-view`, `watch-paths`, `courses`, `course-paths`, `course-home`, `course-nav`, `wiki-target`,
-  `work`, `session-log`, `routines`, `lesson`, `start-queue`) free of `server-only` and `@/` imports: `pnpm test:site` runs them under plain
+  `work`, `session-log`, `routines`, `lesson`, `start-queue`, `sidebar`) free of `server-only` and `@/` imports: `pnpm test:site` runs them under plain
   `node --test`, which resolves neither. They may import the CLI's `../../../src/*.ts`.
 - Client components take only types from `lib/data`, `lib/belay-view`, `lib/courses`, `lib/course-home` and the CLI's
   `store.ts`, whose runtime pulls in `node:fs`. Values they need live in import-free modules: `lib/hrefs`,

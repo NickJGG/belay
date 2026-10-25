@@ -4,18 +4,14 @@ import * as React from "react";
 
 /** What the open page tells the shell: where it sits under Projects, and a Workspace's own rows. */
 export type Slot = {
-  /** The open project, nested under Projects with its sections. */
+  /** The open project, whose sections a Reading page lists below the app nav. */
   project?: { key: string; name: string };
-  /** The open course, nested under Courses with its sections. */
+  /** The open course, whose sections a Reading page lists below the app nav. */
   course?: { slug: string; title: string };
   /** The project or course section the page belongs to, lit in the sidebar; a section page's own address otherwise decides. */
   section?: string;
-  /** The open detail page (a grill, an issue, a log entry, a note), nested under its section. */
-  detail?: { label: string; href: string };
-  /** Rows for the collapsed rail, between the app nav and its foot (a grill's questions). */
+  /** A Workspace's own rows, below the app nav (a grill's questions). */
   rail?: React.ReactNode;
-  /** Rows nested under the detail in the expanded sidebar. */
-  nav?: React.ReactNode;
 };
 
 const SlotContext = React.createContext<{ slot: Slot; setSlot: (s: Slot | null) => void }>({ slot: {}, setSlot: () => {} });
@@ -31,10 +27,10 @@ export const useSlot = () => React.useContext(SlotContext).slot;
 /** Rendered by a page to fill the shell's slot while it's open. */
 export function ShellSlot(props: Slot) {
   const { setSlot } = React.useContext(SlotContext);
-  const { project, course, section, detail, rail, nav } = props;
+  const { project, course, section, rail } = props;
   React.useEffect(() => {
-    setSlot({ project, course, section, detail, rail, nav });
+    setSlot({ project, course, section, rail });
     return () => setSlot(null);
-  }, [setSlot, project, course, section, detail, rail, nav]);
+  }, [setSlot, project, course, section, rail]);
   return null;
 }

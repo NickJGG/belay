@@ -35,7 +35,7 @@ export default async function KnowledgePage({ params }: Props) {
   const last = d.lessons[0];
   return (
     <div className={belay.page}>
-      <ShellSlot course={{ slug: c, title: course.title }} section="Notes" detail={{ label: d.title, href: courseHref(c, `/knowledge/${topic}`) }} />
+      <ShellSlot course={{ slug: c, title: course.title }} section="Notes" />
       <DetailHead title={d.title} back={{ href: `${base}/notes`, label: "Notes" }} color={courseColor(course)} seed={c} file={d.abs} />
       <Facts
         facts={[

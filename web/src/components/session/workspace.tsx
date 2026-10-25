@@ -6,7 +6,6 @@ import { useTheme } from "next-themes";
 import { Copy, History, LayoutTemplate, X } from "lucide-react";
 import { PageCommands, type PageCommand } from "@/components/layout/palette";
 import { RailRow } from "@/components/layout/rail";
-import { SessionQuestions, type SessionNav } from "@/components/layout/session-nav";
 import { ShellSlot } from "@/components/layout/shell-slot";
 import { subscribeLive } from "@/components/live/event-hub";
 import { sendTo, useLive } from "@/components/live/live-provider";
@@ -20,7 +19,7 @@ import {
   type Remembered,
   type ViewState,
 } from "@/lib/behaviours";
-import type { LiveItem } from "@/lib/data";
+import type { LiveItem, Mark } from "@/lib/data";
 import { frameDoc, loadSpec, renderBody, routeLabel, type MockFile, type Spec } from "@/lib/mock";
 import {
   BEFORE,
@@ -35,11 +34,27 @@ import {
   type SessionDoc,
   type View,
 } from "@/lib/session-doc";
+import type { QuestionSummary } from "@/lib/sessions";
 import { cn } from "@/lib/utils";
 import { Bar, type CommentProps, type PickProps } from "./bar";
 import type { LinkState, Send } from "./drawer";
 import { Frame } from "./frame";
 import styles from "./session.module.css";
+
+/** What the grill page passes about the grill beside its doc. */
+export type SessionNav = {
+  slug: string;
+  topic: string;
+  project?: string;
+  /** The project it's filed under; null when unfiled. */
+  mark: Mark | null;
+  status: string;
+  live: boolean;
+  /** Null for a session without session.json (an old grill session). */
+  questions: QuestionSummary[] | null;
+  /** Its project's page, or Unfiled's. */
+  back: string;
+};
 
 type Props = {
   doc: SessionDoc;
@@ -546,7 +561,6 @@ const UNFILED_KEY = "unfiled";
 function SessionSlot({ doc, view, nav, pulse }: { doc: SessionDoc; view: View; nav: SessionNav; pulse: number | null }) {
   const here = viewHash(view);
   const project = React.useMemo(() => ({ key: nav.mark?.key ?? UNFILED_KEY, name: nav.mark?.name ?? "Unfiled" }), [nav.mark]);
-  const detail = React.useMemo(() => ({ label: nav.slug, href: `/s/${nav.slug}` }), [nav.slug]);
   const rail = (
     <>
       {doc.mock ? (
@@ -569,5 +583,5 @@ function SessionSlot({ doc, view, nav, pulse }: { doc: SessionDoc; view: View; n
       ))}
     </>
   );
-  return <ShellSlot project={project} section="Grills" detail={detail} rail={rail} nav={<SessionQuestions session={nav} />} />;
+  return <ShellSlot project={project} section="Grills" rail={rail} />;
 }

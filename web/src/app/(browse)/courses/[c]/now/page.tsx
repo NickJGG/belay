@@ -9,7 +9,6 @@ import { courseData } from "@/lib/course-data";
 import { courseColor, courseDir, fileMtime, readCourseFile, splitTitle, topicIndex } from "@/lib/courses";
 import { navData } from "@/lib/data";
 import { courseHref } from "@/lib/hrefs";
-import { lessonHref } from "@/lib/lesson";
 
 type Props = { params: Promise<{ c: string }> };
 
@@ -52,7 +51,7 @@ export default async function NowPage({ params }: Props) {
   const dir = courseDir(c);
   return (
     <div className={styles.coursePage}>
-      <ShellSlot course={{ slug: c, title: course.title }} detail={{ label: title, href: lessonHref(c) }} />
+      <ShellSlot course={{ slug: c, title: course.title }} />
       <DetailHead
         title={title}
         back={{ href: courseHref(c), label: course.title }}

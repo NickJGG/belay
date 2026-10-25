@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 import { Prose } from "@/components/content/prose";
-import type { SessionNav } from "@/components/layout/session-nav";
 import { ShellSlot } from "@/components/layout/shell-slot";
-import { SessionWorkspace } from "@/components/session/workspace";
+import { SessionWorkspace, type SessionNav } from "@/components/session/workspace";
 import { navData, sessionDetail, UNFILED } from "@/lib/data";
 import { shortDate, statusLabel } from "@/lib/format";
 import type { SessionDoc } from "@/lib/session-doc";
@@ -33,11 +32,7 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
   if (detail.legacy) {
     return (
       <div className={cn(styles.page, styles.legacy)}>
-        <ShellSlot
-          project={{ key: detail.mark?.key ?? UNFILED, name: detail.mark?.name ?? "Unfiled" }}
-          section="Grills"
-          detail={{ label: s.slug, href: `/s/${s.slug}` }}
-        />
+        <ShellSlot project={{ key: detail.mark?.key ?? UNFILED, name: detail.mark?.name ?? "Unfiled" }} section="Grills" />
         <header className={styles.header}>
           <h1 className={styles.title}>{s.topic}</h1>
           <p className={styles.meta}>
