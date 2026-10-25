@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { test } from "node:test";
-import { dayLabel, flightGrills, flightWhy, grillStanding, kindTotals, projectGroups, shortDay, windowDays } from "../belay-view.ts";
+import { dayLabel, flightGrills, grillProgress, kindTotals, projectGroups, shortDay, windowDays } from "../belay-view.ts";
 import { belayIgnored, belayWatched } from "../watch-paths.ts";
 
 test("day labels are relative to today, with the year only when it differs", () => {
@@ -26,18 +26,11 @@ test("kind totals sum counts per kind, an entry without a count being one", () =
   assert.equal(kindTotals([{}]), "");
 });
 
-test("a grill row says where it stands", () => {
-  const base = { live: false, status: "in-progress", stage: "grilling" as const };
-  assert.equal(grillStanding({ ...base, live: true }), "your turn");
-  assert.equal(grillStanding({ ...base, live: true, working: true }), "Claude is working…");
-  assert.equal(grillStanding({ ...base, questions: 16 }), "16 questions");
-  assert.equal(grillStanding({ ...base, questions: 1 }), "1 question");
-  assert.equal(grillStanding(base), "started");
-  const planned = { live: false, status: "planned" };
-  assert.equal(grillStanding({ ...planned, stage: "building", progress: { done: 0, total: 1 }, next: { id: "KILN-7" } }), "KILN-7 · 0/1");
-  assert.equal(grillStanding({ ...planned, stage: "shipped", progress: { done: 3, total: 3 } }), "✓ 3 issues");
-  assert.equal(grillStanding({ ...planned, stage: "shipped" }), "✓ no issues");
-  assert.equal(grillStanding({ live: false, status: "abandoned", stage: "shipped" }), "abandoned");
+test("only a building grill with issues shows its progress", () => {
+  assert.equal(grillProgress({ stage: "building", progress: { done: 1, total: 3 } }), "1/3");
+  assert.equal(grillProgress({ stage: "building" }), undefined);
+  assert.equal(grillProgress({ stage: "shipped", progress: { done: 3, total: 3 } }), undefined);
+  assert.equal(grillProgress({ stage: "grilling" }), undefined);
 });
 
 test("projects group into Working on, Everything else, then paused and archived", () => {
@@ -70,18 +63,6 @@ test("belay's watcher sees issues, projects, log days and order.yaml, in either 
     assert.equal(belayIgnored(root)(at(".git")), true);
     assert.equal(belayIgnored(root)(at("settings.yaml")), true);
   }
-});
-
-test("an In flight row says idle or doing, a live grill's turn, else its open question", () => {
-  const issue = { kind: "issue" as const, id: "KILN-7", title: "t", project: "KILN" };
-  assert.equal(flightWhy(issue), "doing");
-  assert.equal(flightWhy({ ...issue, idleDays: 4 }), "idle 4 days");
-  const grill = { kind: "grill" as const, slug: "g", topic: "t", live: false };
-  assert.equal(flightWhy({ ...grill, live: true }), "live · your turn");
-  assert.equal(flightWhy({ ...grill, live: true, working: true, openQ: 3 }), "live · Claude is working…");
-  assert.equal(flightWhy({ ...grill, openQ: 3 }), "Q3 open");
-  assert.equal(flightWhy({ ...grill, questions: 2 }), "2 questions");
-  assert.equal(flightWhy(grill), "started");
 });
 
 test("live grills lead In flight, once each, untagged ones included", () => {

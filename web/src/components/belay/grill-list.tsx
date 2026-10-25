@@ -1,12 +1,9 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import Link from "next/link";
-import { TurnDot } from "@/components/turn-dot";
-import { shortDate } from "@/lib/format";
-import { grillHref } from "@/lib/hrefs";
 import type { Stage } from "@/lib/issues";
 import { cn } from "@/lib/utils";
+import { GrillRow } from "./grill-row";
 import styles from "./belay.module.css";
 
 // Not issues.ts's STAGES: importing a value from it would bundle the CLI's store into the client.
@@ -14,14 +11,14 @@ const STAGES: Stage[] = ["grilling", "building", "shipped"];
 const LABELS: Record<Stage, string> = { grilling: "Still grilling", building: "Building", shipped: "Shipped" };
 const NONE: Record<Stage, string> = { grilling: "No grills still going.", building: "Nothing building.", shipped: "Nothing shipped yet." };
 
-export type GrillRow = {
+export type GrillItem = {
   slug: string;
   topic: string;
   updated?: string;
   live: boolean;
   working?: boolean;
-  /** Where it stands, from `grillStanding`. */
-  standing: string;
+  /** Building only: `done/total`, from `grillProgress`. */
+  progress?: string;
 };
 
 const subscribeHash = (cb: () => void) => {
@@ -30,10 +27,10 @@ const subscribeHash = (cb: () => void) => {
 };
 
 /**
- * A project's grills under a Still grilling · Building · Shipped filter, kept in the hash. Rows are
- * one line: the date, a live dot, the topic, then where it stands; the slug shows on hover.
+ * A project's grills under a Still grilling · Building · Shipped filter, kept in the hash, as `GrillRow`s;
+ * a Building row shows its progress before the date.
  */
-export function GrillList({ stages }: { stages: Record<Stage, GrillRow[]> }) {
+export function GrillList({ stages }: { stages: Record<Stage, GrillItem[]> }) {
   const hash = useSyncExternalStore(subscribeHash, () => location.hash, () => "");
   const tab = STAGES.find((st) => `#${st}` === hash) ?? STAGES.find((st) => stages[st].length) ?? "grilling";
   return (
@@ -49,14 +46,7 @@ export function GrillList({ stages }: { stages: Record<Stage, GrillRow[]> }) {
       {stages[tab].length ? (
         <ul className={styles.rows} role="tabpanel">
           {stages[tab].map((g) => (
-            <li key={g.slug} className={styles.row} title={g.slug}>
-              <span className={styles.date}>{shortDate(g.updated)}</span>
-              {g.live ? <TurnDot working={!!g.working} /> : <span className={styles.dot} aria-hidden />}
-              <Link href={grillHref(g.slug)} className={cn(styles.grow, styles.stretch)}>
-                {g.topic}
-              </Link>
-              <span className={styles.side}>{g.standing}</span>
-            </li>
+            <GrillRow key={g.slug} slug={g.slug} topic={g.topic} updated={g.updated} live={g.live} working={g.working} side={g.progress} />
           ))}
         </ul>
       ) : (

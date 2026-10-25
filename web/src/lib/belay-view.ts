@@ -1,4 +1,4 @@
-/** How belay's records read on the pages: day labels, grill rows' standing, the Projects page's groups. */
+/** How belay's records read on the pages: day labels, grill rows' progress, the Projects page's groups. */
 import type { DatedEntry } from "../../../src/logs.ts";
 import { addDays, daysBetween } from "../../../src/workday.ts";
 
@@ -41,28 +41,9 @@ export function kindTotals(entries: Pick<DatedEntry, "kind" | "count">[]): strin
   return [...totals].map(([k, n]) => `${n} ${k}`).join(" · ");
 }
 
-const issues = (n: number) => (n === 1 ? "1 issue" : `${n} issues`);
-
-export type GrillStanding = {
-  live: boolean;
-  working?: boolean;
-  stage: "grilling" | "building" | "shipped";
-  status: string;
-  questions?: number;
-  progress?: { done: number; total: number };
-  next?: { id: string };
-};
-
-/** Where a grill stands, for its row: whose turn, its questions, its next issue and progress, or what shipped. */
-export function grillStanding(g: GrillStanding): string {
-  if (g.live) return g.working ? "Claude is working…" : "your turn";
-  if (g.stage === "grilling") return g.questions ? (g.questions === 1 ? "1 question" : `${g.questions} questions`) : "started";
-  if (g.stage === "building" && g.progress) {
-    const of = `${g.progress.done}/${g.progress.total}`;
-    return g.next ? `${g.next.id} · ${of}` : of;
-  }
-  if (g.status === "abandoned") return "abandoned";
-  return `✓ ${g.progress ? issues(g.progress.total) : "no issues"}`;
+/** A building grill's `done/total`, for its Grills row; nothing for any other. */
+export function grillProgress(g: { stage: "grilling" | "building" | "shipped"; progress?: { done: number; total: number } }): string | undefined {
+  return g.stage === "building" && g.progress ? `${g.progress.done}/${g.progress.total}` : undefined;
 }
 
 /** The Projects page's groups: Working on (focus or open work), Everything else, then paused and archived. */
@@ -73,29 +54,6 @@ export function projectGroups<P extends { status: string; focus: boolean; open: 
     rest: active.filter((p) => !p.focus && !p.open),
     shelved: projects.filter((p) => p.status !== "active"),
   };
-}
-
-export type FlightIssue = { kind: "issue"; id: string; title: string; project: string; idleDays?: number };
-
-export type FlightGrill = {
-  kind: "grill";
-  slug: string;
-  topic: string;
-  live: boolean;
-  working?: boolean;
-  /** The first open question's number. */
-  openQ?: number;
-  questions?: number;
-};
-
-export type FlightRow = FlightIssue | FlightGrill;
-
-/** What an In flight row says at its right: idle or doing, a live grill's turn, else its open question. */
-export function flightWhy(r: FlightRow): string {
-  if (r.kind === "issue") return r.idleDays ? `idle ${r.idleDays} days` : "doing";
-  if (r.live) return `live · ${r.working ? "Claude is working…" : "your turn"}`;
-  if (r.openQ) return `Q${r.openQ} open`;
-  return grillStanding({ live: false, stage: "grilling", status: "in-progress", questions: r.questions });
 }
 
 /** Belay's In flight grills with the live ones moved first, and any live grill its rule left out (no project tag) added. */

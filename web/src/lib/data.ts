@@ -17,7 +17,7 @@ import type { ChatEntry, OpenTurn } from "./chat";
 import { courseIndex, type CourseIndex } from "./course-data";
 import { grillsDir, lessonsDir } from "./config";
 import { parseFrontmatter } from "./frontmatter";
-import { flightGrills, type FlightRow } from "./belay-view";
+import { flightGrills } from "./belay-view";
 import { isClosed, issuesByGrill, stage, STAGES, type Issue, type Stage } from "./issues";
 import { grillHref, UNFILED } from "./hrefs";
 import { MOCK_FILES, type MockFile } from "./mock";
@@ -201,13 +201,14 @@ export async function navData(): Promise<Nav> {
   return { live: items, seeds: Object.fromEntries(items.map((l) => [l.slug, seed(l.slug)])) };
 }
 
-export type HomeRow = FlightRow & { mark: Mark | null };
+export type FlightIssue = Pick<BelayIssue, "id" | "title" | "status" | "priority"> & { mark: Mark | null };
+export type FlightGrill = Pick<WorkItem, "slug" | "topic" | "updated" | "live" | "working" | "mark">;
 
 /**
  * Home's In flight: belay's rule, doing issues then grills no issue links to yet, with live grills first.
  * Legacy grills never count: most were left `in-progress`, and none can be resumed with `/grill resume`.
  */
-export async function homeFlight(): Promise<HomeRow[]> {
+export async function homeFlight(): Promise<{ issues: FlightIssue[]; grills: FlightGrill[] }> {
   const { live, sessions, projects, ctx } = await load();
   const c = belay();
   const today = workDay();
@@ -220,30 +221,25 @@ export async function homeFlight(): Promise<HomeRow[]> {
   const grills = flightGrills(
     flight.grill,
     live.flatMap((l) => bySlug.get(l.slug) ?? []),
-  ).map((g): HomeRow => {
+  ).map((g): FlightGrill => {
     const s = bySlug.get(g.slug)!;
     return {
-      kind: "grill",
       slug: s.slug,
       topic: s.topic,
+      updated: s.updated,
       live: working.has(s.slug),
       working: working.get(s.slug),
-      openQ: s.questions?.find((q) => q.status === "open")?.n,
-      questions: s.questions?.length,
       mark: ctx.marks.get(s.slug) ?? null,
     };
   });
-  return [
-    ...flight.issues.map(({ issue, idleDays }): HomeRow => ({
-      kind: "issue",
-      id: issue.id,
-      title: issue.title,
-      project: issue.project,
-      idleDays,
-      mark: marks.get(issue.project) ?? null,
-    })),
-    ...grills,
-  ];
+  const issues = flight.issues.map(({ issue }): FlightIssue => ({
+    id: issue.id,
+    title: issue.title,
+    status: issue.status,
+    priority: issue.priority,
+    mark: marks.get(issue.project) ?? null,
+  }));
+  return { issues, grills };
 }
 
 const byStage = (sessions: WorkItem[]) =>

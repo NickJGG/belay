@@ -16,7 +16,7 @@ function longDay(day: string) {
 
 /** Home: one column, In flight then Your courses, each course's card with its Up next band. */
 export default async function HomePage() {
-  const [rows, courses] = await Promise.all([homeFlight(), homeCourses()]);
+  const [flight, courses] = await Promise.all([homeFlight(), homeCourses()]);
   return (
     <div className={styles.page}>
       <header>
@@ -25,7 +25,7 @@ export default async function HomePage() {
       </header>
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>In flight</h2>
-        <InFlight rows={rows} />
+        <InFlight {...flight} />
       </section>
       {courses.length ? (
         <section className={styles.section}>
