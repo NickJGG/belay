@@ -1,6 +1,20 @@
 # belay
 
-A personal issue tracker for Claude Code work: the `belay` CLI (`src/`) and a local dashboard (`web/`). Run `belay help` for the commands.
+A personal issue tracker for Claude Code work, and the Belay app around it: the `belay` CLI (`src/`), a local app (`web/`) for projects, grills and courses, and the `belay` Claude Code plugin (`plugin/`) that connects sessions to it. Run `belay help` for the commands.
+
+## Plugin setup
+
+The plugin's MCP server is compiled from `bridge/` into `plugin/bridge/` with `pnpm build:bridge` in `web/`; the output is committed. Install its runtime deps once, then add the repo as a local marketplace and install the plugin:
+
+```sh
+cd plugin && npm install && cd ..
+claude plugin marketplace add .
+claude plugin install belay@belay
+```
+
+The marketplace loads the plugin in place, so edits take effect at the next session start or `/reload-plugins`.
+
+`belay claude [args]` starts Claude Code with the plugin's channel loaded (the `/grill` skill needs it); `belay learn [args]` does the same in `~/Learning` (`HANDHOLD_ROOT`) for lessons. Both relaunch Claude when a lesson asks to restart.
 
 ## Dashboard setup
 

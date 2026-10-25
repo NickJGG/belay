@@ -1,4 +1,4 @@
-# Belay (Sear, belay and Topo merged)
+# Belay
 
 One local app for a developer's projects, design grills and courses, each worked through Claude Code sessions with a browser view beside them.
 
@@ -8,11 +8,11 @@ One local app for a developer's projects, design grills and courses, each worked
 
 **Session**:
 One Claude Code conversation, from launch until quit or `/clear`.
-_Avoid_: transcript (for this meaning), Sear session
+_Avoid_: transcript (for this meaning)
 
 **Grill**:
-A persisted `/sear` interview (`~/Sear/sessions/<slug>/`), which can span several Sessions.
-_Avoid_: Sear session, grill session, session (for this meaning)
+A persisted `/grill` interview (`~/Belay/grills/<slug>/`), which can span several Sessions.
+_Avoid_: grill session, session (for this meaning)
 
 **Lesson**:
 One sitting of a Course's lesson routine on one Topic, inside a Session.
@@ -58,7 +58,3 @@ _Avoid_: Now page
 
 > **Dev:** "Nick resumed yesterday's **Grill** this morning. Is that a second **Grill**?"
 > **Domain expert:** "No: one **Grill**, two **Sessions**. The project's Grills list shows it once, and the **Tab** is the same **Grill** reattached."
-
-## Flagged ambiguities
-
-- "session" meant a Claude conversation in belay and Topo but a grill in Sear: resolved, a **Session** is the conversation and a **Grill** is the interview.

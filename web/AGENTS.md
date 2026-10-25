@@ -10,9 +10,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Belay web
 
-The Belay app (Sear, belay's dashboard and Topo merged): this Next app, served by `belay serve` on 4747.
-Grill and lesson sessions live in `~/Sear/sessions/<slug>/`, belay's data in `~/Belay`, courses in `~/Learning`, and the Claude Code channel bridge ships as
-the `sear` plugin at the repo root. Vocabulary is in `CONTEXT.md` beside this file (the CLI's glossary is the
+The Belay app: this Next app, served by `belay serve` on 4747. Everything it reads lives in the data dir
+(`~/Belay`, `BELAY_DATA`): grills in `grills/<slug>/`, lesson folders in `lessons/`, the start queue and restart marker
+in `.run/`. Courses are in `~/Learning`, and the Claude Code channel bridge ships as the `belay` plugin at the repo root. Vocabulary is in `CONTEXT.md` beside this file (the CLI's glossary is the
 root `CONTEXT.md`).
 
 ## Commands
@@ -32,13 +32,13 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   conversation). Its New issue and Log what you did reach
   the project page's form through `belay/intents.ts`.
 - Home (`/`) is In flight, from the CLI's `inFlight` (`homeFlight` in `data.ts`), then Your courses (`homeCourses`).
-- Topo's course pages: `/courses` (course cards), `/courses/<c>` (Syllabus) and its tabs `{map,lessons,notes,
+- Course pages: `/courses` (course cards), `/courses/<c>` (Syllabus) and its tabs `{map,lessons,notes,
   misconceptions,cards,work}` under one layout holding the course header, and the detail pages
   `/courses/<c>/{knowledge,lessons,sources}/<x>`. Their pieces are in `src/components/course/`; their data is
   `lib/course-data.ts` over `lib/courses.ts`, which loads the learn skill's `scripts/courses.js` and `cards.js`
   (formats.md is the contract). The site writes only `work/` (`/api/work`), and a lesson note's Resume conversation
   (`app/course-actions.ts`) opens `claude --resume` in Windows Terminal.
-- Lessons: a live lesson's Tab opens `/courses/<c>/now` (grill Q33), its Workspace. Start buttons
+- Lessons: a live lesson's Tab opens `/courses/<c>/now`, its Workspace. Start buttons
   (`course/start-buttons.tsx`) POST `/api/lesson/start`, which queues the routine (`lib/start-queue.ts`) and asks a
   live lesson to restart into it; Follow along (`live/follow.tsx`) follows the lesson's `show`s (`lib/lesson.ts`).
 - Belay's pages: `/p` (project cards), `/p/<key>` (Issues; `?view=ideas`), `/p/<key>/{grills,activity,logs}` under
@@ -46,20 +46,20 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   `src/components/belay/`; their writes are the server actions in `src/app/actions.ts`, each a thin wrapper around
   one CLI op on a fresh strict `Ctx`.
 - At the repo root: `bridge/`: the MCP server's TypeScript source. `plugin/`: the plugin (`.claude-plugin/plugin.json` declares the
-  `sear` MCP server and binds a `channels` entry to it). `.claude-plugin/marketplace.json`: the local `sear`
+  `belay` MCP server and binds a `channels` entry to it). `.claude-plugin/marketplace.json`: the local `belay`
   marketplace listing it.
-- `plugin/SKILL.md` is the `/sear` skill (grill rewritten for Sear); from a marketplace it shows as `/sear:sear`.
+- `plugin/SKILL.md` is the `/grill` skill; from a marketplace it shows as `/belay:grill`.
 - `plugin/references/session-format.md` defines `session.json`, `chat.jsonl` and the mock patch order.
-- `launcher/`: `sear.cmd` and `sear` (Git Bash) start `claude` with
-  `--dangerously-load-development-channels plugin:sear@sear` and `SEAR_CHANNEL=1` (the skills' "channel loaded"
-  check); `sear learn` starts it in `~/Learning`. Both relaunch `claude` while `~/Sear/restart` exists when it exits
-  (a lesson's restart). `accept-dev-channels.ps1` presses Enter on the dev-channels dialog.
+- `belay claude` / `belay learn` (`../src/launch.ts`) start `claude` with
+  `--dangerously-load-development-channels plugin:belay@belay` and `BELAY_CHANNEL=1` (the skills' "channel loaded"
+  check); `belay learn` starts it in `~/Learning`. Both relaunch `claude` while `<data>/.run/restart` exists when it
+  exits (a lesson's restart). `../scripts/accept-dev-channels.ps1` presses Enter on the dev-channels dialog.
 
 ## Invariants
 - Keep the repo root's SDK and zod dev deps (`../package.json`) on the versions in `plugin/package.json`: the
   bridge is typechecked against the root's copies but runs against the plugin's.
 - The site runs on port 4747 (`belay serve`), the only site origin the bridge accepts; changing it also needs
-  `SEAR_SITE_PORT`.
+  `BELAY_SITE_PORT`.
 - Keep `src/lib/` data modules (`sessions`, `projects`, `issues`, `frontmatter`, `upstream`, `format`, `shell`,
   `course-art`, `belay-view`, `watch-paths`, `courses`, `course-paths`, `course-home`, `course-nav`, `wiki-target`,
   `work`, `session-log`, `routines`, `lesson`, `start-queue`) free of `server-only` and `@/` imports: `pnpm test:site` runs them under plain
@@ -79,7 +79,8 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   palette, `GET /api/search`) listens too. `p` is Pick, so an option keyed `p` has no shortcut.
 - Follow along never jumps while a comment or pick note is being written: the jump would discard it. A lesson's
   Follow along waits in its pill while a text field has text.
-- `bridge/lesson.mts`'s start queue and `lib/start-queue.ts` agree on `~/Sear/start.json` (beside the sessions folder).
+- `bridge/lesson.mts`'s start queue and `lib/start-queue.ts` agree on `<data>/.run/start.json`, and the restart marker
+  is `<data>/.run/restart` for the bridge and `src/launch.ts` alike.
 
 ## Plugin loading
 The marketplace was added from a local path (the belay repo root), so the plugin loads in place from `plugin/`: edits take effect at
@@ -87,7 +88,7 @@ the next session start or `/reload-plugins`, with no reinstall. It is enabled at
 starts in every session; the channel only registers in sessions launched with the dev-channels flag.
 
 ## Channel transport (launch-tested on Claude Code 2.1.309)
-- A plugin `channels` entry loads via `--dangerously-load-development-channels plugin:sear@sear`.
+- A plugin `channels` entry loads via `--dangerously-load-development-channels plugin:belay@belay`.
 - `notifications/claude/channel` pushes reach an idle session, and Claude acts on them.
 - Tools announced later with `tools/list_changed` become callable.
 - Protocol `2025-11-25` negotiates with SDK 1.32.1; `MCP_PROTOCOL_NEGOTIATION=legacy` is not needed.
@@ -95,16 +96,16 @@ starts in every session; the channel only registers in sessions launched with th
   `notifications/claude/channel/permission` verdict from the site answers it.
 
 ## Bridge protocol
-Idle, the server lists only `attach`: a grill by `slug` (`/sear`) or a lesson by `course` (the `/learn` skills).
-Attaching binds a free 127.0.0.1 port with a fresh token, writes `~/Sear/sessions/<slug>/bridge.json`
+Idle, the server lists only `attach`: a grill by `slug` (`/grill`) or a lesson by `course` (the `/learn` skills).
+Attaching binds a free 127.0.0.1 port with a fresh token, writes `bridge.json` in the session's folder
 `{port, token, sessionId, pid, at}`, and announces `reply`, `show`, `choice` and `detach`, plus `restart` for a
 lesson. The site's hub holds an upstream to every `bridge.json`'s `/events`; a session is Live while that stream is
 open. Message kinds live in `bridge/protocol.mts`, event types in `bridge/http.mts`.
-- Lessons (`bridge/lesson.mts`, Topo's channel folded in): attach makes up `lesson-<course>-<yyyymmdd>-<hhmm>` and
-  writes its `kind: "lesson"` session.json (grill lists skip it). `show` takes `{target: claim|whiteboard|work|source,
+- Lessons (`bridge/lesson.mts`): attach makes up `lesson-<course>-<yyyymmdd>-<hhmm>` and writes its
+  `<data>/lessons/<slug>/session.json` (`kind: "lesson"`). `show` takes `{target: claim|whiteboard|work|source,
   topic?, id?, path?}`, checked against the course folder; the upstream keeps the last one for pages opened later.
   The site sends `attempt` (a `work/` file) and `restart` (a start button). A start: the site writes
-  `~/Sear/start.json`; `restart` checks it, writes `~/Sear/restart` and ends `claude` (the parent pid); the
+  `.run/start.json`; `restart` checks it, writes `.run/restart` and ends `claude` (the parent pid); the
   launcher relaunches; the new bridge, idle in `~/Learning`, sends the queue as a `kind="command"` message.
 - Requests need a loopback `Host`; an `Origin`, if present, must be `http://{127.0.0.1,localhost}:4747`.
 - A `choice` or `permission` message must match an open one; a slug mismatch or disconnected session gets 409.
@@ -124,10 +125,11 @@ open. Message kinds live in `bridge/protocol.mts`, event types in `bridge/http.m
   `~/.claude/projects/<cwd>/`, and then any newer transcript there disconnects, a second session's included.
 
 ## Site data
-- `sessions.ts` reads `~/Sear/sessions/*` (session.json, else `<slug>.md` frontmatter, else a bare `bridge.json`)
-  and old grill sessions from `~/.claude/skills/grill/sessions` (`SEAR_GRILL_DIR`); Sear wins on a slug in both.
-  That folder is a frozen archive read in place: `/grill` is deprecated, and its previews and old plans point there.
-  A legacy session renders its `.md`, with its old preview at `/legacy/sessions/<slug>/preview.html`.
+- `sessions.ts` reads `<data>/grills/*`: session.json, else a bare `bridge.json` (in progress), else `<slug>.md`
+  frontmatter (`legacy`). A legacy grill is read-only and renders its `.md`, with its old preview at
+  `/legacy/sessions/<slug>/preview.html`; the shared shell it loads is served from `web/legacy/`. Lessons come from
+  `<data>/lessons/*`. `/api/s/<slug>/*` routes find a slug's folder with `sessionDir` (grills, then lessons).
+- The site sends a bridge `X-Belay-Token`, read from that session's `bridge.json`.
 - Belay's data comes from the CLI's store through one lenient, request-cached `Ctx` (`belay()` in `data.ts`,
   `BELAY_DATA`); `projects.ts` sorts its projects and files untagged sessions by belay's fuzzy match.
 - Live sync: the hub also watches the data dir's issues, projects, log days and `order.yaml` (`belayWatched`) and
@@ -142,6 +144,6 @@ open. Message kinds live in `bridge/protocol.mts`, event types in `bridge/http.m
   restart leaves the meters blank until the next tick.
 - Pictures upload as raw bytes to `POST /api/s/<slug>/images` (same-origin, PNG/JPEG/GIF/WebP, 10 MB) into
   `images/`; `GET`/`DELETE /api/s/<slug>/images/<name>` serve and remove one, and a name `chat.jsonl` uses can't be deleted.
-- The shell keeps `sear:sidebar` (collapsed per page kind), `sear:tab` (the selected Tab) and `sear:drawer` in
-  localStorage. Per-session UI state is in `sear:session:<slug>`; the view stays in the hash (`#current`,
+- The shell keeps `belay:sidebar` (collapsed per page kind), `belay:tab` (the selected Tab) and `belay:drawer` in
+  localStorage. Per-session UI state is in `belay:session:<slug>`; the view stays in the hash (`#current`,
   `#today`, `#q-<n>`).
