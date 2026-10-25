@@ -6,7 +6,7 @@ import { homeFlight } from "@/lib/data";
 import { workDay } from "../../../../src/workday.ts";
 import styles from "../page.module.css";
 
-export const metadata = { title: "Home — Belay" };
+export const metadata = { title: "Home • Belay" };
 
 /** `Saturday 24 October` */
 function longDay(day: string) {

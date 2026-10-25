@@ -19,7 +19,7 @@ async function load({ params, searchParams }: Props) {
 
 export async function generateMetadata(props: Props) {
   const { day, n, d } = await load(props);
-  return { title: `${d && !("gone" in d) ? firstLine(d.entry.text).line : `${day}/${n}`} — Belay` };
+  return { title: `${d && !("gone" in d) ? firstLine(d.entry.text).line : `${day}/${n}`} • Belay` };
 }
 
 /** A log entry, built like the issue page: faded header, facts table, then the text after its first line. */

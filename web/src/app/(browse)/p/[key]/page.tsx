@@ -13,7 +13,7 @@ import type { Issue, IssueStatus } from "../../../../../../src/store.ts";
 type Props = { params: Promise<{ key: string }>; searchParams: Promise<Record<string, string | undefined>> };
 
 export async function generateMetadata({ params }: Props) {
-  return { title: `${decodeURIComponent((await params).key).toUpperCase()} — Belay` };
+  return { title: `${decodeURIComponent((await params).key).toUpperCase()} • Belay` };
 }
 
 /** A project's Issues: an Issues · Ideas filter with +, then issue rows in collapsible status groups. */

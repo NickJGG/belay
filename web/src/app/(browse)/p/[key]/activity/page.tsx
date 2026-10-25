@@ -7,7 +7,7 @@ import { projectHref, UNFILED } from "@/lib/hrefs";
 type Props = { params: Promise<{ key: string }>; searchParams: Promise<{ days?: string }> };
 
 export async function generateMetadata({ params }: Props) {
-  return { title: `${decodeURIComponent((await params).key).toUpperCase()} activity — Belay` };
+  return { title: `${decodeURIComponent((await params).key).toUpperCase()} activity • Belay` };
 }
 
 /** A project's Activity: issue moves and log entries by work day, a week at first and a week more per Show earlier. */

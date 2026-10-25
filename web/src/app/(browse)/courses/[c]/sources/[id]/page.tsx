@@ -15,7 +15,7 @@ type Props = { params: Promise<{ c: string; id: string }> };
 export async function generateMetadata({ params }: Props) {
   const { c, id } = await params;
   const course = await courseData(c);
-  return { title: `${(course && sourceDetail(course, id)?.title) ?? id} — Belay` };
+  return { title: `${(course && sourceDetail(course, id)?.title) ?? id} • Belay` };
 }
 
 /** `https://github.com/stanford-cs336/…` without its scheme, for the Link fact. */

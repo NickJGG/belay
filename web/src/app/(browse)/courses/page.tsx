@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { courseCards } from "@/lib/course-data";
 import { root } from "@/lib/courses";
 
-export const metadata = { title: "Courses — Belay" };
+export const metadata = { title: "Courses • Belay" };
 
 /** Courses: the list header, then the course cards, most urgent first. */
 export default async function CoursesPage() {

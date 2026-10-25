@@ -7,7 +7,7 @@ import { projectsIndex, type ProjectCard as Card } from "@/lib/data";
 import { UNFILED } from "@/lib/hrefs";
 import page from "../../page.module.css";
 
-export const metadata = { title: "Projects — Belay" };
+export const metadata = { title: "Projects • Belay" };
 
 const card = (p: Card) => (
   <ProjectCard

@@ -17,7 +17,7 @@ type Props = { params: Promise<{ c: string; topic: string }> };
 export async function generateMetadata({ params }: Props) {
   const { c, topic } = await params;
   const course = await courseData(c);
-  return { title: `${(course && knowledgeDetail(course, topic)?.title) ?? topic} — Belay` };
+  return { title: `${(course && knowledgeDetail(course, topic)?.title) ?? topic} • Belay` };
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;

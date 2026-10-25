@@ -15,7 +15,7 @@ type Props = { params: Promise<{ c: string; slug: string }> };
 export async function generateMetadata({ params }: Props) {
   const { c, slug } = await params;
   const course = await courseData(c);
-  return { title: `${(course && lessonDetail(course, slug)?.title) ?? slug} — Belay` };
+  return { title: `${(course && lessonDetail(course, slug)?.title) ?? slug} • Belay` };
 }
 
 /** `Fri 24 Oct` */

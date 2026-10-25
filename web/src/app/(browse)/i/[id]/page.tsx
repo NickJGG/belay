@@ -11,7 +11,7 @@ type Props = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: Props) {
   const id = decodeURIComponent((await params).id).toUpperCase();
   const d = await issueDetail(id);
-  return { title: `${d ? `${d.issue.id} ${d.issue.title}` : id} — Belay` };
+  return { title: `${d ? `${d.issue.id} ${d.issue.title}` : id} • Belay` };
 }
 
 /** An issue: the faded header with its title line, the facts table, the description, then comments. */

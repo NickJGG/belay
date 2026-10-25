@@ -31,7 +31,7 @@ async function liveTitle(c: string) {
 export async function generateMetadata({ params }: Props) {
   const { c } = await params;
   const course = await courseData(c);
-  return { title: `${(await liveTitle(c)) ?? "Whiteboard"} · ${course?.title ?? c} — Belay` };
+  return { title: `${(await liveTitle(c)) ?? "Whiteboard"} · ${course?.title ?? c} • Belay` };
 }
 
 /**

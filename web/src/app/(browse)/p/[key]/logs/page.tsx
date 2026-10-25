@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 type Props = { params: Promise<{ key: string }>; searchParams: Promise<{ all?: string }> };
 
 export async function generateMetadata({ params }: Props) {
-  return { title: `${decodeURIComponent((await params).key).toUpperCase()} logs — Belay` };
+  return { title: `${decodeURIComponent((await params).key).toUpperCase()} logs • Belay` };
 }
 
 function Entry({ e }: { e: DatedEntry }) {

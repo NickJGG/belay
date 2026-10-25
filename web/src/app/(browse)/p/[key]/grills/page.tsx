@@ -6,7 +6,7 @@ import { STAGES, type Stage } from "@/lib/issues";
 type Props = { params: Promise<{ key: string }> };
 
 export async function generateMetadata({ params }: Props) {
-  return { title: `${decodeURIComponent((await params).key).toUpperCase()} grills — Belay` };
+  return { title: `${decodeURIComponent((await params).key).toUpperCase()} grills • Belay` };
 }
 
 const row = (s: WorkItem): GrillItem => ({
