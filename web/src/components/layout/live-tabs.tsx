@@ -31,12 +31,13 @@ const SLOP = 5;
 
 /**
  * One Tab per attached grill or lesson, above the page. The open page's Tab looks like the page's own; the selected one
- * elsewhere (what the Drawer shows) only keeps a faint underline. Nothing while none is live.
+ * elsewhere (what the Drawer shows) only keeps a faint underline. One not yet opened in this browser reads New.
+ * Nothing while none is live.
  *
  * Drag a Tab along the row to reorder: it rides under the cursor and the others slide aside to open its gap.
  */
 export function LiveTabs() {
-  const { live, selected, select, move } = useLive();
+  const { live, selected, select, move, fresh } = useLive();
   const here = pageTab(usePathname() ?? "/", live);
   const drag = React.useRef<Drag | null>(null);
   const dropped = React.useRef(false);
@@ -114,13 +115,14 @@ export function LiveTabs() {
             data-tab={s.slug}
             href={s.href}
             onClick={() => select(s.slug)}
-            className={cn(styles.tab, on && styles.on, picked && styles.picked)}
+            className={cn(styles.tab, on && styles.on, picked && styles.picked, fresh.has(s.slug) && styles.fresh)}
             aria-current={on ? "page" : picked ? "true" : undefined}
             title={tabHover(s)}
           >
             <TurnDot working={s.working} />
             <TabMark s={s} />
             <span className={styles.title}>{tabTitle(s)}</span>
+            {fresh.has(s.slug) ? <span className={styles.new}>New</span> : null}
           </Link>
         );
       })}

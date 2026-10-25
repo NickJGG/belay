@@ -6,7 +6,7 @@ import type { LinkState, PendingComment, Send } from "@/components/session/drawe
 import { applyResult, toStep, type ChatEntry, type OpenTurn } from "@/lib/chat";
 import type { DrawerSeed, LiveItem } from "@/lib/data";
 import { toShow, type LessonShow } from "@/lib/lesson";
-import { DRAWER_DEFAULTS, DRAWER_KEY, moveTab, orderTabs, pageTab, parseDrawer, parseTabOrder, selectTab, TAB_KEY, TABS_KEY, type DrawerPrefs } from "@/lib/shell";
+import { DRAWER_DEFAULTS, DRAWER_KEY, fresh as freshTabs, markSeen, moveTab, orderTabs, pageTab, parseDrawer, parseSeen, parseTabOrder, SEEN_KEY, selectTab, TAB_KEY, TABS_KEY, type DrawerPrefs } from "@/lib/shell";
 import type { Queue } from "@/lib/start-queue";
 import type { Usage } from "@/lib/usage";
 import { subscribeLive } from "./event-hub";
@@ -20,6 +20,8 @@ type Live = {
   select: (slug: string) => void;
   /** Drops a Tab at index `to` of `live`, and stores the order. */
   move: (slug: string, to: number) => void;
+  /** Tabs not yet opened in this browser. */
+  fresh: Set<string>;
   chat: ChatEntry[];
   turn: OpenTurn | null;
   usage: Usage | null;
@@ -83,11 +85,21 @@ export function LiveProvider({ live: incoming, seeds, children }: { live: LiveIt
   const [last, setLast] = React.useState<string | null>(null);
   const [order, setOrder] = React.useState<string[]>([]);
   const [drawer, setDrawerState] = React.useState<DrawerPrefs>(DRAWER_DEFAULTS);
+  // Null until read, so nothing renders New before this browser's list is known.
+  const [seen, setSeen] = React.useState<string[] | null>(null);
+  const firstLive = React.useRef(incoming);
   React.useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is client-only
     setLast(read(TAB_KEY));
     setOrder(parseTabOrder(read(TABS_KEY)));
     setDrawerState(parseDrawer(read(DRAWER_KEY)));
+    let saved = parseSeen(read(SEEN_KEY));
+    // A first visit counts what's already live as seen, so a new browser doesn't mark everything New.
+    if (!saved) {
+      saved = firstLive.current.map((l) => l.slug);
+      write(SEEN_KEY, JSON.stringify(saved));
+    }
+    setSeen(saved);
   }, []);
 
   const live = React.useMemo(() => {
@@ -103,13 +115,28 @@ export function LiveProvider({ live: incoming, seeds, children }: { live: LiveIt
   );
   const selected = live.find((l) => l.slug === slug) ?? null;
 
+  const liveSlugs = live.map((l) => l.slug);
+  // Being on a Tab's page opens it too.
+  React.useEffect(() => {
+    if (!page || !seen || seen.includes(page) || !live.some((l) => l.slug === page)) return;
+    const next = markSeen(seen, live.map((l) => l.slug), page);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mirrors the page into localStorage-backed state
+    setSeen(next);
+    write(SEEN_KEY, JSON.stringify(next));
+  }, [page, seen, live]);
+
   const select = (s: string) => {
     setLast(s);
     write(TAB_KEY, s);
+    if (seen && seen.at(-1) !== s) {
+      const next = markSeen(seen, liveSlugs, s);
+      setSeen(next);
+      write(SEEN_KEY, JSON.stringify(next));
+    }
   };
 
   const move = (s: string, to: number) => {
-    const next = moveTab(order, live.map((l) => l.slug), s, to);
+    const next = moveTab(order, liveSlugs, s, to);
     setOrder(next);
     write(TABS_KEY, JSON.stringify(next));
   };
@@ -216,6 +243,7 @@ export function LiveProvider({ live: incoming, seeds, children }: { live: LiveIt
     selected,
     select,
     move,
+    fresh: new Set(seen ? freshTabs(liveSlugs, seen) : []),
     chat: chat.slug === slug ? chat.entries : [],
     turn: turn.slug === slug ? turn.turn : null,
     usage: usage.slug === slug ? usage.usage : null,

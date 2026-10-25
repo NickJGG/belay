@@ -138,6 +138,11 @@ export function subscribeHub(listener: Listener): () => void {
   };
 }
 
+/** How many pages are open: each holds one `/api/events` stream, subscribed here. */
+export function viewerCount(): number {
+  return hub().listeners.size;
+}
+
 /** The slug's turn in progress, as its bridge last reported it. */
 export function openTurn(slug: string): OpenTurn | null {
   return hub().bridges.get(slug)?.turn() ?? null;

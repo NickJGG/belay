@@ -115,7 +115,7 @@ function ShellDrawer() {
 
 /** The narrow layout's bar for the selected Tab, above the dock: tap it for the Drawer, or switch Tabs. */
 function Strip() {
-  const { live, selected, select, setSheet } = useLive();
+  const { live, selected, select, setSheet, fresh } = useLive();
   const [switching, setSwitching] = React.useState(false);
   if (!selected) return null;
   return (
@@ -133,6 +133,7 @@ function Strip() {
           trigger={
             <button type="button" className={styles.switchChip} aria-expanded={switching} onClick={() => setSwitching((s) => !s)}>
               {live.length} live ▾
+              {live.some((s) => s.slug !== selected.slug && fresh.has(s.slug)) ? <span className={styles.chipDot} aria-label="New" /> : null}
             </button>
           }
         >
@@ -151,6 +152,7 @@ function Strip() {
                   <TurnDot working={s.working} />
                   <TabMark s={s} />
                   <span className={tabStyles.title}>{tabTitle(s)}</span>
+                  {fresh.has(s.slug) ? <span className={tabStyles.new}>New</span> : null}
                 </Link>
               </li>
             ))}

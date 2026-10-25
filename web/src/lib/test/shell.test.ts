@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { terrain } from "../course-art.ts";
-import { COLLAPSED_DEFAULTS, DRAWER_DEFAULTS, missing, moveTab, orderTabs, pageKind, parseCollapsed, parseDrawer, parseTabOrder, selectTab, sessionSlug } from "../shell.ts";
+import { COLLAPSED_DEFAULTS, DRAWER_DEFAULTS, fresh, markSeen, missing, moveTab, orderTabs, pageKind, parseCollapsed, parseDrawer, parseSeen, parseTabOrder, selectTab, sessionSlug } from "../shell.ts";
 
 describe("page kinds", () => {
   test("a grill page is a workspace; everything else reads", () => {
@@ -76,6 +76,36 @@ describe("Tab order", () => {
     assert.equal(out[0], "s2");
     const many = Array.from({ length: 35 }, (_, i) => `l${i}`);
     assert.deepEqual(moveTab(stale, many, "l0", 34), orderTabs(many, []).slice(1).concat("l0"));
+  });
+});
+
+describe("seen Tabs", () => {
+  test("a missing key is a first visit; a malformed one is an empty list", () => {
+    assert.equal(parseSeen(null), null);
+    assert.deepEqual(parseSeen("not json"), []);
+    assert.deepEqual(parseSeen('{"a":1}'), []);
+    assert.deepEqual(parseSeen('["a",2,"b"]'), ["a", "b"]);
+  });
+
+  test("marking adds the slug last, once", () => {
+    assert.deepEqual(markSeen([], ["a"], "a"), ["a"]);
+    assert.deepEqual(markSeen(["a", "b"], ["a", "b"], "a"), ["b", "a"]);
+    assert.deepEqual(markSeen(["x"], ["a"], "a"), ["x", "a"]);
+  });
+
+  test("the cap drops the earliest stale slugs, never a live one", () => {
+    const stale = Array.from({ length: 30 }, (_, i) => `s${i}`);
+    const out = markSeen(["a", ...stale], ["a", "b"], "b");
+    assert.equal(out.length, 30);
+    assert.deepEqual(out.slice(0, 2), ["a", "s2"]);
+    assert.equal(out.at(-1), "b");
+    const many = Array.from({ length: 35 }, (_, i) => `l${i}`);
+    assert.deepEqual(markSeen(many.slice(0, 34), many, "l34"), many);
+  });
+
+  test("fresh is the live slugs not yet seen", () => {
+    assert.deepEqual(fresh(["a", "b", "c"], ["b", "x"]), ["a", "c"]);
+    assert.deepEqual(fresh([], ["a"]), []);
   });
 });
 

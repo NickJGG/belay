@@ -13,6 +13,7 @@ export const SIDEBAR_KEY = "belay:sidebar";
 export const TAB_KEY = "belay:tab";
 export const DRAWER_KEY = "belay:drawer";
 export const TABS_KEY = "belay:tabs";
+export const SEEN_KEY = "belay:seen";
 
 /** The grill a `/s/<slug>` page shows, else null. */
 export function sessionSlug(pathname: string): string | null {
@@ -85,6 +86,29 @@ export function moveTab(saved: string[], live: string[], slug: string, to: numbe
   const out = all.map((s) => (isLive.has(s) ? order[next++] : s));
   let over = out.length - TABS_KEPT;
   return out.filter((s) => isLive.has(s) || over-- <= 0);
+}
+
+/** The Tabs opened in this browser: null when the key is missing (a first visit), `[]` when malformed. */
+export function parseSeen(raw: string | null): string[] | null {
+  if (raw === null) return null;
+  return parseTabOrder(raw);
+}
+
+/**
+ * The seen list after opening `slug`, most recent last. Slugs no longer live stay, so a grill that reattaches doesn't
+ * come back New; past 30, the earliest of those go first, never a live one.
+ */
+export function markSeen(saved: string[], live: string[], slug: string): string[] {
+  const all = [...saved.filter((s) => s !== slug), slug];
+  const isLive = new Set(live);
+  let over = all.length - TABS_KEPT;
+  return all.filter((s) => s === slug || isLive.has(s) || over-- <= 0);
+}
+
+/** The live Tabs not yet opened in this browser. */
+export function fresh(live: string[], seen: string[]): string[] {
+  const known = new Set(seen);
+  return live.filter((s) => !known.has(s));
 }
 
 const COURSE_TABS = new Set(["map", "lessons", "notes", "misconceptions", "cards", "work", "now"]);

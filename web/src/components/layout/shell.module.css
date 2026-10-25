@@ -64,6 +64,7 @@
 }
 
 .switchChip {
+  position: relative;
   flex: none;
   padding: 1px 6px;
   border: 1px solid var(--line-strong);
@@ -71,6 +72,17 @@
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 10px;
+}
+
+/* Some other Tab is New. */
+.chipDot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--brand);
 }
 
 .switchList {

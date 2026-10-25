@@ -143,8 +143,11 @@ open. Message kinds live in `bridge/protocol.mts`, event types in `bridge/http.m
 - Usage: `~/.claude/statusline.sh` POSTs every tick to `/api/usage` (no token, loopback `Host`, any `Origin`
   refused). The hub's `UsageStore` keeps limits account-wide and context/cache per `session_id`, so a site
   restart leaves the meters blank until the next tick.
+- `GET /api/viewers` returns `{pages}`, the hub's listener count (one `/api/events` stream per open page), so
+  `/grill` opens the site only when no page is watching.
 - Pictures upload as raw bytes to `POST /api/s/<slug>/images` (same-origin, PNG/JPEG/GIF/WebP, 10 MB) into
   `images/`; `GET`/`DELETE /api/s/<slug>/images/<name>` serve and remove one, and a name `chat.jsonl` uses can't be deleted.
-- The shell keeps `belay:sidebar` (collapsed per page kind), `belay:tab` (the selected Tab) and `belay:drawer` in
+- The shell keeps `belay:sidebar` (collapsed per page kind), `belay:tab` (the selected Tab), `belay:tabs` (Tab
+  order), `belay:seen` (Tabs opened in this browser; a first visit seeds it with what's live) and `belay:drawer` in
   localStorage. Per-session UI state is in `belay:session:<slug>`; the view stays in the hash (`#current`,
   `#today`, `#q-<n>`).

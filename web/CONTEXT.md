@@ -24,7 +24,7 @@ A Session working on a project's Issues, with no Grill or Lesson.
 ### Shell
 
 **Tab**:
-A live Grill or Lesson in the strip above the page, showing its turn dot, its project mark (a Lesson: its course's book) and title.
+A live Grill or Lesson in the strip above the page, showing its turn dot, its project mark (a Lesson: its course's book) and title. One not yet opened in this browser shows **New**, until it's clicked or its page is visited; reattaching never brings it back.
 _Avoid_: live card
 
 **Drawer**:

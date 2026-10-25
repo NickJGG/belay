@@ -62,10 +62,25 @@
   transition: none;
 }
 
+.fresh .title {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* Shared with the Strip. */
 .title {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.new {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--brand) 22%, transparent);
+  color: var(--brand);
+  font-size: 10px;
+  font-weight: 600;
 }
