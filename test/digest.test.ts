@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { digestLines, type DigestGoals } from '../src/digest.ts';
-import type { GoalProgress } from '../src/goals.ts';
+import { digestLines } from '../src/digest.ts';
 import { grillForProject, grillMatches, grillMentions, projectTerms, type GrillSession } from '../src/grill.ts';
 import type { Session } from '../src/history.ts';
 import type { Project, Issue } from '../src/store.ts';
@@ -115,47 +114,15 @@ test('digestLines: quiet project', () => {
   ]);
 });
 
-const THU = '2026-10-08';
-const jobGoal: GoalProgress = { project: 'JOB', urgency: 1, form: 'quantity', kind: 'applied', done: 3, of: 10, metToday: false };
-const goals = (over: Partial<DigestGoals> = {}): DigestGoals => ({ day: THU, progress: [jobGoal], moved: new Set([THU]), logs: [], ...over });
-
-test('digestLines: other goals not yet met today, with their next ready issue', () => {
-  const issues = [issue('JOB-1', { status: 'doing' }), issue('JOB-2', { created: '2026-09-01' }), issue('JOB-3', { priority: 'high' })];
-  const met: GoalProgress = { project: 'PORT', urgency: 2, form: 'habit', done: 3, of: 5, metToday: true };
-  const behind: GoalProgress = { project: 'PORT', urgency: 0, form: 'target', date: '2026-10-19', state: 'behind', scope: 8, left: 7, daysLeft: 11 };
-  const own: GoalProgress = { ...jobGoal, project: 'ELV' };
-  assert.equal(digestLines(project, issues, [], [], goals({ progress: [own, jobGoal, met] })).at(-1), 'goals: JOB 3/10 applied — next: JOB-3');
-  assert.equal(
-    digestLines(project, issues, [], [], goals({ progress: [jobGoal, behind] })).at(-1),
-    'goals: JOB 3/10 applied — next: JOB-3; PORT 7 left ▲11d, behind',
-  );
-  assert.equal(digestLines(project, issues, [], [], goals({ progress: [met] })).length, 2);
-});
-
-test('digestLines: a goal project quiet two work days shows its latest note', () => {
-  const goalProject: Project = { ...project, goal: { habit: 5 } };
-  const issues = [
-    issue('ELV-1', { comments: [{ at: '2026-10-05T10:00', by: 'user', text: 'older comment' }] }),
-    issue('ELV-2', { comments: [{ at: '2026-10-06T02:30', by: 'claude', text: 'late-night\n  fix' }] }),
-  ];
-  const other = { project: 'OTH', at: '2026-10-07T09:00', by: 'user' as const, text: 'other project', day: '2026-10-07', n: 1 };
-  const quiet = goals({ progress: [], moved: new Set(['2026-10-05']), logs: [other] });
-  assert.equal(digestLines(goalProject, issues, [], [], quiet).at(-1), 'last: 2026-10-05 late-night fix');
-  assert.equal(digestLines(goalProject, issues, [], [], goals({ progress: [], moved: new Set(['2026-10-07']) })).length, 2);
-  assert.equal(digestLines(project, issues, [], [], quiet).length, 2);
-  const backdated = { ...other, project: 'ELV', at: '2026-10-06T09:00', text: 'logged', day: '2026-10-05' };
-  assert.equal(digestLines(goalProject, issues, [], [], { ...quiet, logs: [other, backdated] }).at(-1), 'last: 2026-10-06 logged');
-});
-
 test('digestLines: bad files after ready, at most two', () => {
   const bad = [
     { file: 'issues/elv-7.md', error: 'line 4: Nested mappings are not allowed in compact mappings, really' },
     { file: 'issues/elv-8.md', error: 'missing frontmatter' },
     { file: 'projects/oth.md', error: "'name' must be a non-empty string" },
   ];
-  const lines = digestLines(project, [issue('ELV-1')], [], [], undefined, { bad });
+  const lines = digestLines(project, [issue('ELV-1')], [], [], { bad });
   assert.equal(lines[2], 'bad files: issues/elv-7.md (line 4: Nested mappings are not allowed in compact mappings…); issues/elv-8.md (missing frontmatter); …');
-  assert.equal(digestLines(project, [issue('ELV-1')], [], [], undefined, { bad: bad.slice(1, 2) })[2], 'bad files: issues/elv-8.md (missing frontmatter)');
+  assert.equal(digestLines(project, [issue('ELV-1')], [], [], { bad: bad.slice(1, 2) })[2], 'bad files: issues/elv-8.md (missing frontmatter)');
   assert.equal(digestLines(project, [issue('ELV-1')], [], []).length, 2);
 });
 
@@ -170,9 +137,8 @@ test('digestLines: compact keeps header, doing, ready and bad files', () => {
   const sessions: Session[] = [{ id: 's', cwd: '', title: 'Call button', start: '2026-09-26T19:00:00Z', end: '2026-09-26T19:30:00Z' }];
   const grills = [grill('elevator-call-button')];
   const bad = [{ file: 'issues/elv-8.md', error: 'missing frontmatter' }];
-  const quiet = goals({ progress: [jobGoal] });
-  assert.equal(digestLines(project, issues, sessions, grills, quiet).length, 6);
-  assert.deepEqual(digestLines(project, issues, sessions, grills, quiet, { bad, compact: true }), [
+  assert.equal(digestLines(project, issues, sessions, grills).length, 5);
+  assert.deepEqual(digestLines(project, issues, sessions, grills, { bad, compact: true }), [
     'belay: ELV — Rideable Elevators (focus)',
     'doing: ELV-1 Issue ELV-1',
     'ready 1: ELV-2 Issue ELV-2',

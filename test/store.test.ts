@@ -108,26 +108,18 @@ test('project icon round-trips, and is omitted when unset', () => {
   assert.equal('icon' in parseProject(serializeProject(bare), 'x'), false);
 });
 
-test('project kinds and each goal form round-trip; unset ones are omitted', () => {
+test('project kinds round-trip; unset ones are omitted', () => {
   const base: Project = { key: 'JOB', name: 'Job search', paths: [], status: 'active', focus: true, group: undefined, body: '' };
-  for (const goal of [{ habit: 5 }, { quantity: 10, kind: 'applied' }, { target: '2026-10-19', set: '2026-10-05' }]) {
-    const p: Project = { ...base, kinds: ['applied', 'outreach'], goal };
-    assert.deepEqual(parseProject(serializeProject(p), 'x'), p);
-  }
-  assert.doesNotMatch(serializeProject({ ...base, kinds: [] }), /kinds|goal/);
+  const p: Project = { ...base, kinds: ['applied', 'outreach'] };
+  assert.deepEqual(parseProject(serializeProject(p), 'x'), p);
+  assert.doesNotMatch(serializeProject({ ...base, kinds: [] }), /kinds/);
   assert.deepEqual(parseProject(serializeProject({ ...base, kinds: [] }), 'x'), base);
 });
 
-test('project goals must have exactly one valid form', () => {
-  const bad = (goal: string) => () => parseProject(`---\nkey: JOB\nname: x\ngoal: ${goal}\n---\n`, 'f');
-  assert.throws(bad('5'), /f goal: not a mapping/);
-  assert.throws(bad('{habit: 5, target: 2026-10-19, set: 2026-10-05}'), /exactly one of habit, quantity or target/);
-  assert.throws(bad('{}'), /exactly one of/);
-  assert.throws(bad('{habit: 8}'), /at most 7/);
-  assert.throws(bad('{habit: 0}'), /'habit' must be a positive integer/);
-  assert.throws(bad('{quantity: 10}'), /'kind' must be a non-empty string/);
-  assert.throws(bad('{target: 2026-10-19}'), /'set' must be YYYY-MM-DD/);
-  assert.throws(bad('{target: soon, set: 2026-10-05}'), /'target' must be YYYY-MM-DD/);
+test('a stray goal key is ignored and dropped on save', () => {
+  const p = parseProject('---\nkey: JOB\nname: Job\ngoal: {habit: 5}\n---\n', 'f');
+  assert.equal('goal' in p, false);
+  assert.doesNotMatch(serializeProject(p), /goal/);
 });
 
 test('issue transitions round-trip and are validated', () => {

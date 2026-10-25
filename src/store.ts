@@ -29,12 +29,8 @@ export interface Project {
   icon?: string;
   /** Log-entry kinds the project declares; absent when none. */
   kinds?: string[];
-  goal?: Goal;
   body: string;
 }
-
-/** Days are `YYYY-MM-DD` work days. A target's `set` is when it was set, the start of its scope and pace. */
-export type Goal = { habit: number } | { quantity: number; kind: string } | { target: string; set: string };
 
 export interface Comment {
   /** Local time to the minute, `YYYY-MM-DDTHH:MM`. */
@@ -179,28 +175,6 @@ export function isMapping(v: unknown): v is Data {
 export const AT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 export const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-function day(d: Data, k: string, where: string): string {
-  const v = d[k];
-  if (typeof v === 'string' && DAY_RE.test(v)) return v;
-  throw new Error(`${where}: '${k}' must be YYYY-MM-DD (got ${JSON.stringify(v)})`);
-}
-
-function goal(d: Data, where: string): Goal | undefined {
-  const g = d.goal;
-  if (g == null) return undefined;
-  const loc = `${where} goal`;
-  if (!isMapping(g)) throw new Error(`${loc}: not a mapping`);
-  const forms = ['habit', 'quantity', 'target'].filter((k) => g[k] != null);
-  if (forms.length !== 1) throw new Error(`${loc}: must have exactly one of habit, quantity or target`);
-  if (forms[0] === 'habit') {
-    const habit = optPositiveInt(g, 'habit', loc)!;
-    if (habit > 7) throw new Error(`${loc}: 'habit' is days per week, at most 7 (got ${habit})`);
-    return { habit };
-  }
-  if (forms[0] === 'quantity') return { quantity: optPositiveInt(g, 'quantity', loc)!, kind: text(g, 'kind', loc) };
-  return { target: day(g, 'target', loc), set: day(g, 'set', loc) };
-}
-
 function transitionList(d: Data, where: string): Transition[] | undefined {
   const v = d.transitions;
   if (v == null) return undefined;
@@ -258,14 +232,13 @@ export function parseProject(src: string, where: string): Project {
     group: optText(d, 'group', where),
     ...(d.icon != null && { icon: text(d, 'icon', where) }),
     ...(kinds.length && { kinds }),
-    ...(d.goal != null && { goal: goal(d, where) }),
     body,
   };
 }
 
 export function serializeProject(p: Project): string {
-  const { key, name, paths, status, focus, group, icon, kinds, goal, body } = p;
-  return joinFrontmatter({ key, name, paths, status, focus, group, icon, kinds: kinds?.length ? kinds : undefined, goal }, body);
+  const { key, name, paths, status, focus, group, icon, kinds, body } = p;
+  return joinFrontmatter({ key, name, paths, status, focus, group, icon, kinds: kinds?.length ? kinds : undefined }, body);
 }
 
 // --- issues ---

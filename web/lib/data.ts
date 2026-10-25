@@ -3,10 +3,8 @@ import 'server-only';
 import { cache } from 'react';
 import { dataDir, grillRoots } from '../../src/config.ts';
 import { loadGrillSession, loadGrillSessions, type GrillMemo } from '../../src/grill.ts';
-import { commitsBetween } from '../../src/history.ts';
 import { Ctx } from '../../src/ops.ts';
 import { loadSettings } from '../../src/settings.ts';
-import { addDays } from '../../src/workday.ts';
 
 /** Lenient: pages render what loaded, and the layout lists `ctx().bad`. Writes (actions.ts) use a strict Ctx. */
 export const ctx = cache(() => new Ctx(dataDir(), { lenient: true }));
@@ -17,15 +15,7 @@ const grillMemo: GrillMemo = new Map();
 export const grillSessions = cache(() => loadGrillSessions(grillRoots(), grillMemo));
 export const grillSession = cache((slug: string) => loadGrillSession(grillRoots(), slug));
 
-/** Git commit times under the project's paths on work days `from`..`to`. Runs git, so only once per render. */
-export const commitTimes = cache((key: string, from: string, to: string): string[] => {
-  const project = ctx().projects.find((p) => p.key === key);
-  return project ? commitsBetween(project, `${from} 04:00`, `${addDays(to, 1)} 04:00`).map((c) => c.time) : [];
-});
-
 export { plural } from '../../src/digest.ts';
 export { filterIssues, indexIssues, isReady, next, oldestFirst, openBlockers, parseIssueFilter, parseIssueSort, projectBoard, projectCounts } from '../../src/query.ts';
-export { addDays, daysBetween, weekDays, weekStart, workDay } from '../../src/workday.ts';
-export { burndown, goalOf, goalSpec, urgencies } from '../../src/goals.ts';
+export { addDays, daysBetween, workDay } from '../../src/workday.ts';
 export { activity, doingSince, inFlight } from '../../src/home.ts';
-export { weekGoal, weekSummary } from '../../src/week.ts';

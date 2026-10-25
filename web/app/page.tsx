@@ -5,24 +5,16 @@ import { IssueRow } from '@/components/controls';
 import home from '@/components/Home.module.css';
 import { InFlight } from '@/components/InFlight';
 import { PageBar } from '@/components/PageBar';
-import { ThisWeek } from '@/components/ThisWeek';
 import ui from '@/components/ui.module.css';
 import {
   activity,
   addDays,
-  burndown,
-  commitTimes,
   ctx,
   doingSince,
-  goalOf,
   grillSessions,
   inFlight,
   next,
   oldestFirst,
-  urgencies,
-  weekDays,
-  weekStart,
-  weekSummary,
   workDay,
 } from '@/lib/data';
 import { WEEK, windowDays } from '@/lib/days';
@@ -50,18 +42,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
   }
 
   const day = workDay();
-  const week = weekStart(day);
-  const sunday = addDays(week, 6);
-  const goalProjects = projects.filter((p) => goalOf(p));
-  const commits = Object.fromEntries(goalProjects.map((p) => [p.key, commitTimes(p.key, week, sunday)]));
-  const goalRows = weekSummary(goalProjects, issues, data.logs(week, sunday), commits, week, day).filter((r) => r.goal);
-  const burndowns = Object.fromEntries(
-    goalProjects.flatMap((p) => {
-      const g = goalOf(p);
-      return g && 'target' in g ? [[p.key, { set: g.set, points: burndown(p, issues, day) }]] : [];
-    }),
-  );
-  const n = next(projects, issues, urgencies(goalRows.map((r) => r.goal!)));
+  const n = next(projects, issues);
   const upNext = [...n.high, ...n.focus.slice(0, UP_NEXT_FOCUS)];
   const ideas = issues.filter((t) => t.status === 'idea').sort(oldestFirst);
 
@@ -84,12 +65,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
           </div>
 
           <aside className={home.rail} aria-label="This week and up next">
-            {goalRows.length > 0 && (
-              <>
-                <h2 className={ui.h2}>This week</h2>
-                <ThisWeek rows={goalRows} week={weekDays(week)} burndowns={burndowns} rail />
-              </>
-            )}
             <h2 className={ui.h2}>Up next</h2>
             {upNext.length ? (
               <ul className={ui.rows} style={idColumn(upNext.map((t) => t.id))}>

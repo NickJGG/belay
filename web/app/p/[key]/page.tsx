@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { grillForProject } from '../../../../src/grill.ts';
 import { DEFAULT_VIEW_STATUSES, VIEW_STATUSES, isDefaultStatuses, toggleStatus, type ViewStatus } from '../../../../src/view.ts';
-import { setProjectGoal, setProjectGroup, setProjectKinds, setProjectName } from '@/app/actions';
+import { setProjectGroup, setProjectKinds, setProjectName } from '@/app/actions';
 import { Activity } from '@/components/Activity';
 import { idColumn, projectHref, projectTabHref } from '@/components/bits';
 import { FocusToggle, ProjectStatusSelect, IssueRow } from '@/components/controls';
@@ -12,7 +12,7 @@ import { PageBar, projectsCrumb } from '@/components/PageBar';
 import panel from '@/components/PropsPanel.module.css';
 import { StatusGroup } from '@/components/StatusGroup';
 import ui from '@/components/ui.module.css';
-import { activity, addDays, ctx, goalSpec, grillSessions, parseIssueFilter, parseIssueSort, projectBoard, projectCounts, workDay } from '@/lib/data';
+import { activity, addDays, ctx, grillSessions, parseIssueFilter, parseIssueSort, projectBoard, projectCounts, workDay } from '@/lib/data';
 import { WEEK, windowDays } from '@/lib/days';
 import type { Issue, IssueStatus } from '@/lib/types';
 import { Grills } from './Grills';
@@ -180,15 +180,6 @@ export default async function ProjectPage({ params, searchParams }: Props) {
               <dt>Group</dt>
               <dd>
                 <TextEdit value={project.group ?? ''} label="Group" placeholder="None" save={setProjectGroup.bind(null, project.key)} />
-              </dd>
-              <dt>Goal</dt>
-              <dd>
-                <TextEdit
-                  value={project.goal ? goalSpec(project.goal) : ''}
-                  label="Goal"
-                  placeholder="None: 5 days, 10 applied, by date"
-                  save={setProjectGoal.bind(null, project.key)}
-                />
               </dd>
               <dt>Kinds</dt>
               <dd>

@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { GoalProgress } from '../src/goals.ts';
-import { statusLine, withBad, withGoals } from '../src/statusline.ts';
+import { statusLine, withBad } from '../src/statusline.ts';
 import type { Issue, Project } from '../src/store.ts';
 
 const project: Project = { key: 'ELV', name: 'Rideable Elevators', paths: [], status: 'active', focus: true, body: '' };
@@ -62,17 +61,6 @@ test('only the doing issue gets a [done] link', () => {
 
 test('empty when there is nothing to show', () => {
   assert.equal(statusLine(project, [issue('ELV-1', { status: 'done' }), issue('ELV-2', { status: 'idea' }), issue('FRG-1', { status: 'doing' })]), '');
-});
-
-test('withGoals appends the goal strip, or stands alone outside a project', () => {
-  const goals: GoalProgress[] = [
-    { project: 'JOB', urgency: 1, form: 'quantity', kind: 'applied', done: 6, of: 10, metToday: false },
-    { project: 'PORT', urgency: 2, form: 'target', date: '2026-10-19', state: 'ontrack', scope: 8, left: 6, daysLeft: 10 },
-  ];
-  assert.equal(withGoals('▶ ELV-1', goals), '▶ ELV-1 │ JOB 6/10 applied · PORT 6 left ▲10d');
-  assert.equal(withGoals('', goals), 'JOB 6/10 applied · PORT 6 left ▲10d');
-  assert.equal(withGoals('▶ ELV-1', []), '▶ ELV-1');
-  assert.equal(withGoals('', []), '');
 });
 
 test('withBad appends a bad-file count when there is one', () => {

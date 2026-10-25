@@ -33,12 +33,11 @@ import {
   validateKey,
   type BadFile,
   type Comment,
-  type Goal,
   type Project,
   type Issue,
   type IssueStatus,
 } from './store.ts';
-import { addDays, isDay, parseDay, workDay } from './workday.ts';
+import { addDays, parseDay, workDay } from './workday.ts';
 
 export function oneOf<T extends string>(value: string, allowed: readonly T[], what: string): T {
   if (allowed.includes(value as T)) return value as T;
@@ -376,9 +375,6 @@ export function deleteIssue(ctx: Ctx, typed: string, author: Author): Issue[] {
   );
 }
 
-/** A target's `set` is stamped by `editProject`. */
-export type GoalInput = { habit: number } | { quantity: number; kind: string } | { target: string };
-
 export interface ProjectPatch {
   name?: string;
   /** Empty clears. */
@@ -389,8 +385,6 @@ export interface ProjectPatch {
   focus?: boolean;
   /** Empty clears. */
   kinds?: string[];
-  /** `null` clears. */
-  goal?: GoalInput | null;
   /** Replaces the list; can't be empty. */
   paths?: string[];
 }
@@ -439,17 +433,7 @@ function editDistance(a: string, b: string): number {
   return prev[b.length];
 }
 
-/** Moving an existing target's date keeps its `set`, so its scope and pace keep their start. */
-function goalFor(p: Project, g: GoalInput, clock: Date): Goal {
-  if ('habit' in g) return { habit: positiveInt(g.habit, 'habit days per week', 7) };
-  if ('quantity' in g) return { quantity: positiveInt(g.quantity, 'quantity', 1000), kind: declaredKind(p, g.kind) };
-  if (!isDay(g.target)) throw new Error(`target must be a YYYY-MM-DD date (got '${g.target}')`);
-  const day = workDay(clock);
-  if (g.target < day) throw new Error(`target ${g.target} is in the past`);
-  return { target: g.target, set: p.goal && 'target' in p.goal ? p.goal.set : day };
-}
-
-export function editProject(ctx: Ctx, key: string, patch: ProjectPatch, clock = new Date()): Project {
+export function editProject(ctx: Ctx, key: string, patch: ProjectPatch): Project {
   return ctx.record(
     () => {
       const p = { ...ctx.project(key) };
@@ -469,10 +453,6 @@ export function editProject(ctx: Ctx, key: string, patch: ProjectPatch, clock = 
       if (patch.status !== undefined) p.status = oneOf(patch.status, PROJECT_STATUSES, 'status');
       if (patch.focus !== undefined) p.focus = patch.focus;
       if (patch.kinds !== undefined) p.kinds = kindList(patch.kinds);
-      if (patch.goal !== undefined) p.goal = patch.goal === null ? undefined : goalFor(p, patch.goal, clock);
-      else if (patch.kinds !== undefined && p.goal && 'kind' in p.goal && !p.kinds?.includes(p.goal.kind)) {
-        throw new Error(`${p.key}'s quantity goal counts '${p.goal.kind}': keep that kind or change the goal`);
-      }
       saveProject(ctx.dir, p);
       return p;
     },

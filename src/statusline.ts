@@ -1,10 +1,6 @@
-/**
- * Belay's line in Claude Code's status line: the project's `doing` issue, or the next ready one, then
- * the goal strip, which shows everywhere.
- */
+/** Belay's line in Claude Code's status line: the project's `doing` issue, or the next ready one. */
 import { DEFAULT_PORT } from './config.ts';
 import { clip, plural } from './digest.ts';
-import { goalStrip, type GoalProgress } from './goals.ts';
 import { highFirst, indexIssues, isReady, openBlockers, recentFirst } from './query.ts';
 import type { Issue, Project } from './store.ts';
 
@@ -31,11 +27,6 @@ export function statusLine(project: Project, issues: Issue[]): string {
   }
   const [next] = own.filter((t) => isReady(t, byId)).sort(highFirst);
   return next ? dim(`next: ${link(next.id, next.id)} ${clip(next.title, 50)}`) : '';
-}
-
-/** `line │ JOB 6/10 applied · PORT 6 left ▲10d`; either part may be empty. */
-export function withGoals(line: string, goals: GoalProgress[]): string {
-  return [line, goalStrip(goals)].filter(Boolean).join(' │ ');
 }
 
 /** Appends `⚠ N bad files` when a lenient load skipped some. */

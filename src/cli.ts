@@ -6,7 +6,7 @@ import { claudeDir, dataDir, DEFAULT_PORT, grillRoots } from './config.ts';
 import { clip, digestLines, plural } from './digest.ts';
 import { initHistory } from './gitlog.ts';
 import { grillDirs, grillMatches, loadGrillSessions } from './grill.ts';
-import { attachCommits, duration, localStamp, readCommitDays, recentSessions, weekCommits, writeCommitDays } from './history.ts';
+import { attachCommits, duration, localStamp, recentSessions, weekCommits } from './history.ts';
 import {
   Ctx,
   addComment,
@@ -28,15 +28,12 @@ import {
   rekeyProject,
   setSettings,
   setStatus,
-  type GoalInput,
   type MoveTarget,
 } from './ops.ts';
-import { goalOf, goalSpec, goalStrip, goalsProgress, urgencies } from './goals.ts';
 import { parseLogAddress, type DatedEntry } from './logs.ts';
-import { commitDays, movedDays } from './moved.ts';
 import { filterIssues, issueComparator, isReady, naturalDesc, next, openBlockers, projectCounts, projectForCwd, SORT_FIELDS } from './query.ts';
 import { ACCENT_KEYS, loadSettings } from './settings.ts';
-import { statusLine, withBad, withGoals } from './statusline.ts';
+import { statusLine, withBad } from './statusline.ts';
 import { ISSUE_STATUSES, normalizeStoredPath, issueFile, SOURCES, type Issue, type IssueStatus } from './store.ts';
 import { serve } from './web.ts';
 import { weekLines, weekSummary } from './week.ts';
@@ -44,8 +41,7 @@ import { addDays, isDay, weekStart, workDay, workDayOf } from './workday.ts';
 
 const HELP = `belay — what should I work on?
 
-  next [--all]                      doing, high-priority, then ready issues in focus projects (those
-                                    with a goal behind or not yet met today first)
+  next [--all]                      doing, high-priority, then ready issues in focus projects
   add "<title>" [--project <key>] [--status idea|todo] [--blocked-by <id>...]
                 [--priority high] [--source user|claude] [--grill <slug>] [--plan <path>]
                 [--body <text> | --body-file <path|->]
@@ -73,8 +69,8 @@ const HELP = `belay — what should I work on?
        [--ready | --blocked] [--sort id|title|created|updated] [--asc | --desc]
                                     default hides done and dropped; --blocked is any status with an
                                     open blocker; --sort starts newest first for updated, else ascending
-  week [--last]                     this (or last) Mon–Sun week per project: days moved, goal, issues
-                                    done, commits and log entries
+  week [--last]                     this (or last) Mon–Sun week per project: days moved, issues done,
+                                    commits and log entries
 
   history [<project>] [-n <count>] [-v]
                                     recent Claude sessions and their commits, newest first
@@ -90,19 +86,16 @@ const HELP = `belay — what should I work on?
   digest                            SessionStart hook: reads the hook JSON on stdin, prints a summary
                                     if its cwd is in a registered project, else nothing
   statusline                        status line command: reads Claude Code's status JSON on stdin, prints
-                                    the project's doing issue (or next ready one) and the goal strip
+                                    the project's doing issue (or next ready one)
 
   project add [<key>] --name <name> --path <dir>... [--group <g>] [--focus]
                                     key: 3–4 letters, the issue-ID prefix (ELV-12); derived from
                                     the name when omitted (3 letters, 4 on a clash)
   project list [--all]              --all includes archived
   project set <key> [--status active|paused|archived] [--focus|--no-focus] [--name <n>] [--group <g>]
-                    [--kinds a,b] [--habit <days> | --quantity "<n> <kind>" | --target YYYY-MM-DD | --no-goal]
-                    [--path <dir>...] [--icon <path>]
+                    [--kinds a,b] [--path <dir>...] [--icon <path>]
                                     --path replaces the project's dirs. --icon: an image, absolute or relative to
-                                    the first dir (empty clears). kinds: log-entry kinds (empty clears). A goal counts per Mon–Sun week while
-                                    the project is in focus: habit = moved on N days, quantity = N log counts of
-                                    a kind, target = finish the open issues by a date
+                                    the first dir (empty clears). kinds: log-entry kinds (empty clears)
   project move <key> (--before <key> | --after <key> | --top | --bottom)
                                     rearrange the order projects are listed in (here and the sidebar)
   project rekey <key> <new-key>     rename the key and every issue ID in the project, fixing blockers
@@ -158,28 +151,14 @@ function noteBad(ctx: Ctx): void {
   if (ctx.bad.length) console.error(`belay: skipped ${plural(ctx.bad.length, 'bad file')}: ${ctx.bad.map(badFileNote).join('; ')}`);
 }
 
-// --- goals ---
-
-/** How far back the digest looks for a quiet goal project's latest note. */
-const LOOKBACK_DAYS = 28;
-
-/** Commit work days this week for projects whose goal counts; runs git. */
-function goalCommitDays(ctx: Ctx, week: string): Record<string, string[]> {
-  return Object.fromEntries(
-    ctx.projects.filter((p) => goalOf(p)).map((p) => [p.key, commitDays(weekCommits(p, week).map((c) => c.time))]),
-  );
-}
-
 // --- commands ---
 
 function cmdNext(argv: string[]): void {
   const { values } = args(argv, { all: { type: 'boolean' } }, 0);
   const ctx = readCtx();
   noteBad(ctx);
-  const day = workDay();
-  const goals = goalsProgress(ctx.projects, ctx.issues, ctx.logs(weekStart(day), day), goalCommitDays(ctx, weekStart(day)), day);
-  const n = next(ctx.projects, ctx.issues, urgencies(goals));
-  const out: string[] = goals.length ? [`goals: ${goalStrip(goals)}`] : [];
+  const n = next(ctx.projects, ctx.issues);
+  const out: string[] = [];
   const section = (title: string, issues: Issue[]) => {
     if (issues.length) out.push(title, ...lines(issues, ctx));
   };
@@ -590,31 +569,16 @@ function cmdDigest(argv: string[]): void {
     }
     const cwd = typeof input.cwd === 'string' ? input.cwd : process.cwd();
     const ctx = readCtx();
-    const day = workDay();
-    const week = weekStart(day);
-    const commits = goalCommitDays(ctx, week);
-    try {
-      writeCommitDays(ctx.dir, { week, projects: commits });
-    } catch (e) {
-      console.error(`belay digest: commit cache: ${(e as Error).message}`);
-    }
     const project = projectForCwd(ctx.projects, cwd);
     if (!project) return;
     if (input.source === 'compact') {
-      print(digestLines(project, ctx.issues, [], [], undefined, { bad: ctx.bad, compact: true }));
+      print(digestLines(project, ctx.issues, [], [], { bad: ctx.bad, compact: true }));
       return;
     }
     const exclude = typeof input.session_id === 'string' ? input.session_id : undefined;
     const sessions = recentSessions(claudeDir(), ctx.projects, { project, limit: 3, exclude });
     attachCommits(sessions, ctx.projects);
-    const logs = ctx.logs(addDays(day, -LOOKBACK_DAYS), day);
-    const goals = {
-      day,
-      progress: goalsProgress(ctx.projects, ctx.issues, logs, commits, day),
-      moved: movedDays(project, ctx.issues, logs, commits[project.key] ?? []),
-      logs,
-    };
-    print(digestLines(project, ctx.issues, sessions, loadGrillSessions(grillRoots()), goals, { bad: ctx.bad }));
+    print(digestLines(project, ctx.issues, sessions, loadGrillSessions(grillRoots()), { bad: ctx.bad }));
   } catch (e) {
     console.error(`belay digest: ${(e as Error).message}`);
   }
@@ -635,10 +599,7 @@ function cmdStatusline(argv: string[]): void {
     const dir = input.workspace?.current_dir ?? input.cwd;
     const ctx = readCtx();
     const project = projectForCwd(ctx.projects, typeof dir === 'string' ? dir : process.cwd());
-    const day = workDay();
-    const week = weekStart(day);
-    const goals = goalsProgress(ctx.projects, ctx.issues, ctx.logs(week, day), readCommitDays(ctx.dir, week), day);
-    const line = withBad(withGoals(project ? statusLine(project, ctx.issues) : '', goals), ctx.bad.length);
+    const line = withBad(project ? statusLine(project, ctx.issues) : '', ctx.bad.length);
     if (line) print(line);
   } catch (e) {
     console.error(`belay statusline: ${(e as Error).message}`);
@@ -732,8 +693,7 @@ function projectList(argv: string[]): void {
         .map(([n, label]) => `${n} ${label}${label === 'idea' && n !== 1 ? 's' : ''}`)
         .join(', ');
       const group = p.group ? `[${p.group}]` : '';
-      const goal = p.goal ? `(goal ${goalSpec(p.goal)})` : '';
-      return `${p.focus ? '*' : ' '} ${p.key.padEnd(keyW)}  ${p.status.padEnd(statusW)}  ${p.name.padEnd(nameW)}  ${[group, goal, counts].filter(Boolean).join('  ')}`.trimEnd();
+      return `${p.focus ? '*' : ' '} ${p.key.padEnd(keyW)}  ${p.status.padEnd(statusW)}  ${p.name.padEnd(nameW)}  ${[group, counts].filter(Boolean).join('  ')}`.trimEnd();
     }),
   );
 }
@@ -755,31 +715,14 @@ function projectSet(argv: string[]): void {
       group: { type: 'string' },
       icon: { type: 'string' },
       kinds: { type: 'string' },
-      habit: { type: 'string' },
-      quantity: { type: 'string' },
-      target: { type: 'string' },
-      goal: { type: 'boolean' },
       path: { type: 'string', multiple: true },
     },
     1,
   );
-  const { kinds, habit, quantity, target, goal: keepGoal, path: paths, ...rest } = values;
-  if (keepGoal === true) throw new Error('--goal takes no value: use --habit, --quantity or --target (or --no-goal)');
-  if ([habit, quantity, target, keepGoal].filter((v) => v !== undefined).length > 1) {
-    throw new Error('pass one of --habit, --quantity, --target or --no-goal');
-  }
-  let goal: GoalInput | null | undefined;
-  if (keepGoal === false) goal = null;
-  else if (habit !== undefined) goal = { habit: intArg(habit, '--habit')! };
-  else if (target !== undefined) goal = { target };
-  else if (quantity !== undefined) {
-    const m = /^\s*(\d+)\s+(\S+)\s*$/.exec(quantity);
-    if (!m) throw new Error(`--quantity must be "<n> <kind>", e.g. "10 applied" (got '${quantity}')`);
-    goal = { quantity: Number(m[1]), kind: m[2] };
-  }
-  const p = editProject(new Ctx(), positionals[0], { ...rest, kinds: kinds === undefined ? undefined : idList([kinds]), goal, paths });
+  const { kinds, path: paths, ...rest } = values;
+  const p = editProject(new Ctx(), positionals[0], { ...rest, kinds: kinds === undefined ? undefined : idList([kinds]), paths });
   if (paths) for (const dir of p.paths.filter((d) => !existsSync(d))) console.error(`warning: ${dir} does not exist`);
-  const parts = [p.status, p.focus && 'focus', p.goal && `goal ${goalSpec(p.goal)}`, p.kinds && `kinds ${p.kinds.join(', ')}`];
+  const parts = [p.status, p.focus && 'focus', p.kinds && `kinds ${p.kinds.join(', ')}`];
   print(`updated project ${p.key}: ${parts.filter(Boolean).join(', ')}`);
 }
 

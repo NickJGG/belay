@@ -1,11 +1,8 @@
 /** The SessionStart digest: a few lines of re-entry context when a session opens inside a registered project. */
-import { goalLabel, goalOf, type GoalProgress } from './goals.ts';
 import { grillForProject, projectTerms, type GrillSession } from './grill.ts';
 import { localStamp, type Session } from './history.ts';
-import type { DatedEntry } from './logs.ts';
-import { highFirst, indexIssues, isReady, oldestFirst, type IssueIndex } from './query.ts';
+import { highFirst, indexIssues, isReady, oldestFirst } from './query.ts';
 import type { BadFile, Project, Issue } from './store.ts';
-import { addDays, workDayOf } from './workday.ts';
 
 export function clip(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
@@ -17,45 +14,6 @@ export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' :
 export function unlinkedGrill(project: Project, issues: Issue[], grill: GrillSession[]) {
   const linked = new Set(issues.map((t) => t.grill));
   return grillForProject(grill.filter((g) => !linked.has(g.slug)), project);
-}
-
-export interface DigestGoals {
-  /** The current work day. */
-  day: string;
-  /** Every goal that counts (`goalsProgress`). */
-  progress: GoalProgress[];
-  /** The digest project's moved days. */
-  moved: Set<string>;
-  /** Log entries reaching back far enough to find the project's latest one. */
-  logs: DatedEntry[];
-}
-
-const QUIET_DAYS = 2;
-
-/** The project's latest comment or log entry. */
-function lastNote(project: Project, issues: Issue[], logs: DatedEntry[]): { at: string; text: string } | undefined {
-  const notes = [
-    ...issues.filter((t) => t.project === project.key).flatMap((t) => t.comments),
-    ...logs.filter((e) => e.project === project.key),
-  ];
-  return notes.reduce<{ at: string; text: string } | undefined>((a, b) => (!a || b.at > a.at ? b : a), undefined);
-}
-
-function goalDigest(project: Project, issues: Issue[], byId: IssueIndex, g: DigestGoals): string[] {
-  const out: string[] = [];
-  const quietSince = addDays(g.day, 1 - QUIET_DAYS);
-  if (goalOf(project) && ![...g.moved].some((d) => d >= quietSince && d <= g.day)) {
-    const last = lastNote(project, issues, g.logs);
-    if (last) out.push(`last: ${workDayOf(last.at)} ${clip(last.text.replace(/\s+/g, ' ').trim(), 60)}`);
-  }
-  const others = g.progress
-    .filter((p) => p.project !== project.key && p.urgency < 2)
-    .map((p) => {
-      const [nextUp] = issues.filter((t) => t.project === p.project && isReady(t, byId)).sort(highFirst);
-      return `${goalLabel(p)}${nextUp ? ` — next: ${nextUp.id}` : ''}`;
-    });
-  if (others.length) out.push(`goals: ${others.join('; ')}`);
-  return out;
 }
 
 export interface DigestOptions {
@@ -70,7 +28,6 @@ export function digestLines(
   issues: Issue[],
   sessions: Session[],
   grill: GrillSession[],
-  goals?: DigestGoals,
   { bad = [], compact = false }: DigestOptions = {},
 ): string[] {
   const byId = indexIssues(issues);
@@ -91,7 +48,6 @@ export function digestLines(
     out.push(`bad files: ${shown.join('; ')}${bad.length > 2 ? '; …' : ''}`);
   }
   if (compact) return out;
-  if (goals) out.push(...goalDigest(project, issues, byId, goals));
   if (sessions.length) {
     const recent = sessions.map((s) => {
       const commits = s.commits?.length ? ` (${plural(s.commits.length, 'commit')})` : '';

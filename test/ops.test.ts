@@ -364,30 +364,15 @@ test('setStatus starts a transitions list on an issue from before they were reco
   assert.deepEqual(loadIssues(dir)[0].transitions?.map((x) => [x.from, x.to]), [['todo', 'doing']]);
 });
 
-test('editProject sets kinds and goals, stamping a target with the work day it was set', () => {
-  const clock = new Date(2026, 9, 6, 2, 0);
+test('editProject sets kinds', () => {
   const ctx = () => new Ctx(dir);
   assert.deepEqual(editProject(ctx(), 'PIX', { kinds: [' Applied', 'outreach', 'applied', ''] }).kinds, ['applied', 'outreach']);
-  assert.deepEqual(editProject(ctx(), 'PIX', { goal: { quantity: 10, kind: 'APPLIED' } }).goal, { quantity: 10, kind: 'applied' });
-  assert.throws(() => editProject(ctx(), 'PIX', { kinds: ['outreach'] }), /quantity goal counts 'applied'/);
-  assert.deepEqual(editProject(ctx(), 'PIX', { goal: { habit: 5 } }).goal, { habit: 5 });
-  assert.deepEqual(editProject(ctx(), 'PIX', { goal: { target: '2026-10-19' } }, clock).goal, { target: '2026-10-19', set: '2026-10-05' });
-  assert.deepEqual(editProject(ctx(), 'PIX', { goal: { target: '2026-10-26' } }).goal, { target: '2026-10-26', set: '2026-10-05' });
-  assert.equal(editProject(ctx(), 'PIX', { goal: null }).goal, undefined);
   assert.equal(editProject(ctx(), 'PIX', { kinds: [] }).kinds, undefined);
   assert.deepEqual(loadProjects(dir)[0], { key: 'PIX', name: 'Pixel Imperium', paths: ['C:/x'], status: 'active', focus: false, group: undefined, body: '' });
 });
 
-test('editProject rejects bad goals and kinds', () => {
-  const edit = (patch: Parameters<typeof editProject>[2]) => () => editProject(new Ctx(dir), 'PIX', patch, new Date(2026, 9, 5, 12));
-  assert.throws(edit({ kinds: ['two words'] }), /kind 'two words' must be/);
-  assert.throws(edit({ goal: { quantity: 10, kind: 'applied' } }), /PIX declares no kinds/);
-  editProject(new Ctx(dir), 'PIX', { kinds: ['applied', 'interview'] });
-  assert.throws(edit({ goal: { quantity: 10, kind: 'aplied' } }), /PIX has no kind 'aplied' — did you mean 'applied'\?/);
-  assert.throws(edit({ goal: { quantity: 0, kind: 'applied' } }), /quantity must be a whole number/);
-  assert.throws(edit({ goal: { habit: 8 } }), /habit days per week must be a whole number from 1 to 7/);
-  assert.throws(edit({ goal: { target: '2026-02-30' } }), /target must be a YYYY-MM-DD date/);
-  assert.throws(edit({ goal: { target: '2026-10-04' } }), /target 2026-10-04 is in the past/);
+test('editProject rejects bad kinds', () => {
+  assert.throws(() => editProject(new Ctx(dir), 'PIX', { kinds: ['two words'] }), /kind 'two words' must be/);
 });
 
 test('addLog validates and appends to the work day file; deleteLog removes by address', () => {

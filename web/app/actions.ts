@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { dataDir, grillRoots } from '../../src/config.ts';
-import { parseGoalSpec } from '../../src/goals.ts';
 import { grillFile, grillPreview, isGrillSlug } from '../../src/grill.ts';
 import { ConflictError, Ctx, addComment, addIssue, addLog, bodyHash, deleteComment, deleteIssue, deleteLog, editComment, editLog, editProject, editIssue, moveProject, replaceBody, setFocus, setPriority, setSettings, setStatus } from '../../src/ops.ts';
 import { logFile } from '../../src/logs.ts';
@@ -133,11 +132,6 @@ export async function setProjectStatus(key: unknown, status: unknown): Promise<R
 /** `kinds` is comma-separated, as typed. */
 export async function setProjectKinds(key: unknown, kinds: unknown): Promise<Result> {
   return run((ctx) => void editProject(ctx, str(key, 'key'), { kinds: str(kinds, 'kinds').split(',') }));
-}
-
-/** `spec` is `goalSpec`'s form; empty clears. */
-export async function setProjectGoal(key: unknown, spec: unknown): Promise<Result> {
-  return run((ctx) => void editProject(ctx, str(key, 'key'), { goal: parseGoalSpec(str(spec, 'goal')) }));
 }
 
 function optStr(v: unknown, what: string): string | undefined {

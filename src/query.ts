@@ -58,8 +58,7 @@ export const recentFirst = (a: Issue, b: Issue) => b.updated.localeCompare(a.upd
 
 export const highFirst = (a: Issue, b: Issue) => Number(b.priority === 'high') - Number(a.priority === 'high') || oldestFirst(a, b);
 
-/** `urgency` ranks focus projects (see `goals.ts`, lower first); projects missing from it rank last. */
-export function next(projects: Project[], issues: Issue[], urgency?: ReadonlyMap<string, number>): Next {
+export function next(projects: Project[], issues: Issue[]): Next {
   const byId = indexIssues(issues);
   const byKey = new Map(projects.map((p) => [p.key, p]));
   const result: Next = { doing: [], high: [], focus: [], other: [] };
@@ -74,7 +73,6 @@ export function next(projects: Project[], issues: Issue[], urgency?: ReadonlyMap
     else if (p.focus) result.focus.push(t);
     else result.other.push(t);
   }
-  if (urgency) result.focus.sort((a, b) => (urgency.get(a.project) ?? 2) - (urgency.get(b.project) ?? 2));
   return result;
 }
 
