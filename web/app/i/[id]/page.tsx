@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { claudeDir } from '../../../../src/config.ts';
+import { grillRoots } from '../../../../src/config.ts';
 import { bodyHash } from '../../../../src/ops.ts';
 import { linkedPath } from '../../../../src/open.ts';
 import { openLinkedFile, setIssueTitle } from '@/app/actions';
@@ -46,7 +46,7 @@ export default async function IssuePage({ params }: Props) {
   const blockers = issue.blocked_by.map((b): Ref => (byId.has(b) ? ref(byId.get(b)!) : { id: b }));
   const open = issue.status === 'todo' ? openBlockers(issue, byId) : [];
   const dependents = issues.filter((t) => t.blocked_by.includes(issue.id));
-  const dirs = { data: dir, claude: claudeDir() };
+  const dirs = { data: dir, ...grillRoots() };
   const planPath = linkedPath(issue, 'plan', dirs);
   const candidates =issues.filter((t) => t.id !== issue.id && (t.status === 'idea' || t.status === 'todo' || t.status === 'doing')).map(ref);
 

@@ -1,4 +1,8 @@
-/** Read-only access to grill sessions (`<claudeDir>/skills/grill/sessions/<slug>/<slug>.md`) for search, the digest and the dashboard. */
+/**
+ * Read-only access to grill sessions (`<dir>/<slug>/<slug>.md`) for search, the digest and the dashboard.
+ * Two folders hold them: `/sear`'s (`~/Sear/sessions`) and the frozen archive of old `/grill` sessions
+ * (`<claudeDir>/skills/grill/sessions`). Sear's wins on a slug in both, as it does in Sear itself.
+ */
 import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { splitFrontmatter, type Project } from './store.ts';
@@ -12,17 +16,31 @@ export interface GrillSession {
   project?: string;
 }
 
-export function grillDir(claudeDir: string): string {
-  return join(claudeDir, 'skills', 'grill', 'sessions');
+export interface GrillRoots {
+  sear: string;
+  claude: string;
 }
 
-export function grillFile(claudeDir: string, slug: string): string {
-  return join(grillDir(claudeDir), slug, `${slug}.md`);
+/** The session folders, winner first. */
+export function grillDirs(roots: GrillRoots): string[] {
+  return [roots.sear, join(roots.claude, 'skills', 'grill', 'sessions')];
 }
 
-/** The session's preview doc, which the grill skill keeps next to the session file. */
-export function grillPreview(claudeDir: string, slug: string): string {
-  return join(grillDir(claudeDir), slug, 'preview.html');
+const hasSession = (dir: string, slug: string) => existsSync(join(dir, slug, `${slug}.md`));
+
+/** The folder holding the session, or Sear's when neither does. */
+function grillFolder(roots: GrillRoots, slug: string): string {
+  const dirs = grillDirs(roots);
+  return join(dirs.find((d) => hasSession(d, slug)) ?? dirs[0], slug);
+}
+
+export function grillFile(roots: GrillRoots, slug: string): string {
+  return join(grillFolder(roots, slug), `${slug}.md`);
+}
+
+/** The session's preview doc, which the old grill skill kept next to the session file. */
+export function grillPreview(roots: GrillRoots, slug: string): string {
+  return join(grillFolder(roots, slug), 'preview.html');
 }
 
 /** A session as its own page shows it: `body` is the markdown after the frontmatter. */
@@ -104,37 +122,37 @@ function readSummary(path: string, slug: string): GrillSession {
   return { slug, topic, status, updated, project };
 }
 
-/** Parsed sessions keyed by slug, reused while the session file's mtime is unchanged. */
-export type GrillMemo = Map<string, { mtimeMs: number; session: GrillSession }>;
+/** Parsed sessions keyed by slug, reused while the session file's path and mtime are unchanged. */
+export type GrillMemo = Map<string, { path: string; mtimeMs: number; session: GrillSession }>;
 
 /** Slugs of the session folders: a slug-named directory holding `<slug>.md`. Anything else in the dir is skipped. */
 function sessionSlugs(dir: string): string[] {
   if (!existsSync(dir)) return [];
   return readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isDirectory() && isGrillSlug(e.name) && existsSync(join(dir, e.name, `${e.name}.md`)))
+    .filter((e) => e.isDirectory() && isGrillSlug(e.name) && hasSession(dir, e.name))
     .map((e) => e.name);
 }
 
-export function loadGrillSessions(claudeDir: string, memo?: GrillMemo): GrillSession[] {
-  const slugs = sessionSlugs(grillDir(claudeDir));
-  if (!memo) return slugs.map((slug) => readSummary(grillFile(claudeDir, slug), slug));
-  const present = new Set(slugs);
-  for (const slug of memo.keys()) if (!present.has(slug)) memo.delete(slug);
-  return slugs.map((slug) => {
-    const path = grillFile(claudeDir, slug);
+export function loadGrillSessions(roots: GrillRoots, memo?: GrillMemo): GrillSession[] {
+  const paths = new Map<string, string>();
+  for (const dir of grillDirs(roots))
+    for (const slug of sessionSlugs(dir)) if (!paths.has(slug)) paths.set(slug, join(dir, slug, `${slug}.md`));
+  if (!memo) return [...paths].map(([slug, path]) => readSummary(path, slug));
+  for (const slug of memo.keys()) if (!paths.has(slug)) memo.delete(slug);
+  return [...paths].map(([slug, path]) => {
     const { mtimeMs } = statSync(path);
     const hit = memo.get(slug);
-    if (hit?.mtimeMs === mtimeMs) return hit.session;
+    if (hit?.path === path && hit.mtimeMs === mtimeMs) return hit.session;
     const session = readSummary(path, slug);
-    memo.set(slug, { mtimeMs, session });
+    memo.set(slug, { path, mtimeMs, session });
     return session;
   });
 }
 
 /** One session with its markdown body, minus the `# Grill session: …` heading. Undefined for a missing file or a slug that isn't a plain file name. */
-export function loadGrillSession(claudeDir: string, slug: string): GrillDoc | undefined {
+export function loadGrillSession(roots: GrillRoots, slug: string): GrillDoc | undefined {
   if (!isGrillSlug(slug)) return undefined;
-  const path = grillFile(claudeDir, slug);
+  const path = grillFile(roots, slug);
   if (!existsSync(path)) return undefined;
   const s = readSession(readFileSync(path, 'utf8'), slug);
   return { ...s, body: s.body.replace(/^#\s+Grill session:[^\n]*\n*/, '') };

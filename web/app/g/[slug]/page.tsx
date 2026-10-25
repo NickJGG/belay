@@ -3,7 +3,7 @@ import { MessagesSquare } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { claudeDir } from '../../../../src/config.ts';
+import { grillRoots } from '../../../../src/config.ts';
 import { grillFile, grillPreview } from '../../../../src/grill.ts';
 import { openGrillFile, openGrillPreview } from '@/app/actions';
 import { projectHref, projectTabHref } from '@/components/bits';
@@ -37,7 +37,8 @@ export default async function GrillPage({ params }: Props) {
   const { projects, issues } = ctx();
   const project = projects.find((p) => p.key === g.project?.toUpperCase());
   const linked = issues.filter((t) => t.grill === slug);
-  const preview = grillPreview(claudeDir(), slug);
+  const roots = grillRoots();
+  const preview = grillPreview(roots, slug);
 
   return (
     <>
@@ -98,7 +99,13 @@ export default async function GrillPage({ params }: Props) {
               )}
               <dt>File</dt>
               <dd>
-                <OpenFile open={openGrillFile.bind(null, slug)} path={grillFile(claudeDir(), slug)} />
+                <OpenFile open={openGrillFile.bind(null, slug)} path={grillFile(roots, slug)} />
+              </dd>
+              <dt>Sear</dt>
+              <dd>
+                <a className={panel.fileLink} href={`http://127.0.0.1:8790/s/${slug}`} target="_blank" rel="noreferrer">
+                  Open in Sear
+                </a>
               </dd>
               {existsSync(preview) && (
                 <>

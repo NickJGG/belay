@@ -2,10 +2,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { claudeDir, dataDir, DEFAULT_PORT } from './config.ts';
+import { claudeDir, dataDir, DEFAULT_PORT, grillRoots } from './config.ts';
 import { clip, digestLines, plural } from './digest.ts';
 import { initHistory } from './gitlog.ts';
-import { grillDir, grillMatches, loadGrillSessions } from './grill.ts';
+import { grillDirs, grillMatches, loadGrillSessions } from './grill.ts';
 import { attachCommits, duration, localStamp, readCommitDays, recentSessions, weekCommits, writeCommitDays } from './history.ts';
 import {
   Ctx,
@@ -531,14 +531,14 @@ function cmdSearch(argv: string[]): void {
     const hay = [t.title, t.body, ...t.comments.map((c) => c.text)].join('\n').toLowerCase();
     return words.every((w) => hay.includes(w));
   });
-  const claude = claudeDir();
-  const grill = loadGrillSessions(claude)
+  const roots = grillRoots();
+  const grill = loadGrillSessions(roots)
     .filter((g) => grillMatches(g, words))
     .sort((a, b) => (b.updated ?? '').localeCompare(a.updated ?? ''));
   const out: string[] = [];
   if (issues.length) out.push('issues', ...lines(issues, ctx, true));
   if (grill.length) {
-    out.push(`grill sessions (${normalizeStoredPath(grillDir(claude))}/<slug>/<slug>.md)`);
+    out.push(`grill sessions (<slug>/<slug>.md in ${grillDirs(roots).map(normalizeStoredPath).join(' or ')})`);
     const slugW = Math.max(...grill.map((g) => g.slug.length));
     const statusW = Math.max(...grill.map((g) => (g.status ?? '').length));
     const projW = Math.max(...grill.map((g) => (g.project ?? '').length));
@@ -604,9 +604,8 @@ function cmdDigest(argv: string[]): void {
       print(digestLines(project, ctx.issues, [], [], undefined, { bad: ctx.bad, compact: true }));
       return;
     }
-    const claude = claudeDir();
     const exclude = typeof input.session_id === 'string' ? input.session_id : undefined;
-    const sessions = recentSessions(claude, ctx.projects, { project, limit: 3, exclude });
+    const sessions = recentSessions(claudeDir(), ctx.projects, { project, limit: 3, exclude });
     attachCommits(sessions, ctx.projects);
     const logs = ctx.logs(addDays(day, -LOOKBACK_DAYS), day);
     const goals = {
@@ -615,7 +614,7 @@ function cmdDigest(argv: string[]): void {
       moved: movedDays(project, ctx.issues, logs, commits[project.key] ?? []),
       logs,
     };
-    print(digestLines(project, ctx.issues, sessions, loadGrillSessions(claude), goals, { bad: ctx.bad }));
+    print(digestLines(project, ctx.issues, sessions, loadGrillSessions(grillRoots()), goals, { bad: ctx.bad }));
   } catch (e) {
     console.error(`belay digest: ${(e as Error).message}`);
   }

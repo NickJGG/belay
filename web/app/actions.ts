@@ -2,7 +2,7 @@
 /** Thin wrappers: validate the untyped input, call one op on a fresh load, revalidate. */
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { claudeDir, dataDir } from '../../src/config.ts';
+import { dataDir, grillRoots } from '../../src/config.ts';
 import { parseGoalSpec } from '../../src/goals.ts';
 import { grillFile, grillPreview, isGrillSlug } from '../../src/grill.ts';
 import { ConflictError, Ctx, addComment, addIssue, addLog, bodyHash, deleteComment, deleteIssue, deleteLog, editComment, editLog, editProject, editIssue, moveProject, replaceBody, setFocus, setPriority, setSettings, setStatus } from '../../src/ops.ts';
@@ -238,7 +238,7 @@ export async function openLinkedFile(id: unknown, kind: unknown): Promise<Result
   try {
     if (!isLinked(kind)) throw new Error('kind must be file|grill|plan');
     const data = dataDir();
-    const path = linkedPath(new Ctx(data).issue(str(id, 'id')), kind, { data, claude: claudeDir() });
+    const path = linkedPath(new Ctx(data).issue(str(id, 'id')), kind, { data, ...grillRoots() });
     if (!path) throw new Error(`no ${kind} on ${id}`);
     openFile(path);
   } catch (e) {
@@ -252,7 +252,7 @@ export async function openGrillFile(slug: unknown): Promise<Result> {
   try {
     const s = str(slug, 'slug');
     if (!isGrillSlug(s)) throw new Error(`not a grill session: '${s}'`);
-    openFile(grillFile(claudeDir(), s));
+    openFile(grillFile(grillRoots(), s));
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -264,7 +264,7 @@ export async function openGrillPreview(slug: unknown): Promise<Result> {
   try {
     const s = str(slug, 'slug');
     if (!isGrillSlug(s)) throw new Error(`not a grill session: '${s}'`);
-    openFile(grillPreview(claudeDir(), s));
+    openFile(grillPreview(grillRoots(), s));
   } catch (e) {
     return { error: (e as Error).message };
   }

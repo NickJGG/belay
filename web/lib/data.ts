@@ -1,7 +1,7 @@
 /** Server-side reads. Every request loads the data dir afresh; `cache` only shares one load across a render. The exception is `grillMemo`, which keeps parsed grill sessions across requests and re-validates each by mtime. */
 import 'server-only';
 import { cache } from 'react';
-import { claudeDir, dataDir } from '../../src/config.ts';
+import { dataDir, grillRoots } from '../../src/config.ts';
 import { loadGrillSession, loadGrillSessions, type GrillMemo } from '../../src/grill.ts';
 import { commitsBetween } from '../../src/history.ts';
 import { Ctx } from '../../src/ops.ts';
@@ -14,8 +14,8 @@ export const settings = cache(() => loadSettings(dataDir()));
 export { dataDir };
 
 const grillMemo: GrillMemo = new Map();
-export const grillSessions = cache(() => loadGrillSessions(claudeDir(), grillMemo));
-export const grillSession = cache((slug: string) => loadGrillSession(claudeDir(), slug));
+export const grillSessions = cache(() => loadGrillSessions(grillRoots(), grillMemo));
+export const grillSession = cache((slug: string) => loadGrillSession(grillRoots(), slug));
 
 /** Git commit times under the project's paths on work days `from`..`to`. Runs git, so only once per render. */
 export const commitTimes = cache((key: string, from: string, to: string): string[] => {
