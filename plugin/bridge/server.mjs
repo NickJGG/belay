@@ -1,9 +1,12 @@
 /*
- * Sear bridge: the `plugin:sear@sear` Claude Code channel, spawned over stdio by the sear plugin.
+ * Sear bridge: the `plugin:sear@sear` Claude Code channel, spawned over stdio by the sear plugin. It carries both
+ * kinds of live session the Belay site shows: grills (`/sear`) and lessons (`/learn`).
  *
- * Idle it is MCP only, listing one tool, `attach(slug)`. Attaching loads the rest (HTTP, zod, files), binds a
- * free 127.0.0.1 port with a fresh token, writes `<sessions>/<slug>/bridge.json` for the site to find, and
- * announces `reply`, `show`, `choice` and `detach` with tools/list_changed. `detach` undoes all of it.
+ * Idle it is MCP only, listing one tool, `attach(slug | course)`. Attaching loads the rest (HTTP, zod, files), binds
+ * a free 127.0.0.1 port with a fresh token, writes `<sessions>/<slug>/bridge.json` for the site to find, and
+ * announces the session's tools with tools/list_changed: `reply`, `show`, `choice` and `detach`, plus `restart`
+ * for a lesson. `detach` undoes all of it. A lesson's slug is made up at its first attach (`lesson-<course>-<time>`),
+ * and its folder gets a `kind: "lesson"` session.json; lesson.mts has the start queue and restart.
  *
  * Site messages (http.mts, protocol.mts) become `<channel source="sear">` notifications; replies, choices,
  * permission prompts and Follow along targets go back as SSE. Both sides are appended to `chat.jsonl`.
@@ -28,14 +31,15 @@ const TAIL = 250;
 const log = (...args) => console.error("[sear-bridge]", ...args);
 let modules = null;
 const importAll = async () => {
-    const [files, protocol, http, transcript, { z }] = await Promise.all([
+    const [files, protocol, http, transcript, lesson, { z }] = await Promise.all([
         import("./files.mjs"),
         import("./protocol.mjs"),
         import("./http.mjs"),
         import("./transcript.mjs"),
+        import("./lesson.mjs"),
         import("zod"),
     ]);
-    return { files, protocol, http, transcript, z };
+    return { files, protocol, http, transcript, lesson, z };
 };
 const load = () => (modules ??= importAll().then((m) => {
     loaded = m;
@@ -181,7 +185,12 @@ async function onMessage(m) {
     const missing = protocol.imagesOf(m).find((n) => !existsSync(path.join(imagesDir, n)));
     if (missing)
         return `picture ${missing} not found`;
-    await mcp.notification({ method: "notifications/claude/channel", params: protocol.toChannel(m, imagesDir) });
+    if ((m.kind === "attempt" || m.kind === "restart") && !l.lesson)
+        return `${m.kind} is for lessons; ${l.slug} is a grill`;
+    await mcp.notification({
+        method: "notifications/claude/channel",
+        params: protocol.toChannel(m, imagesDir, l.lesson ? { course: l.lesson.course } : undefined),
+    });
     files.appendChat(l.slug, { from: "site", ...m });
     setWorking(true);
     return null;
@@ -209,14 +218,32 @@ async function registerPermissionRelay() {
     });
 }
 // --- attach / detach ---------------------------------------------------------
-async function attach(slug, sessionId) {
+/** `lesson-<course>-<yyyymmdd>-<hhmm>`, local time, trimmed to the slug limit. */
+function lessonSlug(course) {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+    return `lesson-${course.slice(0, 64 - 22).replace(/-+$/, "")}-${stamp}`;
+}
+async function attach(target, sessionId) {
     const { files, protocol, http, transcript } = await load();
-    if (live?.slug === slug) {
+    const again = live && ("slug" in target ? live.slug === target.slug : live.lesson?.course === target.course);
+    if (live && again) {
+        if (!("slug" in target) && target.topic) {
+            live.lesson = { course: target.course, topic: target.topic };
+            files.writeLessonSession(live.slug, { topic: target.topic });
+        }
         await lockSession(live, sessionId);
-        return `re-attached ${slug} to this session (port ${live.http.port}).`;
+        return `re-attached ${live.slug} to this session (port ${live.http.port}).`;
     }
     if (live)
         await detach();
+    const lesson = "slug" in target ? null : { course: target.course, ...(target.topic ? { topic: target.topic } : {}) };
+    const slug = "slug" in target ? target.slug : lessonSlug(target.course);
+    if (lesson) {
+        const now = new Date().toISOString();
+        files.writeLessonSession(slug, { course: lesson.course, topic: lesson.topic ?? `Lesson · ${lesson.course}`, status: "in-progress", started: now });
+    }
     if (!relayRegistered) {
         await registerPermissionRelay();
         relayRegistered = true;
@@ -224,6 +251,8 @@ async function attach(slug, sessionId) {
     const token = randomBytes(24).toString("hex");
     const l = {
         slug,
+        lesson,
+        focus: null,
         token,
         sessionId: null,
         byOwner: false,
@@ -259,6 +288,8 @@ async function attach(slug, sessionId) {
                 ];
                 if (live.turns.busy)
                     e.push({ type: "steps", start: live.turns.start, steps: live.turns.steps });
+                if (live.focus)
+                    e.push(live.focus);
                 if (!live.connected)
                     e.push({ type: "disconnected", slug: live.slug, sessionId: live.sessionId });
                 return e;
@@ -272,7 +303,8 @@ async function attach(slug, sessionId) {
     await lockSession(l, sessionId);
     await mcp.sendToolListChanged();
     log(`attached ${slug} on port ${l.http.port}, session ${l.sessionId ?? "(not found yet)"}`);
-    return `attached ${slug}: bridge on 127.0.0.1:${l.http.port}; the site page is http://127.0.0.1:${protocol.SITE_PORT}/s/${slug}`;
+    const page = lesson ? `/courses/${lesson.course}/now` : `/s/${slug}`;
+    return `attached ${slug}: bridge on 127.0.0.1:${l.http.port}; the site page is http://127.0.0.1:${protocol.SITE_PORT}${page}`;
 }
 let relayRegistered = false;
 async function detach() {
@@ -286,19 +318,28 @@ async function detach() {
     live = null;
     l.choices.clear();
     await l.http.close();
-    (await load()).files.removeBridgeFile(l.slug);
+    const { files } = await load();
+    files.removeBridgeFile(l.slug);
+    if (l.lesson)
+        files.writeLessonSession(l.slug, { status: "done" });
     await mcp.sendToolListChanged();
     log(`detached ${l.slug}`);
     return `detached ${l.slug}`;
 }
 // --- MCP ---------------------------------------------------------------------
 const INSTRUCTIONS = `\
-Sear is the browser view of a /sear grill session. Messages in <channel source="sear"> were typed or clicked on the Sear site; the tag's \`slug\` names the session and \`kind\` what happened.
+Belay is the browser view of /sear grills and /learn lessons. Messages in <channel source="sear"> were typed or clicked on the Belay site; the tag's \`slug\` names the session and \`kind\` what happened.
 - Answer every <channel source="sear"> message by calling mcp__plugin_sear_sear__reply: the user is reading the site, not the terminal. When their latest message was typed in the terminal, answer in the terminal instead. After a reply, keep terminal text to one short line.
-- kind="answer": they picked option \`opt\` for question \`q\`, maybe with a note. kind="comment": a comment on the element at \`selector\` in that option's mock. kind="choice": their answer to a choice you posted, by button (\`option\`) or as free text.
-- If \`slug\` is not the session you are running, tell the user to run \`/sear resume <slug>\` in the terminal. Never resume it yourself.
-- Only the /sear skill calls attach; follow its instructions for when to use show and choice.`;
-const mcp = new Server({ name: "sear", version: "0.2.0" }, {
+- If \`slug\` is not the session you are running, tell the user to run \`/sear resume <slug>\` (a grill) or to start the lesson again in the terminal. Never resume it yourself.
+- Only the /sear and /learn skills call attach.
+Grills (/sear): kind="answer": they picked option \`opt\` for question \`q\`, maybe with a note. kind="comment": a comment on the element at \`selector\` in that option's mock. kind="choice": their answer to a choice you posted, by button (\`option\`) or as free text. Follow the /sear skill for when to use show and choice.
+Lessons (/learn; the tag has \`course\`):
+- kind="attempt": the learner submitted work. Read the file at \`path\` (in the course folder) and respond to it. Never edit it.
+- kind="command" (it can arrive before any attach): the learner pressed a start button on the site. Run \`command\` with the Skill tool (skill \`learn\` or \`learn:<sub>\`, the rest as args). This replaces any earlier topic.
+- kind="restart": the learner wants a fresh session. If wrap="true", first run the learn skill's "Ending early" close for what was covered. Then call mcp__plugin_sear_sear__restart. Don't start anything else.
+- Call mcp__plugin_sear_sear__show with target "claim" when you move on to teaching a new claim, so the learner's page follows you there; not for claims you merely cite. Use "work" or "source" when you start discussing that file, and "whiteboard" after writing now.md. Never point at misconceptions. During a checkpoint, don't show claims or sources.
+- The site renders Markdown, KaTeX ($…$, $$…$$) and \`\`\`mermaid blocks, so notation and diagrams may go inline in replies.`;
+const mcp = new Server({ name: "sear", version: "0.3.0" }, {
     capabilities: {
         experimental: { "claude/channel": {}, "claude/channel/permission": {} },
         tools: { listChanged: true },
@@ -309,31 +350,52 @@ const mcp = new Server({ name: "sear", version: "0.2.0" }, {
 const ALWAYS = { "anthropic/alwaysLoad": true };
 const ATTACH = {
     name: "attach",
-    description: "Attach this session to a Sear grill session so the Sear site can show it and send messages here. Called by the /sear skill when a grill starts or resumes; re-attaching the same slug after /clear reconnects it.",
+    description: "Attach this session to the Belay site so it can show it and send messages here: a grill by `slug` (the /sear skill, when a grill starts or resumes) or a lesson by `course` (the /learn skills, when a routine starts). Re-attaching the same slug or course after /clear reconnects it.",
     _meta: ALWAYS,
     inputSchema: {
         type: "object",
         properties: {
-            slug: { type: "string", description: "The session slug, e.g. grill-preview-bridge" },
-            sessionId: { type: "string", description: "This Claude Code session's id, as the /sear skill gives it" },
+            slug: { type: "string", description: "A grill's session slug, e.g. grill-preview-bridge" },
+            course: { type: "string", description: "A lesson's course folder, e.g. llm-architecture" },
+            topic: { type: "string", description: "A lesson's title on the site, e.g. Lesson · backprop-autograd" },
+            sessionId: { type: "string", description: "This Claude Code session's id, as the skill gives it" },
         },
-        required: ["slug"],
     },
 };
-const ATTACHED = [
-    {
-        name: "reply",
-        description: 'Send a message to the Sear site\'s conversation drawer. The only way to answer a <channel source="sear"> message. Markdown, KaTeX and mermaid render there.',
-        _meta: ALWAYS,
-        inputSchema: {
-            type: "object",
-            properties: { text: { type: "string", description: "The message (Markdown)" } },
-            required: ["text"],
-        },
+const REPLY = {
+    name: "reply",
+    description: 'Send a message to the Belay site\'s conversation drawer. The only way to answer a <channel source="sear"> message. Markdown, KaTeX and mermaid render there.',
+    _meta: ALWAYS,
+    inputSchema: {
+        type: "object",
+        properties: { text: { type: "string", description: "The message (Markdown)" } },
+        required: ["text"],
     },
+};
+const CHOICE = {
+    name: "choice",
+    description: 'Post a choice to the Belay drawer as buttons, in place of AskUserQuestion. Mirror it as text in the terminal. The answer arrives as a kind="choice" message with the returned id.',
+    _meta: ALWAYS,
+    inputSchema: {
+        type: "object",
+        properties: {
+            prompt: { type: "string", description: "The question (Markdown)" },
+            options: { type: "array", items: { type: "string" }, description: "Button labels, 2–8" },
+        },
+        required: ["prompt", "options"],
+    },
+};
+const DETACH = {
+    name: "detach",
+    description: "Detach from the Belay site: it stops reaching this terminal. Call when the grill or lesson ends.",
+    _meta: ALWAYS,
+    inputSchema: { type: "object", properties: {} },
+};
+const GRILL_TOOLS = [
+    REPLY,
     {
         name: "show",
-        description: "Point the Sear site at a question (and option): the page follows unless the user is looking elsewhere.",
+        description: "Point the Belay grill page at a question (and option): the page follows unless the user is looking elsewhere.",
         _meta: ALWAYS,
         inputSchema: {
             type: "object",
@@ -344,56 +406,94 @@ const ATTACHED = [
             required: ["q"],
         },
     },
+    CHOICE,
+    DETACH,
+];
+const LESSON_TOOLS = [
+    REPLY,
     {
-        name: "choice",
-        description: 'Post a choice to the Sear drawer as buttons, in place of AskUserQuestion. Mirror it as text in the terminal. The answer arrives as a kind="choice" message with the returned id.',
+        name: "show",
+        description: "Point the learner's Belay page at what you are teaching now: a knowledge claim, the whiteboard (now.md), a work file or a source. The page follows unless the learner has wandered off.",
         _meta: ALWAYS,
         inputSchema: {
             type: "object",
             properties: {
-                prompt: { type: "string", description: "The question (Markdown)" },
-                options: { type: "array", items: { type: "string" }, description: "Button labels, 2–8" },
+                target: { type: "string", enum: ["claim", "whiteboard", "work", "source"] },
+                topic: { type: "string", description: "claim: the knowledge topic, e.g. backprop-autograd" },
+                id: { type: "string", description: "claim: the block id, e.g. c3; source: the source id" },
+                path: { type: "string", description: "work: the file's path in the course folder, e.g. work/flops.py" },
             },
-            required: ["prompt", "options"],
+            required: ["target"],
         },
     },
+    CHOICE,
     {
-        name: "detach",
-        description: "Detach from the Sear session: the site stops reaching this terminal. Call when the grill ends.",
+        name: "restart",
+        description: 'End this Claude session so the launcher relaunches a fresh one that runs the routine the learner started on the site. Only call it for a kind="restart" message, as the last thing in the turn.',
         _meta: ALWAYS,
         inputSchema: { type: "object", properties: {} },
     },
+    DETACH,
 ];
-mcp.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: live ? [ATTACH, ...ATTACHED] : [ATTACH] }));
+const toolsOf = (l) => (l.lesson ? LESSON_TOOLS : GRILL_TOOLS);
+mcp.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: live ? [ATTACH, ...toolsOf(live)] : [ATTACH] }));
+/** The attach target its arguments name, or why they name none. */
+async function attachTarget(args) {
+    const { protocol, lesson } = await load();
+    const { slug, course, topic } = args;
+    if ((slug === undefined) === (course === undefined))
+        return "pass exactly one of slug (a grill) or course (a lesson)";
+    if (slug !== undefined) {
+        return typeof slug === "string" && protocol.SLUG.test(slug) ? { slug } : "slug must be lowercase letters, digits and dashes";
+    }
+    if (typeof course !== "string" || !lesson.courseExists(course))
+        return `no course ${String(course)} in ${lesson.learningRoot()}`;
+    const t = typeof topic === "string" && topic.trim() ? topic.trim().slice(0, 120) : undefined;
+    return { course, ...(t ? { topic: t } : {}) };
+}
 mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
     const name = req.params.name;
     const args = req.params.arguments ?? {};
     if (name === "attach") {
-        const { protocol } = await load();
-        const { slug, sessionId } = args;
-        if (typeof slug !== "string" || !protocol.SLUG.test(slug))
-            return text("slug must be lowercase letters, digits and dashes", true);
+        const target = await attachTarget(args);
+        if (typeof target === "string")
+            return text(target, true);
+        const { sessionId } = args;
         // An unsubstituted `${CLAUDE_SESSION_ID}` or other junk is ignored rather than locked onto.
         const id = typeof sessionId === "string" && /^[0-9a-f-]{8,64}$/i.test(sessionId) ? sessionId : undefined;
-        return text(await attach(slug, id));
+        return text(await attach(target, id));
     }
-    if (!ATTACHED.some((t) => t.name === name))
+    if (![...GRILL_TOOLS, ...LESSON_TOOLS].some((t) => t.name === name))
         throw new Error(`unknown tool: ${name}`);
     const l = live;
     if (!l)
         return text("not attached: call attach first", true);
+    if (!toolsOf(l).some((t) => t.name === name))
+        return text(`${name} is for lessons; ${l.slug} is a grill`, true);
     if (name === "detach")
         return text(await detach());
     if (!l.connected)
-        return text(`disconnected after /clear: call attach("${l.slug}") again first`, true);
-    const { files, z } = await load();
+        return text("disconnected after /clear: call attach again first", true);
+    const { files, lesson, z } = await load();
     if (name === "reply") {
         const parsed = z.object({ text: z.string().min(1).max(64_000) }).safeParse(args);
         if (!parsed.success)
             return text("expected {text} (1–64000 chars)", true);
         broadcast({ type: "reply", text: parsed.data.text });
         files.appendChat(l.slug, { from: "claude", kind: "reply", text: parsed.data.text });
-        return text(l.http.clients() ? "sent" : "sent, but no Sear page is open right now; it will show in the history");
+        return text(l.http.clients() ? "sent" : "sent, but no Belay page is open right now; it will show in the history");
+    }
+    if (name === "show" && l.lesson) {
+        const parsed = lesson.Show.safeParse(args);
+        if (!parsed.success)
+            return text("expected {target, topic?, id?, path?}", true);
+        const error = lesson.showError(l.lesson.course, parsed.data);
+        if (error)
+            return text(error, true);
+        const e = { type: "show", course: l.lesson.course, ...parsed.data };
+        l.focus = e;
+        broadcast(e);
+        return text("shown");
     }
     if (name === "show") {
         const parsed = z
@@ -403,6 +503,13 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
             return text("expected {q: question number, opt?: option key}", true);
         broadcast({ type: "show", ...parsed.data });
         return text("shown");
+    }
+    if (name === "restart") {
+        if (!lesson.readQueue())
+            return text("cancelled: the learner cancelled the start");
+        // Leave time for Claude Code to record the tool result before the process dies.
+        setTimeout(() => lesson.endClaude(log), 500);
+        return text("restarting");
     }
     const parsed = z
         .object({ prompt: z.string().min(1).max(4000), options: z.array(z.string().min(1).max(200)).min(2).max(8) })
@@ -416,6 +523,49 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
     files.appendChat(l.slug, { from: "claude", kind: "choice", id, ...parsed.data });
     return text(`choice ${id} is up on the site; the answer arrives as a kind="choice" message with id ${id}`);
 });
+/**
+ * An idle session in the Handhold root sends the site's queued start as a `kind="command"` message, which runs the
+ * routine's skill, which attaches. It checks at startup (a restart's fresh session) and then every second while idle
+ * (a `sear learn` started before the button was pressed). Only the files module loads until a start is queued.
+ */
+async function startQueued() {
+    const { queueFile } = await import("./files.mjs");
+    if (live || !existsSync(queueFile()))
+        return;
+    const { lesson } = await load();
+    const q = lesson.readQueue();
+    if (!q)
+        return;
+    lesson.clearQueue();
+    await mcp.notification({
+        method: "notifications/claude/channel",
+        params: {
+            content: `Belay site: start ${q.label} (\`${q.command}\`).`,
+            meta: { kind: "command", course: q.course, command: q.command },
+        },
+    });
+}
+// A channel message sent the moment the handshake ends may arrive before Claude Code listens for it.
+const COMMAND_DELAY = 2000;
+const QUEUE_POLL = 1000;
+mcp.oninitialized = async () => {
+    const { inLearningRoot } = await import("./files.mjs");
+    if (!inLearningRoot(process.env.CLAUDE_PROJECT_DIR ?? process.cwd()))
+        return;
+    let checking = false;
+    const check = () => {
+        if (checking)
+            return;
+        checking = true;
+        startQueued()
+            .catch((err) => log(`queued start failed: ${err}`))
+            .finally(() => (checking = false));
+    };
+    setTimeout(() => {
+        check();
+        setInterval(check, QUEUE_POLL).unref();
+    }, COMMAND_DELAY).unref();
+};
 // bridge.json must not outlive the process, or the site would list a dead session as Live.
 process.on("exit", () => {
     if (!live)

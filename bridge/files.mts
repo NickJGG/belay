@@ -5,6 +5,13 @@ import path from "node:path";
 
 export const sessionsDir = () => process.env.SEAR_SESSIONS_DIR ?? path.join(os.homedir(), "Sear", "sessions");
 export const sessionDir = (slug: string) => path.join(sessionsDir(), slug);
+export const learningRoot = () => process.env.HANDHOLD_ROOT || path.join(os.homedir(), "Learning");
+/** Whether `dir` is the Handhold root, where a queued lesson start may run. */
+export const inLearningRoot = (dir: string) => path.relative(path.resolve(learningRoot()), path.resolve(dir)) === "";
+/** The site's queued lesson start (`web/src/lib/start-queue.ts` writes it), beside the sessions folder. */
+export const queueFile = () => path.join(path.dirname(sessionsDir()), "start.json");
+/** While this exists when `claude` exits, the launcher's loop starts it again (lesson.mts). */
+export const restartFile = () => path.join(path.dirname(sessionsDir()), "restart");
 
 export type BridgeFile = { port: number; token: string; sessionId: string | null; pid: number; at: string };
 
@@ -23,6 +30,18 @@ export function removeBridgeFile(slug: string, pid = process.pid) {
     return;
   }
   rmSync(file, { force: true });
+}
+
+/** A lesson's session.json (`kind: "lesson"`, see session-format.md): written at its first attach, closed at detach. */
+export function writeLessonSession(slug: string, patch: Record<string, unknown>) {
+  const dir = sessionDir(slug);
+  const file = path.join(dir, "session.json");
+  let doc: Record<string, unknown> = {};
+  try {
+    doc = JSON.parse(readFileSync(file, "utf8"));
+  } catch {}
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(file, JSON.stringify({ ...doc, ...patch, kind: "lesson", updated: new Date().toISOString() }, null, 2) + "\n");
 }
 
 export function appendChat(slug: string, entry: Record<string, unknown>) {

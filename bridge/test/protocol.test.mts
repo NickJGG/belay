@@ -123,3 +123,20 @@ test("token, origin and host checks", () => {
   assert.ok(!hostAllowed("evil.example:5000", 5000));
   assert.ok(!hostAllowed(undefined, 5000));
 });
+
+test("lesson messages: attempt and restart parse, and a lesson's channel names its course", () => {
+  ok({ kind: "attempt", slug: "lesson-c-20261025-1200", path: "work/flops.py" });
+  ok({ kind: "attempt", slug: "l", path: "work/a/b.md", text: "Attempt: work/a/b.md" });
+  ok({ kind: "restart", slug: "l", label: "Quick review", wrap: true });
+  bad({ kind: "attempt", slug: "l", path: "knowledge/x.md" });
+  bad({ kind: "attempt", slug: "l", path: "work/../course.md" });
+  bad({ kind: "restart", slug: "l", label: " " });
+
+  const lesson = { course: "llm-architecture" };
+  const a = toChannel({ kind: "attempt", slug: "l", path: "work/flops.py" }, ".", lesson);
+  assert.match(a.content, /^Belay site, lesson `l` on llm-architecture: submitted `work\/flops\.py`/);
+  assert.deepEqual(a.meta, { slug: "l", kind: "attempt", course: "llm-architecture", path: "work/flops.py" });
+  const r = toChannel({ kind: "restart", slug: "l", label: "Card review", wrap: true }, ".", lesson);
+  assert.deepEqual(r.meta, { slug: "l", kind: "restart", course: "llm-architecture", wrap: "true" });
+  assert.equal(toChannel({ kind: "chat", slug: "l", text: "hi" }, ".", lesson).meta.course, "llm-architecture");
+});

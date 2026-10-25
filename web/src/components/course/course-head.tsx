@@ -10,11 +10,11 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Mark } from "@/components/layout/logo";
 import { PageCommands, type PageCommand } from "@/components/layout/palette";
 import { buttonClass } from "@/components/ui/button";
-import { routineCommand } from "@/lib/routines";
+import { useLive } from "@/components/live/live-provider";
 import { SECTIONS, sectionOf } from "@/lib/course-nav";
 import { courseHref, vscodeHref } from "@/lib/hrefs";
 import { cn } from "@/lib/utils";
-import { copyCommand, StartButton, startOptions } from "./start-buttons";
+import { liveLesson, StartButton, startOptions, startRoutine } from "./start-buttons";
 import styles from "./course.module.css";
 
 /** The course's sections as chips under its header, on phones only: the sidebar nests them from 768px. */
@@ -68,11 +68,13 @@ export function CourseHead({
   checkpoint: number | null;
 }) {
   const starts = startOptions({ lesson: !!next, due, checkpoint });
+  // From the palette there's no popover to ask in, so a live lesson is always wrapped up first.
+  const wrap = !!liveLesson(useLive().live);
   const commands: PageCommand[] = starts.map((s) => ({
     id: s.routine,
     label: s.label,
     icon: <Play size={14} aria-hidden />,
-    run: () => void copyCommand(routineCommand(s.routine, course).command, "a Claude session in ~/Learning"),
+    run: () => void startRoutine(course, s.routine, wrap),
   }));
   return (
     <>

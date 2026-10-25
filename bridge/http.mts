@@ -18,6 +18,7 @@ export type BridgeEvent =
   | { type: "verdict"; request_id: string; behavior: "allow" | "deny" }
   | { type: "working"; on: boolean }
   | { type: "show"; q: number; opt?: string }
+  | { type: "show"; course: string; target: "claim" | "whiteboard" | "work" | "source"; topic?: string; id?: string; path?: string }
   | { type: "session"; slug: string; sessionId: string | null }
   | { type: "disconnected"; slug: string; sessionId: string | null }
   | ({ type: "step" } & Step)

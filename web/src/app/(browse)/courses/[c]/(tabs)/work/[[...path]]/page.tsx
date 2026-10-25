@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { courseData } from "@/lib/course-data";
 import { topicIndex } from "@/lib/courses";
 import { listWork, readWork } from "@/lib/work";
-import { WorkSpace } from "../work-editor";
+import { LiveWorkSpace } from "../live-work";
 
 const decode = (s: string) => {
   try {
@@ -35,5 +35,5 @@ export default async function WorkTab({ params }: { params: Promise<{ c: string;
     if (!file && !candidates.some((r) => entries.some((e) => e.dir && e.path === r))) notFound();
   }
 
-  return <WorkSpace course={c} entries={entries} rel={rel} file={file} topics={topicIndex(course)} />;
+  return <LiveWorkSpace course={c} entries={entries} rel={rel} file={file} topics={topicIndex(course)} />;
 }

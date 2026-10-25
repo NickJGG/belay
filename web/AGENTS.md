@@ -10,8 +10,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Belay web
 
-The Belay app (Sear, belay's dashboard and, later, Topo merged): this Next app, served by `belay serve` on 4747.
-Grill data lives in `~/Sear/sessions/<slug>/`, belay's in `~/Belay`, and the Claude Code channel bridge ships as
+The Belay app (Sear, belay's dashboard and Topo merged): this Next app, served by `belay serve` on 4747.
+Grill and lesson sessions live in `~/Sear/sessions/<slug>/`, belay's data in `~/Belay`, courses in `~/Learning`, and the Claude Code channel bridge ships as
 the `sear` plugin at the repo root. Vocabulary is in `CONTEXT.md` beside this file (the CLI's glossary is the
 root `CONTEXT.md`).
 
@@ -37,8 +37,10 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   `/courses/<c>/{knowledge,lessons,sources}/<x>`. Their pieces are in `src/components/course/`; their data is
   `lib/course-data.ts` over `lib/courses.ts`, which loads the learn skill's `scripts/courses.js` and `cards.js`
   (formats.md is the contract). The site writes only `work/` (`/api/work`), and a lesson note's Resume conversation
-  (`app/course-actions.ts`) opens `claude --resume` in Windows Terminal. Start buttons copy the `/learn` command until
-  lessons attach through the bridge.
+  (`app/course-actions.ts`) opens `claude --resume` in Windows Terminal.
+- Lessons: a live lesson's Tab opens `/courses/<c>/now` (grill Q33), its Workspace. Start buttons
+  (`course/start-buttons.tsx`) POST `/api/lesson/start`, which queues the routine (`lib/start-queue.ts`) and asks a
+  live lesson to restart into it; Follow along (`live/follow.tsx`) follows the lesson's `show`s (`lib/lesson.ts`).
 - Belay's pages: `/p` (project cards), `/p/<key>` (Issues; `?view=ideas`), `/p/<key>/{grills,activity,logs}` under
   one layout holding the project header, `/i/<id>` and `/l/<day>/<n>?at=`. Their pieces are in
   `src/components/belay/`; their writes are the server actions in `src/app/actions.ts`, each a thin wrapper around
@@ -49,8 +51,9 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - `plugin/SKILL.md` is the `/sear` skill (grill rewritten for Sear); from a marketplace it shows as `/sear:sear`.
 - `plugin/references/session-format.md` defines `session.json`, `chat.jsonl` and the mock patch order.
 - `launcher/`: `sear.cmd` and `sear` (Git Bash) start `claude` with
-  `--dangerously-load-development-channels plugin:sear@sear` and `SEAR_CHANNEL=1` (the skill's "channel loaded"
-  check). `accept-dev-channels.ps1` presses Enter on the dev-channels dialog.
+  `--dangerously-load-development-channels plugin:sear@sear` and `SEAR_CHANNEL=1` (the skills' "channel loaded"
+  check); `sear learn` starts it in `~/Learning`. Both relaunch `claude` while `~/Sear/restart` exists when it exits
+  (a lesson's restart). `accept-dev-channels.ps1` presses Enter on the dev-channels dialog.
 
 ## Invariants
 - Keep the repo root's SDK and zod dev deps (`../package.json`) on the versions in `plugin/package.json`: the
@@ -59,11 +62,11 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   `SEAR_SITE_PORT`.
 - Keep `src/lib/` data modules (`sessions`, `projects`, `issues`, `frontmatter`, `upstream`, `format`, `shell`,
   `course-art`, `belay-view`, `watch-paths`, `courses`, `course-paths`, `course-home`, `course-nav`, `wiki-target`,
-  `work`, `session-log`, `routines`) free of `server-only` and `@/` imports: `pnpm test:site` runs them under plain
+  `work`, `session-log`, `routines`, `lesson`, `start-queue`) free of `server-only` and `@/` imports: `pnpm test:site` runs them under plain
   `node --test`, which resolves neither. They may import the CLI's `../../../src/*.ts`.
 - Client components take only types from `lib/data`, `lib/belay-view`, `lib/courses`, `lib/course-home` and the CLI's
   `store.ts`, whose runtime pulls in `node:fs`. Values they need live in import-free modules: `lib/hrefs`,
-  `lib/collapsed`, `lib/course-nav`, `lib/routines`, and the CLI's `keys`, `picker` and `time`.
+  `lib/collapsed`, `lib/course-nav`, `lib/routines`, `lib/lesson`, and the CLI's `keys`, `picker` and `time`.
 - Every write goes through a CLI op (via `actions.ts`), and adding one to the app means adding it to the CLI first.
 - `src/proxy.ts` applies belay's host guard (`src/guard.ts`) to every request but `/api/usage`, which checks its own.
 - `src/lib/session-doc.ts`'s `decisions`/`context` mirror `plugin/scripts/session.js`, and a test checks that
@@ -74,7 +77,9 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   attribute without `allow-same-origin` breaks comments.
 - Key presses don't leave an iframe, so frames re-dispatch theirs to the page's document, where `Ctrl K` (the command
   palette, `GET /api/search`) listens too. `p` is Pick, so an option keyed `p` has no shortcut.
-- Follow along never jumps while a comment or pick note is being written: the jump would discard it.
+- Follow along never jumps while a comment or pick note is being written: the jump would discard it. A lesson's
+  Follow along waits in its pill while a text field has text.
+- `bridge/lesson.mts`'s start queue and `lib/start-queue.ts` agree on `~/Sear/start.json` (beside the sessions folder).
 
 ## Plugin loading
 The marketplace was added from a local path (the belay repo root), so the plugin loads in place from `plugin/`: edits take effect at
@@ -90,10 +95,17 @@ starts in every session; the channel only registers in sessions launched with th
   `notifications/claude/channel/permission` verdict from the site answers it.
 
 ## Bridge protocol
-Idle, the server lists only `attach(slug)`. Attaching binds a free 127.0.0.1 port with a fresh token, writes
-`~/Sear/sessions/<slug>/bridge.json` `{port, token, sessionId, pid, at}`, and announces `reply`, `show`, `choice`
-and `detach`. The site's hub holds an upstream to every `bridge.json`'s `/events`; a session is Live while that
-stream is open. Message kinds live in `bridge/protocol.mts`, event types in `bridge/http.mts`.
+Idle, the server lists only `attach`: a grill by `slug` (`/sear`) or a lesson by `course` (the `/learn` skills).
+Attaching binds a free 127.0.0.1 port with a fresh token, writes `~/Sear/sessions/<slug>/bridge.json`
+`{port, token, sessionId, pid, at}`, and announces `reply`, `show`, `choice` and `detach`, plus `restart` for a
+lesson. The site's hub holds an upstream to every `bridge.json`'s `/events`; a session is Live while that stream is
+open. Message kinds live in `bridge/protocol.mts`, event types in `bridge/http.mts`.
+- Lessons (`bridge/lesson.mts`, Topo's channel folded in): attach makes up `lesson-<course>-<yyyymmdd>-<hhmm>` and
+  writes its `kind: "lesson"` session.json (grill lists skip it). `show` takes `{target: claim|whiteboard|work|source,
+  topic?, id?, path?}`, checked against the course folder; the upstream keeps the last one for pages opened later.
+  The site sends `attempt` (a `work/` file) and `restart` (a start button). A start: the site writes
+  `~/Sear/start.json`; `restart` checks it, writes `~/Sear/restart` and ends `claude` (the parent pid); the
+  launcher relaunches; the new bridge, idle in `~/Learning`, sends the queue as a `kind="command"` message.
 - Requests need a loopback `Host`; an `Origin`, if present, must be `http://{127.0.0.1,localhost}:4747`.
 - A `choice` or `permission` message must match an open one; a slug mismatch or disconnected session gets 409.
 - Pictures: `chat`, `comment` and typed `choice` carry `images` (names in the session's `images/`). The bridge

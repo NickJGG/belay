@@ -1,9 +1,27 @@
 #!/bin/sh
-# The `sear` command for Git Bash: Claude Code with the sear channel, in the current directory.
+# The `sear` command for Git Bash: Claude Code with the sear channel, in the current directory (`sear learn ...`: in
+# the Handhold root, for lessons). A lesson's restart (bridge/lesson.mts) leaves the marker and ends claude, and the
+# loop starts a fresh one.
 # The dialog helper reads the Windows console, which mintty doesn't have, so there you accept it yourself.
 here=$(cd "$(dirname "$0")" && pwd -W 2>/dev/null || pwd)
-if [ "$TERM_PROGRAM" != mintty ]; then
-  powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$here/accept-dev-channels.ps1" plugin:sear@sear </dev/null >/dev/null 2>&1 &
+home=${USERPROFILE:-$HOME}
+marker="$home/Sear/restart"
+if [ "$1" = learn ]; then
+  cd "$home/Learning" || exit 1
+  shift
 fi
-# SEAR_CHANNEL tells /sear the channel is loaded, so site messages can reach this session.
-SEAR_CHANNEL=1 exec claude --dangerously-load-development-channels plugin:sear@sear "$@"
+rm -f "$marker"
+# SEAR_CHANNEL tells /sear and /learn the channel is loaded, so site messages can reach this session.
+export SEAR_CHANNEL=1
+while :; do
+  if [ "$TERM_PROGRAM" != mintty ]; then
+    powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$here/accept-dev-channels.ps1" plugin:sear@sear </dev/null >/dev/null 2>&1 &
+  fi
+  claude --dangerously-load-development-channels plugin:sear@sear "$@"
+  code=$?
+  [ -e "$marker" ] || exit $code
+  rm -f "$marker"
+  # The fresh session takes no arguments: the queued start tells it what to run.
+  set --
+  clear
+done

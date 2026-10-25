@@ -28,8 +28,8 @@ export function CourseCard({ card }: { card: CardData }) {
   const { course: c, units, checkpoint, lead, rest, build } = card;
   const showCheckpoint = lead?.kind !== "Checkpoint";
 
-  const button = (i: UpNextItem, label: string, variant: ButtonVariant) => (
-    <StartButton key={i.kind} course={i.course} routine={i.routine!} label={label} className={buttonClass(variant, "sm")} />
+  const button = (i: UpNextItem, label: string, variant: ButtonVariant, resume = false) => (
+    <StartButton key={i.kind} course={i.course} routine={i.routine!} label={label} className={buttonClass(variant, "sm")} resume={resume} />
   );
 
   return (
@@ -86,7 +86,7 @@ export function CourseCard({ card }: { card: CardData }) {
               <span className={styles.summary}>{lead.meta}</span>
             </span>
             <span className={styles.actions}>
-              {button(lead, action(lead), lead.kind === "Checkpoint" ? "outline" : "default")}
+              {button(lead, action(lead), lead.kind === "Checkpoint" ? "outline" : "default", true)}
               {lead.kind === "Lesson" && lead.due > 0 ? (
                 <StartButton course={lead.course} routine="review" label="Cards only" className={buttonClass("ghost", "sm")} />
               ) : null}

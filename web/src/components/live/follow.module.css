@@ -1,0 +1,113 @@
+/*
+ * Last in <main>, reserving its own row so the end of a long page isn't covered. The negative
+ * bottom margin eats into main's bottom padding (shell.module.css) so a short page's pill rests
+ * at the same offset it sticks at on a long one. A Workspace's main doesn't scroll, so there it
+ * floats over the page's foot instead.
+ */
+.dock {
+  position: sticky;
+  bottom: calc(var(--dock-stack-h) + var(--space-4) + env(safe-area-inset-bottom));
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  margin: auto 0 calc(-1 * var(--space-4));
+  padding-top: var(--space-6);
+  pointer-events: none;
+}
+
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 25%, transparent);
+}
+
+.pill,
+.quiet {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  border-radius: var(--radius-full);
+  color: var(--muted);
+}
+
+.pill {
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) 14px;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  font-size: var(--text-sm);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+
+.pill > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pill button {
+  flex: none;
+  padding: 5px 14px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--brand-gradient);
+  color: var(--brand-fg);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pill button:hover {
+  background: var(--brand-gradient-hover);
+}
+
+.quiet {
+  gap: var(--space-2);
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font: inherit;
+  font-size: var(--text-xs);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.2);
+  cursor: pointer;
+  transition:
+    color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease);
+}
+
+.quiet:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.pill button:focus-visible,
+.quiet:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+main[data-kind="workspace"] > .dock {
+  position: absolute;
+  inset: auto 0 calc(var(--dock-stack-h) + var(--space-4) + env(safe-area-inset-bottom));
+  margin: 0;
+  padding: 0;
+}
+
+@media (min-width: 768px) {
+  main[data-kind="workspace"] > .dock {
+    bottom: var(--space-6);
+  }
+
+  .dock {
+    bottom: var(--space-6);
+    margin-bottom: calc(var(--space-6) - var(--space-16));
+  }
+}

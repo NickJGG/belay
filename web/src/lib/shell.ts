@@ -19,9 +19,18 @@ export function sessionSlug(pathname: string): string | null {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
-/** Grills and a course's Work tab are Workspaces (lessons join them later); every other page is a Reading page. */
+/** Grills, a lesson's Now page and a course's Work tab are Workspaces; every other page is a Reading page. */
 export function pageKind(pathname: string): PageKind {
-  return sessionSlug(pathname) || /^\/courses\/[^/]+\/work(\/|$)/.test(pathname) ? "workspace" : "reading";
+  return sessionSlug(pathname) || /^\/courses\/[^/]+\/(work(\/|$)|now\/?$)/.test(pathname) ? "workspace" : "reading";
+}
+
+/** The live Tab a page belongs to: its grill on `/s/<slug>`, or a live lesson on any page of that lesson's course. */
+export function pageTab(pathname: string, live: { slug: string; course?: string }[]): string | null {
+  const grill = sessionSlug(pathname);
+  if (grill) return grill;
+  const course = /^\/courses\/([^/?#]+)/.exec(pathname)?.[1];
+  if (!course) return null;
+  return live.find((l) => l.course === decodeURIComponent(course))?.slug ?? null;
 }
 
 export function parseCollapsed(raw: string | null): Collapsed {
@@ -43,7 +52,7 @@ export function selectTab(live: string[], page: string | null, last: string | nu
   return live[0] ?? null;
 }
 
-const COURSE_TABS = new Set(["map", "lessons", "notes", "misconceptions", "cards", "work"]);
+const COURSE_TABS = new Set(["map", "lessons", "notes", "misconceptions", "cards", "work", "now"]);
 
 /** Not found's one line (grill Q36): what's missing, and the nearest real page to go back to. */
 export function missing(pathname: string): { what: string; back: { href: string; label: string } } {

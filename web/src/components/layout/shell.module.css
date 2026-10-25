@@ -32,6 +32,7 @@
 .workspace .main {
   --main-pad-top: 0;
   --main-pad-x: 0;
+  position: relative;
   display: flex;
   flex-direction: column;
   padding: 0 0 calc(var(--dock-stack-h) + env(safe-area-inset-bottom));

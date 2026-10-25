@@ -245,3 +245,86 @@ test("bridge.json is removed when Claude Code exits", async () => {
   await client.close();
   await waitFor("bridge.json removed", () => !existsSync(bridgeFile));
 });
+
+test("a lesson: a queued start runs in the Handhold root, attach by course, show, attempt, restart and detach", async () => {
+  const learning = path.join(root, "learning");
+  const course = path.join(learning, "demo-course");
+  mkdirSync(path.join(course, "knowledge"), { recursive: true });
+  writeFileSync(path.join(course, "course.md"), "# Demo\n");
+  writeFileSync(path.join(course, "knowledge", "topic.md"), "# Topic\n\nA claim. ^c1\n");
+  const queue = path.join(root, "start.json");
+  writeFileSync(queue, JSON.stringify({ label: "Quick review", command: "/learn demo-course --quick", course: "demo-course", routine: "quick", at: Date.now() }));
+
+  const got: Note[] = [];
+  const lc = new Client({ name: "lesson-test", version: "0" });
+  lc.fallbackNotificationHandler = async (n) => void got.push(n as Note);
+  const env3 = { ...env, HANDHOLD_ROOT: learning };
+  await lc.connect(new StdioClientTransport({ command: process.execPath, args: [SERVER], cwd: learning, env: env3, stderr: "ignore" }));
+  try {
+    const cmd = await waitFor("queued command", () => got.find((n) => n.params?.meta && (n.params.meta as Record<string, string>).kind === "command"));
+    assert.deepEqual(cmd.params?.meta, { kind: "command", course: "demo-course", command: "/learn demo-course --quick" });
+    assert.ok(!existsSync(queue), "the start is consumed");
+
+    assert.ok((await lc.callTool({ name: "attach", arguments: { slug: "x", course: "demo-course" } })).isError);
+    assert.ok((await lc.callTool({ name: "attach", arguments: { course: "no-such" } })).isError);
+    const r = await lc.callTool({ name: "attach", arguments: { course: "demo-course", topic: "Quick review" } });
+    const slug = /^attached (lesson-demo-course-\d{8}-\d{4}):/.exec(textOf(r))?.[1];
+    assert.ok(slug, textOf(r));
+    assert.match(textOf(r), /\/courses\/demo-course\/now$/);
+    const doc = JSON.parse(readFileSync(path.join(sessions, slug, "session.json"), "utf8"));
+    assert.deepEqual([doc.kind, doc.course, doc.topic, doc.status], ["lesson", "demo-course", "Quick review", "in-progress"]);
+    assert.deepEqual((await lc.listTools()).tools.map((t) => t.name).sort(), ["attach", "choice", "detach", "reply", "restart", "show"]);
+
+    assert.match(textOf(await lc.callTool({ name: "show", arguments: { target: "claim", topic: "topic", id: "c9" } })), /no claim \^c9/);
+    assert.equal(textOf(await lc.callTool({ name: "show", arguments: { target: "claim", topic: "topic", id: "c1" } })), "shown");
+    const { port, token } = JSON.parse(readFileSync(path.join(sessions, slug, "bridge.json"), "utf8"));
+    const ac = new AbortController();
+    const res = await fetch(`http://127.0.0.1:${port}/events`, { headers: { "X-Sear-Token": token }, signal: ac.signal });
+    const reader = res.body!.getReader();
+    let seen = "";
+    while (!/"type":"show","course":"demo-course","target":"claim"/.test(seen)) seen += new TextDecoder().decode((await reader.read()).value);
+    ac.abort();
+
+    const send = (body: unknown) =>
+      fetch(`http://127.0.0.1:${port}/message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Sear-Token": token },
+        body: JSON.stringify(body),
+      });
+    const before = got.length;
+    assert.equal((await send({ kind: "attempt", slug, path: "work/flops.py", text: "Attempt: work/flops.py" })).status, 200);
+    const n = await waitFor("attempt", () => got.slice(before).find((x) => x.method === "notifications/claude/channel"));
+    assert.deepEqual(n.params?.meta, { slug, kind: "attempt", course: "demo-course", path: "work/flops.py" });
+
+    assert.match(textOf(await lc.callTool({ name: "restart", arguments: {} })), /^cancelled/);
+    assert.match(textOf(await lc.callTool({ name: "detach", arguments: {} })), /^detached/);
+    assert.equal(JSON.parse(readFileSync(path.join(sessions, slug, "session.json"), "utf8")).status, "done");
+
+    // Idle again: a start queued after the session began (`sear learn`, then the button) is picked up too.
+    const commands = () => got.filter((x) => (x.params?.meta as Record<string, string> | undefined)?.kind === "command");
+    writeFileSync(queue, JSON.stringify({ label: "Card review", command: "/learn:review demo-course", course: "demo-course", routine: "review", at: Date.now() }));
+    const later = await waitFor("a later queued command", () => commands()[1]);
+    assert.equal((later.params?.meta as Record<string, string>).command, "/learn:review demo-course");
+    assert.ok(!existsSync(queue));
+  } finally {
+    await lc.close();
+  }
+});
+
+test("a grill refuses lesson messages and tools", async () => {
+  const other = new Client({ name: "grill-test", version: "0" });
+  await other.connect(new StdioClientTransport({ command: process.execPath, args: [SERVER], cwd, env, stderr: "ignore" }));
+  try {
+    await other.callTool({ name: "attach", arguments: { slug: "plain" } });
+    assert.ok((await other.callTool({ name: "restart", arguments: {} })).isError);
+    const { port, token } = JSON.parse(readFileSync(path.join(sessions, "plain", "bridge.json"), "utf8"));
+    const r = await fetch(`http://127.0.0.1:${port}/message`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Sear-Token": token },
+      body: JSON.stringify({ kind: "attempt", slug: "plain", path: "work/x.py" }),
+    });
+    assert.equal(r.status, 409);
+  } finally {
+    await other.close();
+  }
+});

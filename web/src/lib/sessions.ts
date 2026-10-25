@@ -23,6 +23,9 @@ export type SessionSummary = {
   mock: boolean;
   /** `grill` for a session read from the old grill sessions folder. */
   source: "sear" | "grill";
+  /** Set, with `course`, on a lesson's folder (session-format.md's Lessons); unset on a grill. */
+  kind?: "lesson";
+  course?: string;
 };
 
 export type SessionRoot = { dir: string; source: SessionSummary["source"] };
@@ -53,6 +56,7 @@ function fromJson(slug: string, j: Record<string, unknown>): SessionSummary {
       })),
     mock: j.mock != null && typeof j.mock === "object",
     source: "sear",
+    ...(j.kind === "lesson" ? { kind: "lesson" as const, course: str(j.course) ?? "" } : {}),
   };
 }
 
@@ -113,7 +117,7 @@ function slugsIn(dir: string): string[] {
     .map((e) => e.name);
 }
 
-/** Every session under the roots; on a slug in several roots the first root's wins. */
+/** Every grill under the roots; on a slug in several roots the first root's wins. Lessons only show as live Tabs. */
 export function listSessions(roots: SessionRoot[], memo?: SessionMemo): SessionSummary[] {
   const seen = new Map<string, SessionSummary>();
   for (const root of roots) {
@@ -123,7 +127,7 @@ export function listSessions(roots: SessionRoot[], memo?: SessionMemo): SessionS
       if (s) seen.set(slug, s);
     }
   }
-  return [...seen.values()];
+  return [...seen.values()].filter((s) => s.kind !== "lesson");
 }
 
 /** Most recently updated first; ties by slug. */

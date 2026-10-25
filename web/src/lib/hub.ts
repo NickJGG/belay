@@ -4,6 +4,8 @@ import path from "node:path";
 import { watch, type FSWatcher } from "chokidar";
 import { dataDir } from "../../../src/config.ts";
 import type { OpenTurn } from "./chat";
+import type { LessonShow } from "./lesson";
+import type { Queue } from "./start-queue";
 import { grillDir, searDir } from "./config";
 import { isSlug } from "./sessions";
 import { connectUpstream, readBridgeFile, sameBridge, type BridgeEvent, type Upstream } from "./upstream";
@@ -22,6 +24,7 @@ import { belayIgnored, belayWatched, courseIgnored, courseLocate, grillIgnored, 
  *   usage     a live session's meters, from the status line's POST to /api/usage (matched by the bridge's sessionId)
  *   belay     an issue, project, log day or order.yaml in belay's data dir changed (by a page, the CLI or Claude)
  *   course    a visible file of a course folder changed (see `visibleParts`), as `{course, path}`
+ *   start     the queued lesson start (start-queue.ts) was set or cleared, by `/api/lesson/start`
  */
 
 export type LiveSession = { slug: string; working: boolean; connected: boolean; sessionId: string | null };
@@ -33,7 +36,8 @@ export type HubEvent =
   | { type: "bridge"; slug: string; event: BridgeEvent }
   | { type: "usage"; slug: string; usage: Usage }
   | { type: "belay" }
-  | { type: "course"; course: string; path: string };
+  | { type: "course"; course: string; path: string }
+  | { type: "start"; queue: Queue | null };
 
 type Listener = (e: HubEvent) => void;
 type Hub = {
@@ -143,6 +147,16 @@ export function subscribeHub(listener: Listener): () => void {
 /** The slug's turn in progress, as its bridge last reported it. */
 export function openTurn(slug: string): OpenTurn | null {
   return hub().bridges.get(slug)?.turn() ?? null;
+}
+
+/** Tells every page the queued lesson start changed. */
+export function announceStart(queue: Queue | null) {
+  hub().emit({ type: "start", queue });
+}
+
+/** A live lesson's last `show`, as its bridge last reported it. */
+export function focusFor(slug: string): LessonShow | null {
+  return hub().bridges.get(slug)?.focus() ?? null;
 }
 
 /** The slug's meters, or null before the status line's first POST. */

@@ -105,9 +105,15 @@ One object per line, `{at, from, kind, …}`, `at` an ISO timestamp:
 | `site` | `comment` | `q, opt, selector, text, note, images?` | bridge |
 | `site` | `choice` | `id, option` or `id, text, images?` | bridge |
 | `site` | `permission` | `request_id, behavior` | bridge |
+| `site` | `attempt` | `path, text?` (lessons: a `work/` file handed in) | bridge |
+| `site` | `restart` | `label, wrap?` (lessons: a start button asking for a fresh session) | bridge |
 | `claude` | `reply` | `text` (sent to the site) | bridge |
 | `claude` | `choice` | `id, prompt, options` | bridge |
 | `claude` | `permission` | `request_id, tool_name, description, input_preview, mode?` (`mode` the permission mode the bridge last read from the transcript) | bridge |
 | `claude` | `steps` | `start, steps: [{label, at, verb?, target?, detail?, id?, meta?, tone?}], ms, interrupted?` (`verb` plain, `target` a chip, `detail` after it; `label` joins them; `id` the tool call, `meta` a reason, duration or count after the row, `tone` `bad` or `warn`) (one per turn with steps, at its end) | bridge |
 | `terminal` | `chat` | `text` (the user, typing in the terminal) | `log-chat.js` |
 | `claude` | `terminal` | `text` (my message in the terminal) | `log-chat.js` |
+
+## Lessons
+
+A `/learn` routine attached by course (`attach({course, topic})`) gets a folder `lesson-<course>-<yyyymmdd>-<hhmm>`, made up by the bridge, with `bridge.json`, `chat.jsonl` and a `session.json` the bridge writes itself: `{kind: "lesson", course, topic, status, started, updated}`, `status` `in-progress` until `detach` sets `done`. The site lists lessons only as live Tabs: grill lists skip `kind: "lesson"`.

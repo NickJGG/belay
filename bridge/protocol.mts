@@ -43,6 +43,14 @@ export const Message = z.discriminatedUnion("kind", [
     request_id: z.string().regex(/^[a-km-z]{5}$/),
     behavior: z.enum(["allow", "deny"]),
   }),
+  // Lessons only: work handed in from the Work tab, and a start button asking for a fresh session.
+  z.object({
+    kind: z.literal("attempt"),
+    slug: Slug,
+    path: z.string().regex(/^work\/[^\0]{1,500}$/).refine((p) => !p.split("/").includes("..")),
+    text: Note.optional(),
+  }),
+  z.object({ kind: z.literal("restart"), slug: Slug, label: z.string().trim().min(1).max(128), wrap: z.boolean().optional() }),
 ]);
 export type Message = z.infer<typeof Message>;
 
@@ -67,12 +75,15 @@ export const imagesOf = (m: Message): string[] => ("images" in m ? (m.images ?? 
 
 const pictures = (n: number) => `${n} ${n === 1 ? "picture" : "pictures"}`;
 
+/** A lesson's session: the course it tutors. Grills have none. */
+export type Lesson = { course: string };
+
 /**
  * The notification for a forwarded message; every one names the site and the session. A push is text only, so
  * attached pictures (files in `imagesDir`) are listed as absolute paths for Claude to Read.
  */
-export function toChannel(m: Exclude<Message, { kind: "permission" }>, imagesDir = "."): Channel {
-  const c = channelOf(m);
+export function toChannel(m: Exclude<Message, { kind: "permission" }>, imagesDir = ".", lesson?: Lesson): Channel {
+  const c = channelOf(m, lesson);
   const images = imagesOf(m);
   if (!images.length) return c;
   c.meta.images = String(images.length);
@@ -80,10 +91,16 @@ export function toChannel(m: Exclude<Message, { kind: "permission" }>, imagesDir
   return { ...c, content: `${c.content}\n\nAttached pictures (Read each before answering):\n${list}` };
 }
 
-function channelOf(m: Exclude<Message, { kind: "permission" }>): Channel {
-  const head = `Sear site, session \`${m.slug}\``;
-  const meta: Record<string, string> = { slug: m.slug, kind: m.kind };
+function channelOf(m: Exclude<Message, { kind: "permission" }>, lesson?: Lesson): Channel {
+  const head = lesson ? `Belay site, lesson \`${m.slug}\` on ${lesson.course}` : `Sear site, session \`${m.slug}\``;
+  const meta: Record<string, string> = { slug: m.slug, kind: m.kind, ...(lesson ? { course: lesson.course } : {}) };
   switch (m.kind) {
+    case "attempt":
+      meta.path = m.path;
+      return { content: `${head}: submitted \`${m.path}\` for you to read.${m.text ? `\n\n${m.text}` : ""}`, meta };
+    case "restart":
+      meta.wrap = String(!!m.wrap);
+      return { content: `${head}: restart for ${m.label}.`, meta };
     case "chat":
       return { content: m.text ? `${head}:\n\n${m.text}` : `${head}: sent ${pictures(m.images?.length ?? 0)}.`, meta };
     case "answer":

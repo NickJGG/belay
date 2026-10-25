@@ -6,6 +6,7 @@ import { Prose } from "@/components/content/prose";
 import { Mark } from "@/components/layout/logo";
 import { IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_IMAGES } from "@/lib/images";
 import { openPrompts, permissionLine, permView, placeSteps, PLAN_READY, toolLabel, toStep, type ChatEntry, type OpenTurn, type Step } from "@/lib/chat";
+import type { MarkdownContext } from "@/lib/markdown";
 import type { Usage } from "@/lib/usage";
 import { cn } from "@/lib/utils";
 import styles from "./session.module.css";
@@ -164,6 +165,7 @@ function Entry({
   open,
   link,
   send,
+  md,
 }: {
   slug: string;
   e: ChatEntry;
@@ -171,6 +173,8 @@ function Entry({
   open: ReturnType<typeof openPrompts>;
   link: LinkState;
   send: Send;
+  /** A lesson's course, so Claude's citations render as claim chips. */
+  md?: MarkdownContext;
 }) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -203,7 +207,7 @@ function Entry({
       <div className={cn(styles.msg, styles.claude)}>
         <Speaker name="Claude" extra={e.kind === "terminal" ? "terminal" : undefined} />
         <div className={styles.bubble}>
-          <Prose markdown={text} compact />
+          <Prose markdown={text} course={md} compact />
         </div>
       </div>
     );
@@ -315,6 +319,21 @@ function Entry({
       </div>
     );
   }
+  if (e.from === "site" && e.kind === "attempt") {
+    return (
+      <div className={styles.event}>
+        You handed in <code>{str(e.path)}</code>
+      </div>
+    );
+  }
+  if (e.from === "site" && e.kind === "restart") {
+    return (
+      <div className={styles.event}>
+        You started {str(e.label)}
+        {e.wrap === true ? ", wrapping this one up first" : ""}
+      </div>
+    );
+  }
   if (e.from === "site" && e.kind === "choice") {
     const names = imagesOf(e);
     return (
@@ -386,6 +405,7 @@ function PermInput({ name, raw }: { name: string; raw: string }) {
 
 export function Drawer({
   slug,
+  course,
   chat,
   liveTurn,
   usage,
@@ -402,6 +422,8 @@ export function Drawer({
   onSheet,
 }: {
   slug: string;
+  /** Set for a lesson. */
+  course?: string;
   chat: ChatEntry[];
   liveTurn: OpenTurn | null;
   usage: Usage | null;
@@ -420,6 +442,7 @@ export function Drawer({
   onSheet: (open: boolean) => void;
 }) {
   const prompts = React.useMemo(() => openPrompts(chat), [chat]);
+  const md = React.useMemo(() => (course ? { course } : undefined), [course]);
   const shown = React.useMemo(() => placeSteps(chat), [chat]);
   const pendingChoice = [...prompts.choices].at(-1) ?? null;
   const [text, setText] = React.useState("");
@@ -598,7 +621,9 @@ export function Drawer({
           <X size={18} aria-hidden />
         </button>
       </header>
-      {link.state === "disconnected" ? (
+      {link.state === "disconnected" && course ? (
+        <p className={styles.banner}>Disconnected: the lesson&apos;s terminal cleared. Start the routine again to reattach.</p>
+      ) : link.state === "disconnected" ? (
         <p className={styles.banner}>
           Disconnected: run <code>/sear resume {slug}</code> in the terminal.
         </p>
@@ -617,7 +642,7 @@ export function Drawer({
       >
         {chat.length === 0 && !working ? <p className={styles.dim}>No messages yet.</p> : null}
         {shown.map((e, i) => (
-          <Entry key={`${e.kind}-${e.at}-${i}`} slug={slug} e={e} all={chat} open={prompts} link={link} send={send} />
+          <Entry key={`${e.kind}-${e.at}-${i}`} slug={slug} e={e} all={chat} open={prompts} link={link} send={send} md={md} />
         ))}
         {working ? <LiveGroup turn={liveTurn} /> : null}
       </div>
