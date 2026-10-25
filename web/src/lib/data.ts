@@ -3,7 +3,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { connection } from "next/server";
 import { cache } from "react";
-import { dataDir, grillRoots } from "../../../src/config.ts";
+import { dataDir, grillsDir } from "../../../src/config.ts";
 import { activity, doingSince, inFlight, type ActivityDay } from "../../../src/home.ts";
 import { loadLog, type DatedEntry, type LogEntry } from "../../../src/logs.ts";
 import { linkedPath } from "../../../src/open.ts";
@@ -455,7 +455,7 @@ export async function issueDetail(id: string): Promise<IssueDetail | null> {
     blocks: c.issues.filter((t) => t.blocked_by.includes(issue.id)).map((t) => ref(c, t.id)),
     candidates: openRefs(c, issue.id),
     hash: bodyHash(issue.body),
-    plan: linkedPath(issue, "plan", { data: c.dir, ...grillRoots() }),
+    plan: linkedPath(issue, "plan", { data: c.dir, grills: grillsDir(c.dir) }),
   };
 }
 

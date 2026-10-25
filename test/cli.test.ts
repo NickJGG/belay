@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
@@ -81,6 +81,21 @@ test('git init starts history once', () => {
   const second = belay('git', 'init');
   assert.equal(second.code, 1);
   assert.match(second.err, /already has git history/);
+});
+
+test('grill commit commits a planned grill once, then has nothing to commit; an in-progress one exits 1', () => {
+  belay('git', 'init');
+  for (const [slug, status] of [['done', 'planned'], ['live', 'in-progress']]) {
+    mkdirSync(join(dir, 'grills', slug), { recursive: true });
+    writeFileSync(join(dir, 'grills', slug, 'session.json'), JSON.stringify({ status }));
+  }
+  const first = belay('grill', 'commit', 'done');
+  assert.equal(first.code, 0, first.err);
+  assert.equal(first.out.trim(), 'committed grill done');
+  assert.equal(belay('grill', 'commit', 'done').out.trim(), 'nothing to commit');
+  const live = belay('grill', 'commit', 'live');
+  assert.equal(live.code, 1);
+  assert.match(live.err, /^belay: grill 'live' is in-progress/);
 });
 
 test('a corrupt issue: read commands carry on and say so, writes refuse', () => {

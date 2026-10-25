@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { basename } from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { claudeDir, dataDir, DEFAULT_PORT, grillRoots } from './config.ts';
+import { claudeDir, dataDir, DEFAULT_PORT, grillsDir } from './config.ts';
 import { clip, digestLines, plural } from './digest.ts';
-import { initHistory } from './gitlog.ts';
-import { grillDirs, grillMatches, loadGrillSessions } from './grill.ts';
+import { commitGrill, initHistory } from './gitlog.ts';
+import { grillMatches, loadGrillSessions } from './grill.ts';
 import { attachCommits, duration, localStamp, recentSessions, weekCommits } from './history.ts';
 import {
   Ctx,
@@ -29,6 +30,7 @@ import {
   setStatus,
   type MoveTarget,
 } from './ops.ts';
+import { launchSpec, realDeps, runLauncher } from './launch.ts';
 import { parseLogAddress, type DatedEntry } from './logs.ts';
 import { filterIssues, issueComparator, isReady, naturalDesc, next, openBlockers, projectCounts, projectForCwd, SORT_FIELDS } from './query.ts';
 import { statusLine, withBad } from './statusline.ts';
@@ -74,6 +76,11 @@ const HELP = `belay — what should I work on?
                                     recent Claude sessions and their commits, newest first
   git init                          start git history for the data dir: from then on every change is a
                                     commit (git log/revert in the data dir to look back or undo)
+  grill commit <slug>               commit a planned grill's folder to the data dir's history (the /grill
+                                    skill runs it when its plan is accepted); in-progress grills are refused
+  claude [args]                     Claude Code with the Belay channel (args go to claude); relaunches when a
+                                    lesson restarts its session
+  learn [args]                      the same, in the Handhold root (HANDHOLD_ROOT, default ~/Learning)
   search <words>...                 issues (title, description, comments) and grill sessions (slug, topic, project) with every word
   serve [--port <n>] [--no-open] [--dev]
                                     dashboard at http://127.0.0.1:4747/ (Ctrl+C to stop); builds web/
@@ -507,14 +514,14 @@ function cmdSearch(argv: string[]): void {
     const hay = [t.title, t.body, ...t.comments.map((c) => c.text)].join('\n').toLowerCase();
     return words.every((w) => hay.includes(w));
   });
-  const roots = grillRoots();
-  const grill = loadGrillSessions(roots)
+  const dir = grillsDir();
+  const grill = loadGrillSessions(dir)
     .filter((g) => grillMatches(g, words))
     .sort((a, b) => (b.updated ?? '').localeCompare(a.updated ?? ''));
   const out: string[] = [];
   if (issues.length) out.push('issues', ...lines(issues, ctx, true));
   if (grill.length) {
-    out.push(`grill sessions (<slug>/<slug>.md in ${grillDirs(roots).map(normalizeStoredPath).join(' or ')})`);
+    out.push(`grill sessions (<slug>/<slug>.md in ${normalizeStoredPath(dir)})`);
     const slugW = Math.max(...grill.map((g) => g.slug.length));
     const statusW = Math.max(...grill.map((g) => (g.status ?? '').length));
     const projW = Math.max(...grill.map((g) => (g.project ?? '').length));
@@ -533,6 +540,28 @@ function cmdGit(argv: string[]): void {
   const dir = dataDir();
   initHistory(dir);
   print(`started git history in ${normalizeStoredPath(dir)}`);
+}
+
+function cmdGrill(argv: string[]): void {
+  const [sub, ...rest] = argv;
+  if (sub !== 'commit') throw new Error(`unknown 'grill ${sub ?? ''}' — expected commit`);
+  const slug = args(rest, {}, 1).positionals[0];
+  const result = commitGrill(dataDir(), slug, commentAuthor(process.env));
+  print(result === 'committed' ? `committed grill ${slug}` : result === 'unchanged' ? 'nothing to commit' : 'no git history: nothing committed');
+}
+
+/** Everything after the command goes to claude untouched. */
+function launch(mode: 'claude' | 'learn', argv: string[]): void {
+  const spec = launchSpec(mode, argv, { env: process.env, home: homedir(), cwd: process.cwd(), data: dataDir(), platform: process.platform });
+  runLauncher(spec, realDeps).then(
+    (code) => {
+      process.exitCode = code;
+    },
+    (e: Error) => {
+      console.error(`belay: ${e.message}`);
+      process.exitCode = 1;
+    },
+  );
 }
 
 function cmdServe(argv: string[]): void {
@@ -568,7 +597,7 @@ function cmdDigest(argv: string[]): void {
     const exclude = typeof input.session_id === 'string' ? input.session_id : undefined;
     const sessions = recentSessions(claudeDir(), ctx.projects, { project, limit: 3, exclude });
     attachCommits(sessions, ctx.projects);
-    print(digestLines(project, ctx.issues, sessions, loadGrillSessions(grillRoots()), { bad: ctx.bad }));
+    print(digestLines(project, ctx.issues, sessions, loadGrillSessions(grillsDir()), { bad: ctx.bad }));
   } catch (e) {
     console.error(`belay digest: ${(e as Error).message}`);
   }
@@ -732,6 +761,9 @@ const COMMANDS: Record<string, (argv: string[]) => void> = {
   history: cmdHistory,
   search: cmdSearch,
   git: cmdGit,
+  grill: cmdGrill,
+  claude: (argv) => launch('claude', argv),
+  learn: (argv) => launch('learn', argv),
   serve: cmdServe,
   digest: cmdDigest,
   statusline: cmdStatusline,

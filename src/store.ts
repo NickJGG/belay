@@ -403,6 +403,10 @@ export function saveProject(dir: string, p: Project): void {
   writeAtomic(projectFile(dir, p.key), serializeProject(p));
 }
 
+export function deleteProjectFile(dir: string, key: string): void {
+  unlinkSync(projectFile(dir, key));
+}
+
 export function orderFile(dir: string): string {
   return join(dir, 'order.yaml');
 }

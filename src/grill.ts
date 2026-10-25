@@ -1,7 +1,5 @@
 /**
- * Read-only access to grill sessions (`<dir>/<slug>/<slug>.md`) for search, the digest and the dashboard.
- * Two folders hold them: `/sear`'s (`~/Sear/sessions`) and the frozen archive of old `/grill` sessions
- * (`<claudeDir>/skills/grill/sessions`). Sear's wins on a slug in both, as it does in Sear itself.
+ * Read-only access to grill sessions (`<grillsDir>/<slug>/<slug>.md`) for search, the digest and the dashboard.
  */
 import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -16,31 +14,15 @@ export interface GrillSession {
   project?: string;
 }
 
-export interface GrillRoots {
-  sear: string;
-  claude: string;
+export function grillFile(dir: string, slug: string): string {
+  return join(dir, slug, `${slug}.md`);
 }
 
-/** The session folders, winner first. */
-export function grillDirs(roots: GrillRoots): string[] {
-  return [roots.sear, join(roots.claude, 'skills', 'grill', 'sessions')];
-}
+const hasSession = (dir: string, slug: string) => existsSync(grillFile(dir, slug));
 
-const hasSession = (dir: string, slug: string) => existsSync(join(dir, slug, `${slug}.md`));
-
-/** The folder holding the session, or Sear's when neither does. */
-function grillFolder(roots: GrillRoots, slug: string): string {
-  const dirs = grillDirs(roots);
-  return join(dirs.find((d) => hasSession(d, slug)) ?? dirs[0], slug);
-}
-
-export function grillFile(roots: GrillRoots, slug: string): string {
-  return join(grillFolder(roots, slug), `${slug}.md`);
-}
-
-/** The session's preview doc, which the old grill skill kept next to the session file. */
-export function grillPreview(roots: GrillRoots, slug: string): string {
-  return join(grillFolder(roots, slug), 'preview.html');
+/** The session's preview doc, which older grills kept next to the session file. */
+export function grillPreview(dir: string, slug: string): string {
+  return join(dir, slug, 'preview.html');
 }
 
 /** A session as its own page shows it: `body` is the markdown after the frontmatter. */
@@ -133,13 +115,13 @@ function sessionSlugs(dir: string): string[] {
     .map((e) => e.name);
 }
 
-export function loadGrillSessions(roots: GrillRoots, memo?: GrillMemo): GrillSession[] {
-  const paths = new Map<string, string>();
-  for (const dir of grillDirs(roots))
-    for (const slug of sessionSlugs(dir)) if (!paths.has(slug)) paths.set(slug, join(dir, slug, `${slug}.md`));
-  if (!memo) return [...paths].map(([slug, path]) => readSummary(path, slug));
-  for (const slug of memo.keys()) if (!paths.has(slug)) memo.delete(slug);
-  return [...paths].map(([slug, path]) => {
+export function loadGrillSessions(dir: string, memo?: GrillMemo): GrillSession[] {
+  const slugs = sessionSlugs(dir);
+  if (!memo) return slugs.map((slug) => readSummary(grillFile(dir, slug), slug));
+  const live = new Set(slugs);
+  for (const slug of memo.keys()) if (!live.has(slug)) memo.delete(slug);
+  return slugs.map((slug) => {
+    const path = grillFile(dir, slug);
     const { mtimeMs } = statSync(path);
     const hit = memo.get(slug);
     if (hit?.path === path && hit.mtimeMs === mtimeMs) return hit.session;
@@ -150,12 +132,22 @@ export function loadGrillSessions(roots: GrillRoots, memo?: GrillMemo): GrillSes
 }
 
 /** One session with its markdown body, minus the `# Grill session: …` heading. Undefined for a missing file or a slug that isn't a plain file name. */
-export function loadGrillSession(roots: GrillRoots, slug: string): GrillDoc | undefined {
+export function loadGrillSession(dir: string, slug: string): GrillDoc | undefined {
   if (!isGrillSlug(slug)) return undefined;
-  const path = grillFile(roots, slug);
+  const path = grillFile(dir, slug);
   if (!existsSync(path)) return undefined;
   const s = readSession(readFileSync(path, 'utf8'), slug);
   return { ...s, body: s.body.replace(/^#\s+Grill session:[^\n]*\n*/, '') };
+}
+
+/** `session.json`'s status, or the session file's frontmatter for a legacy grill that has none. */
+export function grillStatus(dir: string, slug: string): string | undefined {
+  const json = join(dir, slug, 'session.json');
+  if (existsSync(json)) {
+    const { status } = JSON.parse(readFileSync(json, 'utf8')) as { status?: unknown };
+    return typeof status === 'string' ? status : undefined;
+  }
+  return hasSession(dir, slug) ? readSummary(grillFile(dir, slug), slug).status : undefined;
 }
 
 /** Sessions tagged with the project, plus untagged ones whose slug or topic mentions one of its terms. */

@@ -2,7 +2,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { grillFile, type GrillRoots } from './grill.ts';
+import { grillFile } from './grill.ts';
 import { issueFile, type Issue } from './store.ts';
 
 export type Linked = 'file' | 'grill' | 'plan';
@@ -13,10 +13,10 @@ export const isLinked = (v: unknown): v is Linked => v === 'file' || v === 'gril
 export function linkedPath(
   issue: Pick<Issue, 'id' | 'grill' | 'plan'>,
   kind: Linked,
-  dirs: { data: string } & GrillRoots,
+  dirs: { data: string; grills: string },
 ): string | undefined {
   if (kind === 'file') return issueFile(dirs.data, issue.id);
-  if (kind === 'grill') return issue.grill ? grillFile(dirs, issue.grill) : undefined;
+  if (kind === 'grill') return issue.grill ? grillFile(dirs.grills, issue.grill) : undefined;
   return issue.plan ? resolve(issue.plan) : undefined;
 }
 

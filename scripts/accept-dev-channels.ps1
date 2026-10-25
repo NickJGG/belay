@@ -1,5 +1,5 @@
 # Answers Claude Code's "Loading development channels" dialog (no setting skips it:
-# anthropics/claude-code#42486). Started by a launcher in the same console just before claude, it presses
+# anthropics/claude-code#42486). Started by `belay claude` in the same console just before claude, it presses
 # Enter only once the dialog is on screen, its Channels line lists exactly -Channels (any order) and
 # option 1 is selected; after 20 s it gives up. Anything it prints would land on claude's screen, so it
 # stays silent. Needs a real Windows console: under mintty it finds no dialog and times out.
@@ -33,7 +33,7 @@ public static class DevChannelsConsole {
   [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
   static extern bool WriteConsoleInputW(IntPtr h, KeyRecord[] records, uint count, out uint written);
 
-  // CONIN$/CONOUT$ rather than std handles: the launchers start this with stdin redirected.
+  // CONIN$/CONOUT$ rather than std handles: belay starts this with stdio ignored.
   static IntPtr Open(string name) {
     IntPtr h = CreateFileW(name, 0xC0000000, 3, IntPtr.Zero, 3, 0, IntPtr.Zero);
     if (h == new IntPtr(-1)) throw new Exception("cannot open " + name);

@@ -3,10 +3,10 @@
  * so the file it saves was read just before, and a concurrent edit by Claude isn't clobbered.
  */
 import { createHash } from 'node:crypto';
-import { existsSync, unlinkSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { dataDir } from './config.ts';
-import { commitAll } from './gitlog.ts';
-import { loadLog, loadLogDays, loadLogs, parseLogAddress, saveLog, type DatedEntry, type LogEntry } from './logs.ts';
+import { commitPaths } from './gitlog.ts';
+import { loadLog, loadLogDays, loadLogs, logFile, parseLogAddress, saveLog, type DatedEntry, type LogEntry } from './logs.ts';
 import { suggestKey } from './projectkey.ts';
 import { indexIssues, openBlockers } from './query.ts';
 import { reorder, type MoveTarget } from './sidebar.ts';
@@ -18,10 +18,13 @@ import {
   canon,
   createIssue,
   deleteIssueFile,
+  deleteProjectFile,
+  issueFile,
   loadOrder,
   loadProjects,
   loadIssues,
   normalizeStoredPath,
+  orderFile,
   parseId,
   projectFile,
   saveOrder,
@@ -72,6 +75,8 @@ export class Ctx {
   readonly bad: BadFile[] = [];
   readonly #logs = new Map<string, DatedEntry[]>();
   #depth = 0;
+  /** Files the current op wrote or removed: its commit stages these alone. */
+  readonly #touched = new Set<string>();
 
   /** Strict by default: any bad file throws. Lenient is for read paths, which show what loaded and report `bad`. */
   constructor(dir = dataDir(), { lenient = false } = {}) {
@@ -104,11 +109,12 @@ export class Ctx {
   }
 
   /**
-   * Runs a write op and, if the data dir has git history, commits what it wrote as `<message> - <author>`.
+   * Runs a write op and, if the data dir has git history, commits the files it wrote as `<message> - <author>`.
    * Nested ops commit once, with the outermost op's message.
    */
   record<T>(fn: () => T, message: (result: T) => string): T {
     if (this.bad.length) throw new Error(`not writing while files are bad: ${this.bad.map(badFileNote).join('; ')}`);
+    if (this.#depth === 0) this.#touched.clear();
     this.#depth++;
     let result: T;
     try {
@@ -118,9 +124,46 @@ export class Ctx {
     }
     if (this.#depth === 0) {
       const { by, session } = commentAuthor(process.env);
-      commitAll(this.dir, `${message(result)} - ${by}`, session && `Session: ${session}`);
+      commitPaths(this.dir, [...this.#touched], `${message(result)} - ${by}`, session && `Session: ${session}`);
+      this.#touched.clear();
     }
     return result;
+  }
+
+  saveIssue(issue: Issue): void {
+    saveIssue(this.dir, issue);
+    this.#touched.add(issueFile(this.dir, issue.id));
+  }
+
+  createIssue(t: Omit<Issue, 'id'>): Issue {
+    const issue = createIssue(this.dir, t);
+    this.#touched.add(issueFile(this.dir, issue.id));
+    return issue;
+  }
+
+  deleteIssue(id: string): void {
+    deleteIssueFile(this.dir, id);
+    this.#touched.add(issueFile(this.dir, id));
+  }
+
+  saveProject(p: Project): void {
+    saveProject(this.dir, p);
+    this.#touched.add(projectFile(this.dir, p.key));
+  }
+
+  deleteProject(key: string): void {
+    deleteProjectFile(this.dir, key);
+    this.#touched.add(projectFile(this.dir, key));
+  }
+
+  saveOrder(keys: string[]): void {
+    saveOrder(this.dir, keys);
+    this.#touched.add(orderFile(this.dir));
+  }
+
+  saveLog(day: string, entries: LogEntry[]): void {
+    saveLog(this.dir, day, entries);
+    this.#touched.add(logFile(this.dir, day));
   }
 
   /** Returns the blockers in their stored form. */
@@ -143,7 +186,7 @@ export function setStatus(ctx: Ctx, id: string, value: string, author = USER): {
       const transitions =
         status === current.status ? current.transitions : [...(current.transitions ?? []), { at: now(), from: current.status, to: status, ...author }];
       const issue = { ...current, status, updated: now(), ...(transitions && { transitions }) };
-      saveIssue(ctx.dir, issue);
+      ctx.saveIssue(issue);
       return { before: current.status, issue, open: openBlockers(current, ctx.byId) };
     },
     (r) => `set ${r.issue.id} ${r.before}->${r.issue.status}`,
@@ -171,7 +214,7 @@ export function addIssue(ctx: Ctx, t: NewIssue, author = USER): Issue {
       const blockers = ctx.checkBlockers(undefined, t.blockers ?? []);
       const d = new Date();
       const status = oneOf(t.status ?? 'todo', ['idea', 'todo'] as const, 'status');
-      return createIssue(ctx.dir, {
+      return ctx.createIssue({
         title,
         project: project.key,
         status,
@@ -195,7 +238,7 @@ export function setPriority(ctx: Ctx, id: string, high: boolean): Issue {
   return ctx.record(
     () => {
       const issue = { ...ctx.issue(id), priority: high ? ('high' as const) : undefined, updated: now() };
-      saveIssue(ctx.dir, issue);
+      ctx.saveIssue(issue);
       return issue;
     },
     (issue) => `priority ${issue.id} ${high ? 'high' : 'none'}`,
@@ -241,7 +284,7 @@ export function editIssue(ctx: Ctx, id: string, patch: IssuePatch): Issue {
       if (patch.plan !== undefined) issue.plan = patch.plan || undefined;
       if (patch.body !== undefined) issue.body = patch.body.trim();
       issue.updated = now();
-      saveIssue(ctx.dir, issue);
+      ctx.saveIssue(issue);
       return issue;
     },
     (issue) => `edit ${issue.id} ${patched(patch)}`.trimEnd(),
@@ -307,7 +350,7 @@ export function addComment(ctx: Ctx, id: string, text: string, author: Author): 
       const current = ctx.issue(id);
       const comment = { at: now(), ...author, text: commentText(text) };
       const issue = { ...current, comments: [...current.comments, comment], updated: now() };
-      saveIssue(ctx.dir, issue);
+      ctx.saveIssue(issue);
       return { issue, n: issue.comments.length };
     },
     (r) => `comment ${r.issue.id} #${r.n}`,
@@ -330,7 +373,7 @@ export function editComment(ctx: Ctx, id: string, n: number, text: string, expec
       const i = commentIndex(current, n, expectAt);
       const comments = current.comments.map((c, j) => (j === i ? { ...c, text: commentText(text) } : c));
       const issue = { ...current, comments, updated: now() };
-      saveIssue(ctx.dir, issue);
+      ctx.saveIssue(issue);
       return issue;
     },
     (issue) => `comment edit ${issue.id} #${n}`,
@@ -343,7 +386,7 @@ export function deleteComment(ctx: Ctx, id: string, n: number, expectAt?: string
       const current = ctx.issue(id);
       const i = commentIndex(current, n, expectAt);
       const issue = { ...current, comments: current.comments.filter((_, j) => j !== i), updated: now() };
-      saveIssue(ctx.dir, issue);
+      ctx.saveIssue(issue);
       return issue;
     },
     (issue) => `comment delete ${issue.id} #${n}`,
@@ -367,8 +410,8 @@ export function deleteIssue(ctx: Ctx, typed: string, author: Author): Issue[] {
           comments: [...t.comments, { at, ...author, text: `blocker ${id} deleted` }],
           updated: now(),
         }));
-      for (const t of dependents) saveIssue(ctx.dir, t);
-      deleteIssueFile(ctx.dir, id);
+      for (const t of dependents) ctx.saveIssue(t);
+      ctx.deleteIssue(id);
       return dependents;
     },
     () => `delete ${id}`,
@@ -461,7 +504,7 @@ export function editProject(ctx: Ctx, key: string, patch: ProjectPatch): Project
       if (patch.status !== undefined) p.status = oneOf(patch.status, PROJECT_STATUSES, 'status');
       if (patch.focus !== undefined) p.focus = patch.focus;
       if (patch.kinds !== undefined) p.kinds = kindList(patch.kinds);
-      saveProject(ctx.dir, p);
+      ctx.saveProject(p);
       return p;
     },
     (p) => `project edit ${p.key} ${patched(patch)}`.trimEnd(),
@@ -477,7 +520,7 @@ export function moveProject(ctx: Ctx, key: string, where: MoveTarget): string[] 
   return ctx.record(
     () => {
       const keys = reorder(ctx.projects.map((p) => p.key), moved, anchor);
-      saveOrder(ctx.dir, keys);
+      ctx.saveOrder(keys);
       return keys;
     },
     () => `move ${moved} ${typeof anchor === 'string' ? anchor : 'before' in anchor ? `before ${anchor.before}` : `after ${anchor.after}`}`,
@@ -511,7 +554,7 @@ export function addProject(ctx: Ctx, n: NewProject): { project: Project; missing
       if (ctx.projects.some((p) => p.key === key) || existsSync(projectFile(ctx.dir, key))) throw new Error(`project '${key}' already exists`);
       const paths = n.paths.map(normalizeStoredPath);
       const project: Project = { key, name, paths, status: 'active', focus: n.focus ?? false, group: n.group?.trim() || undefined, body: '' };
-      saveProject(ctx.dir, project);
+      ctx.saveProject(project);
       return { project, missing: paths.filter((p) => !existsSync(p)) };
     },
     (r) => `project add ${r.project.key} "${r.project.name}"`,
@@ -534,23 +577,23 @@ export function rekeyProject(ctx: Ctx, from: string, to: string): { project: Pro
       const remap = (ids: string[]) => ids.map((b) => renamed.get(b) ?? b);
 
       const project = { ...old, key };
-      saveProject(ctx.dir, project);
-      for (const t of own) saveIssue(ctx.dir, { ...t, id: renamed.get(t.id)!, project: key, blocked_by: remap(t.blocked_by) });
+      ctx.saveProject(project);
+      for (const t of own) ctx.saveIssue({ ...t, id: renamed.get(t.id)!, project: key, blocked_by: remap(t.blocked_by) });
       for (const t of ctx.issues) {
-        if (t.project !== old.key && t.blocked_by.some((b) => renamed.has(b))) saveIssue(ctx.dir, { ...t, blocked_by: remap(t.blocked_by) });
+        if (t.project !== old.key && t.blocked_by.some((b) => renamed.has(b))) ctx.saveIssue({ ...t, blocked_by: remap(t.blocked_by) });
       }
       for (const day of loadLogDays(ctx.dir)) {
         const entries = loadLog(ctx.dir, day);
         if (!entries.some((e) => e.project === old.key || (e.issue && renamed.has(e.issue)))) continue;
-        saveLog(ctx.dir, day, entries.map((e) => ({
+        ctx.saveLog(day, entries.map((e) => ({
           ...e,
           project: e.project === old.key ? key : e.project,
           ...(e.issue && { issue: renamed.get(e.issue) ?? e.issue }),
         })));
       }
-      for (const t of own) deleteIssueFile(ctx.dir, t.id);
-      unlinkSync(projectFile(ctx.dir, old.key));
-      if (ctx.order.includes(old.key)) saveOrder(ctx.dir, ctx.order.map((k) => (k === old.key ? key : k)));
+      for (const t of own) ctx.deleteIssue(t.id);
+      ctx.deleteProject(old.key);
+      if (ctx.order.includes(old.key)) ctx.saveOrder(ctx.order.map((k) => (k === old.key ? key : k)));
       return { project, renamed };
     },
     (r) => `project rekey ${old.key}->${r.project.key}`,
@@ -613,7 +656,7 @@ export function addLog(ctx: Ctx, n: NewLog, author: Author, clock = new Date()):
         ...(issue && { issue }),
       };
       const entries = [...loadLog(ctx.dir, day), entry];
-      saveLog(ctx.dir, day, entries);
+      ctx.saveLog(day, entries);
       return { entry, day, n: entries.length };
     },
     (r) => `log add ${r.entry.project} ${r.day}/${r.n}`,
@@ -634,7 +677,7 @@ export function deleteLog(ctx: Ctx, addr: string, expectAt?: string): LogEntry {
   return ctx.record(
     () => {
       const { day, n, entries, entry } = findLog(ctx, addr, expectAt);
-      saveLog(ctx.dir, day, entries.filter((_, i) => i !== n - 1));
+      ctx.saveLog(day, entries.filter((_, i) => i !== n - 1));
       return entry;
     },
     (entry) => `log delete ${entry.project} ${addr}`,
@@ -683,13 +726,13 @@ export function editLog(ctx: Ctx, addr: string, patch: LogPatch, expectAt?: stri
       }
       const target = patch.day === undefined ? day : parseDay(patch.day, clock);
       if (target === day) {
-        saveLog(ctx.dir, day, entries.map((x, i) => (i === n - 1 ? e : x)));
+        ctx.saveLog(day, entries.map((x, i) => (i === n - 1 ? e : x)));
         return { entry: e, day, n };
       }
       logDay(target, clock);
       const moved = [...loadLog(ctx.dir, target), e];
-      saveLog(ctx.dir, target, moved);
-      saveLog(ctx.dir, day, entries.filter((_, i) => i !== n - 1));
+      ctx.saveLog(target, moved);
+      ctx.saveLog(day, entries.filter((_, i) => i !== n - 1));
       return { entry: e, day: target, n: moved.length };
     },
     (r) => {

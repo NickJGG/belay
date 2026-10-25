@@ -19,13 +19,14 @@ export function claudeDir(): string {
   return resolve(/*turbopackIgnore: true*/ process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'));
 }
 
-/** `/sear`'s session folder: `SEAR_SESSIONS_DIR` (default `~/Sear/sessions`), the override Sear itself honours. */
-export function searDir(): string {
-  return resolve(/*turbopackIgnore: true*/ process.env.SEAR_SESSIONS_DIR || join(homedir(), 'Sear', 'sessions'));
-}
+/** Grill sessions: `<dataDir>/grills/<slug>/`. */
+export const grillsDir = (dir = dataDir()) => join(dir, 'grills');
 
-/** Where grill sessions live (see `grill.ts`). */
-export const grillRoots = () => ({ sear: searDir(), claude: claudeDir() });
+/** Lesson sessions' runtime folders: `<dataDir>/lessons/<lesson-…>/`. */
+export const lessonsDir = (dir = dataDir()) => join(dir, 'lessons');
+
+/** The lesson start queue and restart marker. */
+export const runDir = (dir = dataDir()) => join(dir, '.run');
 
 /** `belay serve`'s port unless `--port` overrides it. */
 export const DEFAULT_PORT = 4747;
