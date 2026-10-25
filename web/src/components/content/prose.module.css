@@ -81,6 +81,69 @@
   margin-block: var(--space-8);
 }
 
+/* Course Markdown additions. */
+.prose .cite {
+  position: relative;
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-full);
+  background: var(--panel);
+  color: var(--faint);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  vertical-align: 0.1em;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease);
+}
+
+.prose .cite:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.prose .cite[data-quote]:is(:hover, :focus-visible)::after {
+  content: "“" attr(data-quote) "”";
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  z-index: 20;
+  width: max-content;
+  max-width: min(360px, 80vw);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  color: var(--text);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  white-space: normal;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+  pointer-events: none;
+}
+
+/* A claim chip's tooltip is the claim itself, not a quote. */
+.prose .claim {
+  color: var(--muted);
+}
+
+.prose .claim[data-quote]:is(:hover, :focus-visible)::after {
+  content: attr(data-quote);
+}
+
+.prose :is([id]:target, [data-focus]) {
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--ok) 16%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 16%, transparent);
+}
+
+.prose :is(p, li)[id] {
+  scroll-margin-top: 120px;
+}
+
 .prose > table {
   width: 100%;
   border-collapse: collapse;

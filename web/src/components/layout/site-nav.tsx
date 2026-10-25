@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 import { FolderOpen, House, LibraryBig, PanelLeftClose, Search, type LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { UNFILED } from "@/lib/hrefs";
+import { SECTIONS as COURSE_SECTIONS, sectionOf } from "@/lib/course-nav";
+import { courseHref, UNFILED } from "@/lib/hrefs";
 import { cn } from "@/lib/utils";
 import { Mark, Wordmark } from "./logo";
 import { openPalette } from "./palette";
@@ -36,7 +37,8 @@ export const sectionsOf = (key: string) => (key === UNFILED ? PROJECT_SECTIONS.f
 
 /**
  * Topo's labelled site nav: a sticky sidebar from 768px, the bottom dock below it. The open project's sections
- * nest under Projects, and the open grill under its section. `collapsed` hides the sidebar for the rail.
+ * nest under Projects and the open course's under Courses, and the open detail page under its section. `collapsed`
+ * hides the sidebar for the rail.
  */
 export function SiteNav({ collapsed, onCollapse }: { collapsed: boolean; onCollapse: () => void }) {
   const pathname = usePathname() ?? "/";
@@ -50,7 +52,7 @@ export function SiteNav({ collapsed, onCollapse }: { collapsed: boolean; onColla
         {NAV.map((item) => {
           const Icon = item.icon;
           const on = item.on(pathname);
-          const sections = item.href === "/p" && slot.project;
+          const sections = item.href === "/p" ? !!slot.project : item.href === "/courses" && !!slot.course;
           return (
             <React.Fragment key={item.href}>
               <Link
@@ -61,7 +63,9 @@ export function SiteNav({ collapsed, onCollapse }: { collapsed: boolean; onColla
                 <Icon size={18} aria-hidden />
                 <span>{item.label}</span>
               </Link>
-              {sections ? <ProjectSections slot={slot} pathname={pathname} /> : null}
+              {sections ? (
+                item.href === "/p" ? <ProjectSections slot={slot} pathname={pathname} /> : <CourseSections slot={slot} pathname={pathname} />
+              ) : null}
             </React.Fragment>
           );
         })}
@@ -103,6 +107,41 @@ function ProjectSections({ slot, pathname }: { slot: Slot; pathname: string }) {
             <li key={s.label}>
               <Link
                 href={href}
+                className={cn(styles.subItem, on && (detail ? styles.parentOn : styles.subOn))}
+                aria-current={on && !detail ? "page" : undefined}
+              >
+                {s.label}
+              </Link>
+              {on && detail ? (
+                <>
+                  <Link href={detail.href} className={cn(styles.subItem, styles.subOn, styles.child)} aria-current="page" title={detail.label}>
+                    {detail.label}
+                  </Link>
+                  {nav ? <div className={styles.detailNav}>{nav}</div> : null}
+                </>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function CourseSections({ slot, pathname }: { slot: Slot; pathname: string }) {
+  const { course, section, detail, nav } = slot;
+  if (!course) return null;
+  const lit = section ?? sectionOf(pathname)?.section;
+  return (
+    <div className={styles.course}>
+      <span className={styles.subHead}>{course.title}</span>
+      <ul className={styles.sub} aria-label="Course sections">
+        {COURSE_SECTIONS.map((s) => {
+          const on = lit === s.label;
+          return (
+            <li key={s.label}>
+              <Link
+                href={courseHref(course.slug, s.suffix)}
                 className={cn(styles.subItem, on && (detail ? styles.parentOn : styles.subOn))}
                 aria-current={on && !detail ? "page" : undefined}
               >

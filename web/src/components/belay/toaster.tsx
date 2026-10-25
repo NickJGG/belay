@@ -1,23 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 import styles from "./toaster.module.css";
 
-const listeners = new Set<(msg: string) => void>();
+type Toast = { msg: string; bad: boolean };
+
+const listeners = new Set<(t: Toast) => void>();
 
 /** Shows a failed write's message for a few seconds. */
 export function toastError(msg: string) {
-  for (const l of listeners) l(msg);
+  for (const l of listeners) l({ msg, bad: true });
+}
+
+/** Shows a note for a few seconds, such as what was copied. */
+export function toast(msg: string) {
+  for (const l of listeners) l({ msg, bad: false });
 }
 
 export function Toaster() {
-  const [msg, setMsg] = useState<string>();
+  const [shown, setShown] = useState<Toast>();
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
-    const show = (m: string) => {
-      setMsg(m);
+    const show = (t: Toast) => {
+      setShown(t);
       clearTimeout(timer);
-      timer = setTimeout(() => setMsg(undefined), 5000);
+      timer = setTimeout(() => setShown(undefined), 5000);
     };
     listeners.add(show);
     return () => {
@@ -27,9 +35,9 @@ export function Toaster() {
   }, []);
   return (
     <div className={styles.region} role="status" aria-live="polite">
-      {msg && (
-        <button type="button" className={styles.toast} onClick={() => setMsg(undefined)}>
-          {msg}
+      {shown && (
+        <button type="button" className={cn(styles.toast, shown.bad && styles.bad)} onClick={() => setShown(undefined)}>
+          {shown.msg}
         </button>
       )}
     </div>

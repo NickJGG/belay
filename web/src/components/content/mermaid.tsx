@@ -37,8 +37,16 @@ export function Mermaid({ chart }: { chart: string }) {
           fontSize: "14px",
         },
       });
+      const ok = v("--ok");
+      const statusDefs = [
+        `classDef topo-done fill:${ok}33,stroke:${ok},color:${v("--text")}`,
+        `classDef topo-in-progress stroke:${ok},stroke-width:2px`,
+      ].join("\n");
+      const text = /^\s*(graph|flowchart)\b/.test(chart) && chart.includes(" topo-")
+        ? `${chart}\n${statusDefs}\n`
+        : chart;
       try {
-        const { svg, bindFunctions } = await mermaid.render(id, chart);
+        const { svg, bindFunctions } = await mermaid.render(id, text);
         if (cancelled || !ref.current) return;
         ref.current.innerHTML = svg;
         bindFunctions?.(ref.current);

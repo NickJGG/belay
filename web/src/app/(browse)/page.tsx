@@ -1,5 +1,7 @@
-import Link from "next/link";
 import { InFlight } from "@/components/belay/in-flight";
+import { CourseCard } from "@/components/course/course-card";
+import course from "@/components/course/course.module.css";
+import { homeCourses } from "@/lib/course-data";
 import { homeFlight } from "@/lib/data";
 import { workDay } from "../../../../src/workday.ts";
 import styles from "../page.module.css";
@@ -12,9 +14,9 @@ function longDay(day: string) {
   return new Date(y, m - 1, d).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 }
 
-/** Home (grill Q7): one column, In flight then Your courses. */
+/** Home (grill Q7): one column, In flight then Your courses, each course's card with its Up next band. */
 export default async function HomePage() {
-  const rows = await homeFlight();
+  const [rows, courses] = await Promise.all([homeFlight(), homeCourses()]);
   return (
     <div className={styles.page}>
       <header>
@@ -25,12 +27,18 @@ export default async function HomePage() {
         <h2 className={styles.sectionTitle}>In flight</h2>
         <InFlight rows={rows} />
       </section>
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Your courses</h2>
-        <p className={styles.homeNote}>
-          Courses move in from Topo soon. Until then they&apos;re on <Link href="/courses">Courses</Link>.
-        </p>
-      </section>
+      {courses.length ? (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Your courses</h2>
+          <ul className={course.cards}>
+            {courses.map((c) => (
+              <li key={c.course.course}>
+                <CourseCard card={c} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }

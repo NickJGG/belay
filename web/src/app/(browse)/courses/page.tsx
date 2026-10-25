@@ -1,16 +1,31 @@
+import { CourseCard } from "@/components/course/course-card";
+import styles from "@/components/course/course.module.css";
+import belay from "@/components/belay/belay.module.css";
 import { PageHeader } from "@/components/layout/page-header";
-import styles from "../../page.module.css";
+import { courseCards } from "@/lib/course-data";
+import { root } from "@/lib/courses";
 
 export const metadata = { title: "Courses — Belay" };
 
-/** A placeholder until Topo's courses move in (plan phase 5). */
-export default function CoursesPage() {
+/** Courses (grill Q21): the list header, then Topo's course cards, most urgent first. */
+export default async function CoursesPage() {
+  const cards = await courseCards();
   return (
-    <>
-      <PageHeader title="Courses" />
-      <p className={styles.empty}>
-        Courses move in from Topo soon. Until then they&apos;re at <a href="http://127.0.0.1:3100/courses">Topo</a>.
-      </p>
-    </>
+    <div className={belay.page}>
+      <PageHeader title="Courses" count={cards.length} />
+      {cards.length ? (
+        <ul className={styles.cards}>
+          {cards.map((c) => (
+            <li key={c.course.course}>
+              <CourseCard card={c} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className={belay.empty}>
+          No courses in {root()}. Build one with <code>/learn:build</code>.
+        </p>
+      )}
+    </div>
   );
 }

@@ -9,13 +9,17 @@
   max-width: 420px;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--line);
-  border-left: 3px solid var(--bad);
+  border-left: 3px solid var(--brand);
   border-radius: var(--radius-md);
   background: var(--panel);
   box-shadow: 0 12px 32px rgb(0 0 0 / 0.25);
   font-size: var(--text-sm);
   text-align: left;
   animation: in var(--t-base) var(--ease);
+}
+
+.bad {
+  border-left-color: var(--bad);
 }
 
 @media (min-width: 768px) {

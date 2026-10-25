@@ -1,0 +1,237 @@
+/* Course pages in grill Q16 and Q24–Q33's grammar, from the mock's rules (preview.mock.css `.mg-syl*`, `.mg-misc`). */
+
+/* ---- header ---- */
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1;
+}
+
+.titleMark {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  color: var(--hue);
+}
+
+/* ⋯ sits by the title; the start buttons take the rest of the row and sit at its right (mock `.mg-tb-course`). */
+*:has(> .starts) {
+  flex: 1;
+}
+
+.starts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* ---- tab bodies ---- */
+.body {
+  max-width: 860px;
+  margin-top: var(--space-2);
+}
+
+.wide {
+  max-width: none;
+}
+
+/* ---- Syllabus: the Goal panel ---- */
+.goal {
+  margin-bottom: var(--space-8);
+  padding: var(--space-5);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.goalHeading {
+  margin-bottom: var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.goalText {
+  max-width: 80ch;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+.goalFoot {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+  color: var(--faint);
+  font-size: var(--text-xs);
+}
+
+/* ---- groups: a unit's head reads at body size, its rows start under the title ---- */
+.unitHead {
+  font-size: var(--text-sm);
+}
+
+.unum {
+  min-width: 14px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.units > * > ul {
+  margin: 4px 0 0 40px;
+}
+
+.notes > * > :is(ul, .empty) {
+  margin: 4px 0 0 20px;
+}
+
+.locked {
+  opacity: 0.5;
+}
+
+.checkpoint {
+  color: var(--muted);
+}
+
+.faint {
+  color: var(--faint);
+  font-size: var(--text-xs);
+}
+
+.nid {
+  flex: none;
+  margin-left: auto;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.lead {
+  flex: none;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.live {
+  color: var(--accent-strong, var(--text));
+}
+
+.due {
+  flex: none;
+  min-width: 64px;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  text-align: right;
+}
+
+/* "Known in the field" between the groups (mock `.mg-group`). */
+.subhead {
+  margin: var(--space-6) 0 var(--space-2);
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.subhead span {
+  color: var(--faint);
+  font-weight: 400;
+}
+
+/* ---- Misconceptions: the claim, its correction muted under it ---- */
+.misc {
+  list-style: none;
+}
+
+.misc > li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--text-sm);
+}
+
+.misc > li:last-child {
+  border-bottom: 0;
+}
+
+.correction {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+/* A row's Markdown stays on its line. */
+.inline > * {
+  display: inline;
+}
+
+.empty {
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+/* ---- Cards: a reviewed card opens in place to its answer ---- */
+.card {
+  display: block;
+  padding-block: 8px;
+}
+
+.card summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.card summary::-webkit-details-marker {
+  display: none;
+}
+
+.answer {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+}
+
+/* ---- detail pages: the prose in one column (mock `.mg-kbody`) ---- */
+.kbody {
+  max-width: 68ch;
+  padding: var(--space-4) 0 var(--space-8);
+}
+
+/* ---- Courses and Home: Topo's course cards (mock `.mg-ccards`) ---- */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-4);
+  list-style: none;
+}
+
+/* The Work tab is a Workspace (Q29), whose main column has no padding, but it keeps the course header: the course
+   pads and scrolls itself there, with the Reading page's spacing, so nothing jumps between tabs. */
+main[data-kind="workspace"] > .coursePage {
+  --main-pad-top: var(--space-6);
+  --main-pad-x: var(--space-4);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--main-pad-top) var(--main-pad-x) var(--space-8);
+}
+
+@media (min-width: 768px) {
+  main[data-kind="workspace"] > .coursePage {
+    --main-pad-x: var(--space-6);
+  }
+}

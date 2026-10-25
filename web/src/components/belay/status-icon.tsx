@@ -25,10 +25,10 @@ const SHAPES: Record<IssueStatus, React.ReactNode> = {
   ),
 };
 
-/** Belay's status icons. */
-export function StatusIcon({ status, size = 14 }: { status: IssueStatus; size?: number }) {
+/** Belay's status icons; `label` names the status when it isn't an issue's (a course topic's "in progress"). */
+export function StatusIcon({ status, size = 14, label = status }: { status: IssueStatus; size?: number; label?: string }) {
   return (
-    <svg className={cn(styles.statusIcon, styles[status])} width={size} height={size} viewBox="0 0 14 14" role="img" aria-label={status}>
+    <svg className={cn(styles.statusIcon, styles[status])} width={size} height={size} viewBox="0 0 14 14" role="img" aria-label={label}>
       {SHAPES[status]}
     </svg>
   );

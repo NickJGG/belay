@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { subscribeLive } from "./event-hub";
 
 /**
- * Re-renders the current route when a session's data or belay's changes, or a bridge comes, goes or changes state.
- * Bridge events and other files (chat, mocks) are for the session page, so they're ignored here.
+ * Re-renders the current route when a session's data, belay's or a course's changes, or a bridge comes, goes or
+ * changes state. Bridge events and other files (chat, mocks) are for the session page, and work/ files for the Work
+ * tab's editor, so they're ignored here.
  */
 export function LiveRefresh() {
   const router = useRouter();
@@ -14,7 +15,8 @@ export function LiveRefresh() {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const unsubscribe = subscribeLive((e) => {
-      if (e.type !== "sessions" && e.type !== "live" && e.type !== "belay" && e.type !== "reconnect") return;
+      const course = e.type === "course" && !e.path.startsWith("work/");
+      if (!course && e.type !== "sessions" && e.type !== "live" && e.type !== "belay" && e.type !== "reconnect") return;
       clearTimeout(timer);
       // Claude often writes several files in a row; one refresh covers the burst.
       timer = setTimeout(() => router.refresh(), 250);

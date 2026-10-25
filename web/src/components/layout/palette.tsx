@@ -3,12 +3,14 @@
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Command } from "cmdk";
-import { ArrowRight, FilePlus, NotebookPen, Search } from "lucide-react";
+import { ArrowRight, BookOpen, CircleAlert, FilePlus, FileText, GraduationCap, NotebookPen, Search } from "lucide-react";
 import { requestIntent, type Intent } from "@/components/belay/intents";
 import { StatusIcon } from "@/components/belay/status-icon";
 import { ProjectMark } from "@/components/project-mark";
 import type { SearchIndex } from "@/lib/data";
-import { grillHref, issueHref, projectHref, UNFILED } from "@/lib/hrefs";
+import { shortDate } from "@/lib/format";
+import { courseHref, grillHref, issueHref, projectHref, UNFILED } from "@/lib/hrefs";
+import { Mark } from "./logo";
 import { useSlot } from "./shell-slot";
 import styles from "./palette.module.css";
 
@@ -44,6 +46,12 @@ export function PageCommands({ heading, items }: PageCommandGroup) {
   return null;
 }
 
+const CourseMark = ({ color }: { color: string }) => (
+  <span style={{ "--hue": color } as React.CSSProperties}>
+    <Mark tone="current" className={styles.courseMark} />
+  </span>
+);
+
 const GO_TO = [
   { label: "Home", href: "/" },
   { label: "Projects", href: "/p" },
@@ -57,8 +65,9 @@ const ACTIONS: { intent: Intent; label: string; icon: React.ReactNode; section: 
 
 /**
  * Belay's command palette (grill Q34), opened by `openPalette` or Ctrl K / ⌘K anywhere (mock frames re-dispatch
- * their key presses to this document): the open page's commands, Actions in the open project, Go to, then projects,
- * and once there's a query, issues and grills by name. The names are fetched afresh on each opening.
+ * their key presses to this document): the open page's commands, Actions in the open project, Go to, then projects
+ * and courses, and once there's a query, issues, grills, lessons, notes, sources and misconceptions by name. The names
+ * are fetched afresh on each opening.
  */
 function Palette({ commands }: { commands: PageCommandGroup | null }) {
   const router = useRouter();
@@ -239,7 +248,18 @@ function Palette({ commands }: { commands: PageCommandGroup | null }) {
                   ))}
                 </Command.Group>
               ) : null}
-              {/* Hundreds of issues and grills would bury everything else, so they appear only once there's a query. */}
+              {index?.courses.length ? (
+                <Command.Group heading="Courses" className={styles.group}>
+                  {index.courses.map((c) => (
+                    <Command.Item key={c.course} value={`course ${c.course} ${c.title}`} className={styles.hit} onSelect={go(courseHref(c.course))}>
+                      <CourseMark color={c.color} />
+                      <b>{c.title}</b>
+                      <em>{c.course}</em>
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              ) : null}
+              {/* Hundreds of issues, grills and notes would bury everything else, so they appear only once there's a query. */}
               {index && searching ? (
                 <>
                   <Command.Group heading="Issues" className={styles.group}>
@@ -257,6 +277,62 @@ function Palette({ commands }: { commands: PageCommandGroup | null }) {
                         <ProjectMark mark={s.project} />
                         <b>{s.topic}</b>
                         <em>{[s.slug, s.stage].join(" · ")}</em>
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                  <Command.Group heading="Lessons" className={styles.group}>
+                    {index.lessons.map((l) => (
+                      <Command.Item
+                        key={`${l.course}/${l.slug}`}
+                        value={`lesson ${l.course} ${l.slug} ${l.title}`}
+                        className={styles.hit}
+                        onSelect={go(courseHref(l.course, `/lessons/${l.slug}`))}
+                      >
+                        <GraduationCap size={14} aria-hidden />
+                        <b>{l.title}</b>
+                        <em>{`${l.courseTitle} · ${shortDate(l.date)}`}</em>
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                  <Command.Group heading="Notes" className={styles.group}>
+                    {index.notes.map((n) => (
+                      <Command.Item
+                        key={`${n.course}/${n.slug}`}
+                        value={`note ${n.course} ${n.slug} ${n.title}`}
+                        className={styles.hit}
+                        onSelect={go(courseHref(n.course, `/knowledge/${n.slug}`))}
+                      >
+                        <FileText size={14} aria-hidden />
+                        <b>{n.title}</b>
+                        <em>{n.slug}</em>
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                  <Command.Group heading="Sources" className={styles.group}>
+                    {index.sources.map((s) => (
+                      <Command.Item
+                        key={`${s.course}/${s.id}`}
+                        value={`source ${s.course} ${s.id} ${s.title}`}
+                        className={styles.hit}
+                        onSelect={go(courseHref(s.course, `/sources/${s.id}`))}
+                      >
+                        <BookOpen size={14} aria-hidden />
+                        <b>{s.title}</b>
+                        <em>{s.id}</em>
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                  <Command.Group heading="Misconceptions" className={styles.group}>
+                    {index.misconceptions.map((m, i) => (
+                      <Command.Item
+                        key={`${m.course}/${i}`}
+                        value={`misconception ${m.course} ${m.topic} ${m.claim}`}
+                        className={styles.hit}
+                        onSelect={go(courseHref(m.course, "/misconceptions"))}
+                      >
+                        <CircleAlert size={14} aria-hidden />
+                        <b>{m.claim}</b>
+                        <em>{m.topic}</em>
                       </Command.Item>
                     ))}
                   </Command.Group>

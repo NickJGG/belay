@@ -46,6 +46,25 @@ test("Not found names what's missing and the nearest real page", () => {
   assert.deepEqual(missing("/l/2026-10-25/9"), { what: "No log entry there.", back: { href: "/p", label: "Back to Projects" } });
 });
 
+test("Not found on a course page names the course, the note or the file", () => {
+  const courses = { href: "/courses", label: "Back to Courses" };
+  assert.deepEqual(missing("/courses/nope"), { what: "No course nope.", back: courses });
+  assert.deepEqual(missing("/courses/nope/cards"), { what: "No course nope.", back: courses });
+  assert.deepEqual(missing("/courses/llm/knowledge/x"), { what: "No note x.", back: { href: "/courses/llm/notes", label: "Back to Notes" } });
+  assert.deepEqual(missing("/courses/llm/sources/y"), { what: "No source y.", back: { href: "/courses/llm/notes", label: "Back to Notes" } });
+  assert.deepEqual(missing("/courses/llm/lessons/2026-10-24-x"), {
+    what: "No lesson 2026-10-24-x.",
+    back: { href: "/courses/llm/lessons", label: "Back to Lessons" },
+  });
+  assert.deepEqual(missing("/courses/llm/work/a/b.py"), { what: "No file work/a/b.py.", back: { href: "/courses/llm/work", label: "Back to Work" } });
+  assert.deepEqual(missing("/courses/llm/nope"), { what: "No page at /courses/llm/nope.", back: { href: "/courses/llm", label: "Back to the course" } });
+});
+
+test("a course's Work tab is a workspace; its other tabs read", () => {
+  for (const p of ["/courses/llm/work", "/courses/llm/work/", "/courses/llm/work/a.py"]) assert.equal(pageKind(p), "workspace");
+  for (const p of ["/courses/llm", "/courses/llm/notes", "/courses/llm/workshop"]) assert.equal(pageKind(p), "reading");
+});
+
 test("drawer prefs default and clamp the width", () => {
   assert.deepEqual(parseDrawer(null), DRAWER_DEFAULTS);
   assert.deepEqual(parseDrawer('{"open":false,"width":9000}'), { open: false, width: 760 });

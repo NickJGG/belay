@@ -22,6 +22,8 @@ export function GroupDetails({
   open,
   defaultOpen,
   dim,
+  className,
+  headClassName,
   children,
 }: {
   id: string;
@@ -31,11 +33,13 @@ export function GroupDetails({
   open: boolean;
   defaultOpen: boolean;
   dim?: boolean;
+  className?: string;
+  headClassName?: string;
   children: React.ReactNode;
 }) {
   return (
-    <details className={cn(styles.group, dim && styles.dim)} open={open} onToggle={(e) => writeToggled(id, e.currentTarget.open !== defaultOpen)}>
-      <summary className={styles.head}>
+    <details className={cn(styles.group, dim && styles.dim, className)} open={open} onToggle={(e) => writeToggled(id, e.currentTarget.open !== defaultOpen)}>
+      <summary className={cn(styles.head, headClassName)}>
         {icon ? (
           <span className={styles.slot}>
             {icon}

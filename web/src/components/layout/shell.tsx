@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { FocusHighlight } from "@/components/content/focus-highlight";
 import { LiveProvider, useLive } from "@/components/live/live-provider";
 import { LiveRefresh } from "@/components/live/live-refresh";
 import { Drawer } from "@/components/session/drawer";
@@ -64,6 +65,8 @@ function Frame({ children }: { children: React.ReactNode }) {
   return (
     <div className={cn(styles.shell, kind === "workspace" && styles.workspace, selected && styles.hasStrip)}>
       <LiveRefresh />
+      {/* Only course pages anchor claims: a grill keeps its view (`#q-3`) in the hash. */}
+      {pathname.startsWith("/courses/") ? <FocusHighlight /> : null}
       <SiteNav collapsed={collapsed[kind]} onCollapse={toggle} />
       {collapsed[kind] ? <Rail onExpand={toggle} /> : null}
       <div className={styles.col}>

@@ -8,7 +8,8 @@ import { grillDir, searDir } from "./config";
 import { isSlug } from "./sessions";
 import { connectUpstream, readBridgeFile, sameBridge, type BridgeEvent, type Upstream } from "./upstream";
 import { UsageStore, type StatusLine, type Usage } from "./usage";
-import { belayIgnored, belayWatched, grillIgnored, locate, searIgnored } from "./watch-paths";
+import { root as learningRoot } from "./courses";
+import { belayIgnored, belayWatched, courseIgnored, courseLocate, grillIgnored, locate, searIgnored } from "./watch-paths";
 
 /*
  * The server's one event hub, started by its first user. It watches both session roots and holds an
@@ -20,6 +21,7 @@ import { belayIgnored, belayWatched, grillIgnored, locate, searIgnored } from ".
  *   bridge    one bridge event, tagged with its session's slug
  *   usage     a live session's meters, from the status line's POST to /api/usage (matched by the bridge's sessionId)
  *   belay     an issue, project, log day or order.yaml in belay's data dir changed (by a page, the CLI or Claude)
+ *   course    a visible file of a course folder changed (see `visibleParts`), as `{course, path}`
  */
 
 export type LiveSession = { slug: string; working: boolean; connected: boolean; sessionId: string | null };
@@ -30,7 +32,8 @@ export type HubEvent =
   | ({ type: "live"; up: boolean } & LiveSession)
   | { type: "bridge"; slug: string; event: BridgeEvent }
   | { type: "usage"; slug: string; usage: Usage }
-  | { type: "belay" };
+  | { type: "belay" }
+  | { type: "course"; course: string; path: string };
 
 type Listener = (e: HubEvent) => void;
 type Hub = {
@@ -104,7 +107,16 @@ function start(): Hub {
     });
   }
 
-  const watchers = [searWatch, grillWatch, belayWatch];
+  const learning = learningRoot();
+  const courseWatch = watch(learning, { ignoreInitial: true, ignored: courseIgnored(learning) });
+  for (const ev of ["add", "change", "unlink", "addDir", "unlinkDir"] as const) {
+    courseWatch.on(ev, (abs) => {
+      const hit = courseLocate(learning, abs);
+      if (hit) emit({ type: "course", course: hit[0], path: hit[1] });
+    });
+  }
+
+  const watchers = [searWatch, grillWatch, belayWatch, courseWatch];
   for (const w of watchers) w.on("error", (err) => console.error("[sear] watcher:", err));
 
   // The first page render waits for the existing bridges' first connection attempts, so Live isn't empty.

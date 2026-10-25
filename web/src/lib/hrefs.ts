@@ -11,3 +11,9 @@ export const grillHref = (slug: string) => `/s/${encodeURIComponent(slug)}`;
 
 /** The pseudo-project for grills nothing files. */
 export const UNFILED = "unfiled";
+
+/** A course page; `suffix` is a section (`/map`) or a detail (`/knowledge/<topic>`). */
+export const courseHref = (course: string, suffix = "") => `/courses/${encodeURIComponent(course)}${suffix}`;
+
+/** Opens a file or folder on this machine in VS Code. */
+export const vscodeHref = (abs: string) => `vscode://file/${abs.replace(/\\/g, "/")}`;

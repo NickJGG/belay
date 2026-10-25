@@ -15,8 +15,16 @@
     "test:site": "node --test \"src/lib/test/*.test.ts\""
   },
   "dependencies": {
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/lang-markdown": "6.5.2",
+    "@codemirror/lang-python": "6.2.1",
+    "@codemirror/language": "6.13.1",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.15",
+    "@lezer/highlight": "1.2.5",
     "chokidar": "6.0.0",
     "cmdk": "1.1.1",
+    "codemirror": "6.0.2",
     "hast-util-to-jsx-runtime": "2.3.6",
     "katex": "0.19.0",
     "lucide-react": "1.61.0",
@@ -32,7 +40,8 @@
     "remark-rehype": "11.1.2",
     "server-only": "0.0.1",
     "unified": "11.0.5",
-    "unist-util-visit": "5.1.0"
+    "unist-util-visit": "5.1.0",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/hast": "3.0.5",

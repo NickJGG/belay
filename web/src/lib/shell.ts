@@ -19,9 +19,9 @@ export function sessionSlug(pathname: string): string | null {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
-/** Grills are Workspaces (lessons and a course's Work join them later); every other page is a Reading page. */
+/** Grills and a course's Work tab are Workspaces (lessons join them later); every other page is a Reading page. */
 export function pageKind(pathname: string): PageKind {
-  return sessionSlug(pathname) ? "workspace" : "reading";
+  return sessionSlug(pathname) || /^\/courses\/[^/]+\/work(\/|$)/.test(pathname) ? "workspace" : "reading";
 }
 
 export function parseCollapsed(raw: string | null): Collapsed {
@@ -43,6 +43,8 @@ export function selectTab(live: string[], page: string | null, last: string | nu
   return live[0] ?? null;
 }
 
+const COURSE_TABS = new Set(["map", "lessons", "notes", "misconceptions", "cards", "work"]);
+
 /** Not found's one line (grill Q36): what's missing, and the nearest real page to go back to. */
 export function missing(pathname: string): { what: string; back: { href: string; label: string } } {
   const grill = sessionSlug(pathname);
@@ -55,6 +57,19 @@ export function missing(pathname: string): { what: string; back: { href: string;
     const key = /^([A-Z]+)-\d+$/.exec(id)?.[1];
     const back = key ? { href: `/p/${key}`, label: `Back to ${key}'s issues` } : { href: "/p", label: "Back to Projects" };
     return { what: `No issue ${id}.`, back };
+  }
+  const course = /^\/courses\/([^/?#]+)(?:\/([^/?#]+)(?:\/([^?#]+?))?)?\/?$/.exec(pathname);
+  if (course) {
+    const [c, kind, rest] = course.slice(1).map((p) => p && decodeURIComponent(p));
+    const base = `/courses/${encodeURIComponent(c)}`;
+    // A tab 404s only when its course is missing.
+    if (!kind || (!rest && COURSE_TABS.has(kind))) return { what: `No course ${c}.`, back: { href: "/courses", label: "Back to Courses" } };
+    const notes = { href: `${base}/notes`, label: "Back to Notes" };
+    if (kind === "knowledge") return { what: `No note ${rest}.`, back: notes };
+    if (kind === "sources") return { what: `No source ${rest}.`, back: notes };
+    if (kind === "lessons") return { what: `No lesson ${rest}.`, back: { href: `${base}/lessons`, label: "Back to Lessons" } };
+    if (kind === "work") return { what: `No file work/${rest}.`, back: { href: `${base}/work`, label: "Back to Work" } };
+    return { what: `No page at ${pathname}.`, back: { href: base, label: "Back to the course" } };
   }
   if (pathname.startsWith("/l/")) return { what: "No log entry there.", back: { href: "/p", label: "Back to Projects" } };
   return { what: `No page at ${pathname}.`, back: { href: "/", label: "Back home" } };

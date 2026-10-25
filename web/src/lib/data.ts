@@ -14,6 +14,7 @@ import { sectionNeighbours, sidebarSections } from "../../../src/sidebar.ts";
 import type { Issue as BelayIssue, Project as BelayProject } from "../../../src/store.ts";
 import { addDays, isDay, workDay } from "../../../src/workday.ts";
 import type { ChatEntry, OpenTurn } from "./chat";
+import { courseIndex, type CourseIndex } from "./course-data";
 import { grillDir, searDir, sessionRoots } from "./config";
 import { parseFrontmatter } from "./frontmatter";
 import { flightGrills, type FlightRow } from "./belay-view";
@@ -269,16 +270,20 @@ export async function projectsIndex(): Promise<{ projects: ProjectCard[]; unfile
   };
 }
 
-export type SearchIndex = {
+export type SearchIndex = CourseIndex & {
   sessions: (Pick<SessionItem, "slug" | "topic" | "stage" | "updated"> & { project: Mark | null })[];
   projects: (Mark & { status: string })[];
   issues: Pick<BelayIssue, "id" | "title" | "status" | "project">[];
 };
 
-/** The command palette's names: every session (Sear and legacy grill), non-archived project and issue. */
+/**
+ * The command palette's names: every session (Sear and legacy grill), non-archived project and issue, and every
+ * course with its lessons, notes, sources and misconceptions.
+ */
 export async function searchIndex(): Promise<SearchIndex> {
-  const { sessions, projects, ctx } = await load();
+  const [{ sessions, projects, ctx }, courses] = await Promise.all([load(), courseIndex()]);
   return {
+    ...courses,
     sessions: sessions.map((s) => ({
       slug: s.slug,
       topic: s.topic,

@@ -13,6 +13,8 @@ export async function Group({
   count,
   defaultOpen = true,
   dim,
+  className,
+  headClassName,
   children,
 }: {
   id: string;
@@ -22,11 +24,13 @@ export async function Group({
   defaultOpen?: boolean;
   /** Dims the contents, as for paused and archived projects. */
   dim?: boolean;
+  className?: string;
+  headClassName?: string;
   children: React.ReactNode;
 }) {
   const toggled = parseToggled((await cookies()).get(COLLAPSED_COOKIE)?.value).has(id);
   return (
-    <GroupDetails id={id} icon={icon} label={label} count={count} open={defaultOpen !== toggled} defaultOpen={defaultOpen} dim={dim}>
+    <GroupDetails id={id} icon={icon} label={label} count={count} open={defaultOpen !== toggled} defaultOpen={defaultOpen} dim={dim} className={className} headClassName={headClassName}>
       {children}
     </GroupDetails>
   );

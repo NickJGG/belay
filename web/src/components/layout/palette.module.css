@@ -122,3 +122,11 @@
   font-size: var(--text-sm);
   color: var(--faint);
 }
+
+/* A course's mark in its hue. */
+.courseMark {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--hue);
+}

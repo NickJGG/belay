@@ -28,9 +28,17 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   its collapsed `rail`, the live Tabs, the Drawer and, on phones, the dock and Strip. Pages say where they sit (and
   a Workspace passes its rail rows) through `<ShellSlot>`. The Drawer's conversation is `live-provider.tsx`'s.
 - `layout/palette.tsx` is belay's cmdk command palette, mounted by the shell. A page lists its own commands first with
-  `<PageCommands>` (an issue's status keys and !, a grill's resume command). Its New issue and Log what you did reach
+  `<PageCommands>` (an issue's status keys and !, a grill's resume command, a course's starts, a lesson note's Resume
+  conversation). Its New issue and Log what you did reach
   the project page's form through `belay/intents.ts`.
-- Home (`/`) is In flight, from the CLI's `inFlight` (`homeFlight` in `data.ts`), then Your courses.
+- Home (`/`) is In flight, from the CLI's `inFlight` (`homeFlight` in `data.ts`), then Your courses (`homeCourses`).
+- Topo's course pages: `/courses` (course cards), `/courses/<c>` (Syllabus) and its tabs `{map,lessons,notes,
+  misconceptions,cards,work}` under one layout holding the course header, and the detail pages
+  `/courses/<c>/{knowledge,lessons,sources}/<x>`. Their pieces are in `src/components/course/`; their data is
+  `lib/course-data.ts` over `lib/courses.ts`, which loads the learn skill's `scripts/courses.js` and `cards.js`
+  (formats.md is the contract). The site writes only `work/` (`/api/work`), and a lesson note's Resume conversation
+  (`app/course-actions.ts`) opens `claude --resume` in Windows Terminal. Start buttons copy the `/learn` command until
+  lessons attach through the bridge.
 - Belay's pages: `/p` (project cards), `/p/<key>` (Issues; `?view=ideas`), `/p/<key>/{grills,activity,logs}` under
   one layout holding the project header, `/i/<id>` and `/l/<day>/<n>?at=`. Their pieces are in
   `src/components/belay/`; their writes are the server actions in `src/app/actions.ts`, each a thin wrapper around
@@ -50,11 +58,12 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - The site runs on port 4747 (`belay serve`), the only site origin the bridge accepts; changing it also needs
   `SEAR_SITE_PORT`.
 - Keep `src/lib/` data modules (`sessions`, `projects`, `issues`, `frontmatter`, `upstream`, `format`, `shell`,
-  `course-art`, `belay-view`, `watch-paths`) free of `server-only` and `@/` imports: `pnpm test:site` runs them under
-  plain `node --test`, which resolves neither. They may import the CLI's `../../../src/*.ts`.
-- Client components take only types from `lib/data`, `lib/belay-view` and the CLI's `store.ts`, whose runtime pulls
-  in `node:fs`. Values they need live in import-free modules: `lib/hrefs`, `lib/collapsed`, and the CLI's `keys`,
-  `picker` and `time`.
+  `course-art`, `belay-view`, `watch-paths`, `courses`, `course-paths`, `course-home`, `course-nav`, `wiki-target`,
+  `work`, `session-log`, `routines`) free of `server-only` and `@/` imports: `pnpm test:site` runs them under plain
+  `node --test`, which resolves neither. They may import the CLI's `../../../src/*.ts`.
+- Client components take only types from `lib/data`, `lib/belay-view`, `lib/courses`, `lib/course-home` and the CLI's
+  `store.ts`, whose runtime pulls in `node:fs`. Values they need live in import-free modules: `lib/hrefs`,
+  `lib/collapsed`, `lib/course-nav`, `lib/routines`, and the CLI's `keys`, `picker` and `time`.
 - Every write goes through a CLI op (via `actions.ts`), and adding one to the app means adding it to the CLI first.
 - `src/proxy.ts` applies belay's host guard (`src/guard.ts`) to every request but `/api/usage`, which checks its own.
 - `src/lib/session-doc.ts`'s `decisions`/`context` mirror `plugin/scripts/session.js`, and a test checks that
@@ -111,6 +120,9 @@ stream is open. Message kinds live in `bridge/protocol.mts`, event types in `bri
   `BELAY_DATA`); `projects.ts` sorts its projects and files untagged sessions by belay's fuzzy match.
 - Live sync: the hub also watches the data dir's issues, projects, log days and `order.yaml` (`belayWatched`) and
   sends a `belay` event, on which `LiveRefresh` re-renders the page, whether a page, the CLI or Claude wrote it.
+- Courses live in `~/Learning` (`HANDHOLD_ROOT`). The hub watches its visible course paths (`visibleParts`: never
+  `exercises/`, `rubrics/` or dot folders) and sends `course` events; `LiveRefresh` acts on all but `work/`, which
+  the Work tab's editor reloads itself.
 - Collapsible groups keep the ones toggled from their default in the `belay-collapsed` cookie, so the server
   renders them that way.
 - Usage: `~/.claude/statusline.sh` POSTs every tick to `/api/usage` (no token, loopback `Host`, any `Origin`

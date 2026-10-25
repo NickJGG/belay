@@ -69,15 +69,6 @@
   text-transform: uppercase;
 }
 
-.homeNote {
-  color: var(--muted);
-  font-size: var(--text-sm);
-}
-
-.homeNote a {
-  color: var(--brand);
-}
-
 .empty {
   padding: var(--space-6);
   border: 1px dashed var(--line-strong);

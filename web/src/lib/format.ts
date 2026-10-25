@@ -16,3 +16,17 @@ export function shortDate(date: string | undefined, now = new Date()): string {
 
 /** `in-progress` → "in progress". */
 export const statusLabel = (status: string) => status.replaceAll("-", " ");
+
+const dayNumber = (day: string) => {
+  const [y, m, d] = day.split("-").map(Number);
+  return Date.UTC(y, m - 1, d) / 86_400_000;
+};
+
+/** A card's due date against today: "overdue 2 days", "today", "tomorrow", "in 5 days". */
+export function relativeDue(due: string, today: string): string {
+  const n = Math.round(dayNumber(due) - dayNumber(today));
+  if (n < 0) return `overdue ${-n} day${n === -1 ? "" : "s"}`;
+  if (n === 0) return "today";
+  if (n === 1) return "tomorrow";
+  return `in ${n} days`;
+}
