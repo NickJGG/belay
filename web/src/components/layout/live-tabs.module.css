@@ -44,6 +44,24 @@
   box-shadow: inset 0 -2px 0 var(--line-strong);
 }
 
+/* Reordering: the others slide aside; the dragged one rides under the cursor, dimmed and raised. */
+.tabs[data-sorting] {
+  user-select: none;
+}
+
+.tabs[data-sorting] .tab {
+  transition: transform 150ms ease;
+}
+
+.tabs[data-sorting] .tab[data-dragging] {
+  position: relative;
+  z-index: 1;
+  opacity: 0.55;
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+  transition: none;
+}
+
 /* Shared with the Strip. */
 .title {
   min-width: 0;

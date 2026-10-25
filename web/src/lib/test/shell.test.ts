@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { terrain } from "../course-art.ts";
-import { COLLAPSED_DEFAULTS, DRAWER_DEFAULTS, missing, pageKind, parseCollapsed, parseDrawer, selectTab, sessionSlug } from "../shell.ts";
+import { COLLAPSED_DEFAULTS, DRAWER_DEFAULTS, missing, moveTab, orderTabs, pageKind, parseCollapsed, parseDrawer, parseTabOrder, selectTab, sessionSlug } from "../shell.ts";
 
 describe("page kinds", () => {
   test("a grill page is a workspace; everything else reads", () => {
@@ -33,6 +33,49 @@ describe("selectTab", () => {
     assert.equal(selectTab(["a", "b"], "c", "b"), "b");
     assert.equal(selectTab(["a", "b"], null, "gone"), "a");
     assert.equal(selectTab([], "a", "a"), null);
+  });
+});
+
+describe("Tab order", () => {
+  test("bad storage is no order", () => {
+    assert.deepEqual(parseTabOrder(null), []);
+    assert.deepEqual(parseTabOrder("not json"), []);
+    assert.deepEqual(parseTabOrder('{"a":1}'), []);
+    assert.deepEqual(parseTabOrder('["a",2,"b"]'), ["a", "b"]);
+  });
+
+  test("live Tabs follow the stored order; new ones land at the end", () => {
+    assert.deepEqual(orderTabs(["a", "b", "c"], []), ["a", "b", "c"]);
+    assert.deepEqual(orderTabs(["a", "new", "b", "c"], ["c", "a", "b"]), ["c", "a", "b", "new"]);
+  });
+
+  test("a move to the front, the end or the middle", () => {
+    const live = ["a", "b", "c", "d"];
+    assert.deepEqual(moveTab([], live, "c", 0), ["c", "a", "b", "d"]);
+    assert.deepEqual(moveTab([], live, "a", 3), ["b", "c", "d", "a"]);
+    assert.deepEqual(moveTab(["d", "c", "b", "a"], live, "a", 1), ["d", "a", "c", "b"]);
+  });
+
+  test("a Tab that drops out and comes back regains its place", () => {
+    const saved = moveTab([], ["a", "x", "b"], "b", 0);
+    assert.deepEqual(saved, ["b", "a", "x"]);
+    const without = moveTab(saved, ["a", "b"], "a", 0);
+    assert.deepEqual(without, ["a", "b", "x"]);
+    assert.deepEqual(orderTabs(["a", "b", "x"], without), ["a", "b", "x"]);
+    const kept = moveTab(["b", "x", "a"], ["a", "b"], "b", 1);
+    assert.deepEqual(kept, ["a", "x", "b"]);
+    assert.deepEqual(orderTabs(["b", "a", "x"], kept), ["a", "x", "b"]);
+  });
+
+  test("the cap drops the earliest stale slugs, never a live one", () => {
+    const stale = Array.from({ length: 30 }, (_, i) => `s${i}`);
+    const live = ["a", "b"];
+    const out = moveTab([...stale, "a", "b"], live, "b", 0);
+    assert.equal(out.length, 30);
+    assert.deepEqual(out.slice(-2), ["b", "a"]);
+    assert.equal(out[0], "s2");
+    const many = Array.from({ length: 35 }, (_, i) => `l${i}`);
+    assert.deepEqual(moveTab(stale, many, "l0", 34), orderTabs(many, []).slice(1).concat("l0"));
   });
 });
 

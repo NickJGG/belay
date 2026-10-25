@@ -6,17 +6,20 @@ import type { LinkState, PendingComment, Send } from "@/components/session/drawe
 import { applyResult, toStep, type ChatEntry, type OpenTurn } from "@/lib/chat";
 import type { DrawerSeed, LiveItem } from "@/lib/data";
 import { toShow, type LessonShow } from "@/lib/lesson";
-import { DRAWER_DEFAULTS, DRAWER_KEY, pageTab, parseDrawer, selectTab, TAB_KEY, type DrawerPrefs } from "@/lib/shell";
+import { DRAWER_DEFAULTS, DRAWER_KEY, moveTab, orderTabs, pageTab, parseDrawer, parseTabOrder, selectTab, TAB_KEY, TABS_KEY, type DrawerPrefs } from "@/lib/shell";
 import type { Queue } from "@/lib/start-queue";
 import type { Usage } from "@/lib/usage";
 import { subscribeLive } from "./event-hub";
 
 type Live = {
+  /** In this browser's stored order. */
   live: LiveItem[];
   /** The Tab the Drawer shows; null while nothing is live. */
   selected: LiveItem | null;
   /** Selects a Tab; its link opens the grill. */
   select: (slug: string) => void;
+  /** Drops a Tab at index `to` of `live`, and stores the order. */
+  move: (slug: string, to: number) => void;
   chat: ChatEntry[];
   turn: OpenTurn | null;
   usage: Usage | null;
@@ -74,17 +77,24 @@ export async function sendTo(slug: string, msg: Record<string, unknown>): Promis
 }
 
 /** The live Tabs, the one the Drawer shows, and its conversation kept current from the event stream. */
-export function LiveProvider({ live, seeds, children }: { live: LiveItem[]; seeds: Record<string, DrawerSeed>; children: React.ReactNode }) {
+export function LiveProvider({ live: incoming, seeds, children }: { live: LiveItem[]; seeds: Record<string, DrawerSeed>; children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
-  const page = pageTab(pathname, live);
 
   const [last, setLast] = React.useState<string | null>(null);
+  const [order, setOrder] = React.useState<string[]>([]);
   const [drawer, setDrawerState] = React.useState<DrawerPrefs>(DRAWER_DEFAULTS);
   React.useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is client-only
     setLast(read(TAB_KEY));
+    setOrder(parseTabOrder(read(TABS_KEY)));
     setDrawerState(parseDrawer(read(DRAWER_KEY)));
   }, []);
+
+  const live = React.useMemo(() => {
+    const bySlug = new Map(incoming.map((l) => [l.slug, l]));
+    return orderTabs([...bySlug.keys()], order).map((s) => bySlug.get(s)!);
+  }, [incoming, order]);
+  const page = pageTab(pathname, live);
 
   const slug = selectTab(
     live.map((l) => l.slug),
@@ -96,6 +106,12 @@ export function LiveProvider({ live, seeds, children }: { live: LiveItem[]; seed
   const select = (s: string) => {
     setLast(s);
     write(TAB_KEY, s);
+  };
+
+  const move = (s: string, to: number) => {
+    const next = moveTab(order, live.map((l) => l.slug), s, to);
+    setOrder(next);
+    write(TABS_KEY, JSON.stringify(next));
   };
 
   const setDrawer = (p: Partial<DrawerPrefs> | ((p: DrawerPrefs) => Partial<DrawerPrefs>)) =>
@@ -199,6 +215,7 @@ export function LiveProvider({ live, seeds, children }: { live: LiveItem[]; seed
     live,
     selected,
     select,
+    move,
     chat: chat.slug === slug ? chat.entries : [],
     turn: turn.slug === slug ? turn.turn : null,
     usage: usage.slug === slug ? usage.usage : null,

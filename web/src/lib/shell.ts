@@ -12,6 +12,7 @@ export const COLLAPSED_DEFAULTS: Collapsed = { workspace: true, reading: false }
 export const SIDEBAR_KEY = "belay:sidebar";
 export const TAB_KEY = "belay:tab";
 export const DRAWER_KEY = "belay:drawer";
+export const TABS_KEY = "belay:tabs";
 
 /** The grill a `/s/<slug>` page shows, else null. */
 export function sessionSlug(pathname: string): string | null {
@@ -50,6 +51,40 @@ export function selectTab(live: string[], page: string | null, last: string | nu
   if (page && live.includes(page)) return page;
   if (last && live.includes(last)) return last;
   return live[0] ?? null;
+}
+
+/** The stored Tab order: a slug list, `[]` when missing or malformed. */
+export function parseTabOrder(raw: string | null): string[] {
+  try {
+    const v: unknown = JSON.parse(raw ?? "");
+    return Array.isArray(v) ? v.filter((s): s is string => typeof s === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The live Tabs in the stored order; ones it doesn't know yet join at the end, in their incoming order. */
+export function orderTabs(live: string[], saved: string[]): string[] {
+  const at = new Map(saved.map((s, i) => [s, i]));
+  const known = live.filter((s) => at.has(s)).sort((a, b) => at.get(a)! - at.get(b)!);
+  return [...known, ...live.filter((s) => !at.has(s))];
+}
+
+const TABS_KEPT = 30;
+
+/**
+ * The stored order after dropping `slug` at index `to` of the live Tabs. Slugs no longer live keep their places, so
+ * one that comes back slots in where it was; past 30, the earliest of those go first, never a live one.
+ */
+export function moveTab(saved: string[], live: string[], slug: string, to: number): string[] {
+  const order = orderTabs(live, saved).filter((s) => s !== slug);
+  order.splice(Math.max(0, Math.min(to, order.length)), 0, slug);
+  const isLive = new Set(live);
+  const all = [...saved.filter((s) => s !== slug || isLive.has(s)), ...live.filter((s) => !saved.includes(s))];
+  let next = 0;
+  const out = all.map((s) => (isLive.has(s) ? order[next++] : s));
+  let over = out.length - TABS_KEPT;
+  return out.filter((s) => isLive.has(s) || over-- <= 0);
 }
 
 const COURSE_TABS = new Set(["map", "lessons", "notes", "misconceptions", "cards", "work", "now"]);
