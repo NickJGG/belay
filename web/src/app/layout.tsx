@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/belay/toaster";
-import { SearchPalette } from "@/components/layout/search";
 import { AppShell } from "@/components/layout/shell";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { navData } from "@/lib/data";
@@ -47,7 +46,6 @@ export default async function RootLayout({
           <AppShell live={nav.live} seeds={nav.seeds}>
             {children}
           </AppShell>
-          <SearchPalette />
           <Toaster />
         </ThemeProvider>
       </body>

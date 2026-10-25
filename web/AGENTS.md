@@ -27,6 +27,10 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - `src/components/layout/shell.tsx` is every page's chrome, mounted by the root layout: the sidebar (`site-nav`),
   its collapsed `rail`, the live Tabs, the Drawer and, on phones, the dock and Strip. Pages say where they sit (and
   a Workspace passes its rail rows) through `<ShellSlot>`. The Drawer's conversation is `live-provider.tsx`'s.
+- `layout/palette.tsx` is belay's cmdk command palette, mounted by the shell. A page lists its own commands first with
+  `<PageCommands>` (an issue's status keys and !, a grill's resume command). Its New issue and Log what you did reach
+  the project page's form through `belay/intents.ts`.
+- Home (`/`) is In flight, from the CLI's `inFlight` (`homeFlight` in `data.ts`), then Your courses.
 - Belay's pages: `/p` (project cards), `/p/<key>` (Issues; `?view=ideas`), `/p/<key>/{grills,activity,logs}` under
   one layout holding the project header, `/i/<id>` and `/l/<day>/<n>?at=`. Their pieces are in
   `src/components/belay/`; their writes are the server actions in `src/app/actions.ts`, each a thin wrapper around
@@ -59,7 +63,7 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   slug and token and forwards to the bridge.
 - Mock frames are same-origin srcdoc iframes, and comment mode (`pin.ts`) reaches into them, so a `sandbox`
   attribute without `allow-same-origin` breaks comments.
-- Key presses don't leave an iframe, so frames re-dispatch theirs to the page's document, where `Ctrl K` (the search
+- Key presses don't leave an iframe, so frames re-dispatch theirs to the page's document, where `Ctrl K` (the command
   palette, `GET /api/search`) listens too. `p` is Pick, so an option keyed `p` has no shortcut.
 - Follow along never jumps while a comment or pick note is being written: the jump would discard it.
 

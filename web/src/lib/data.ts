@@ -4,7 +4,7 @@ import path from "node:path";
 import { connection } from "next/server";
 import { cache } from "react";
 import { dataDir, grillRoots } from "../../../src/config.ts";
-import { activity, type ActivityDay } from "../../../src/home.ts";
+import { activity, doingSince, inFlight, type ActivityDay } from "../../../src/home.ts";
 import { loadLog, type DatedEntry, type LogEntry } from "../../../src/logs.ts";
 import { linkedPath } from "../../../src/open.ts";
 import { Ctx as BelayCtx, bodyHash, logDays } from "../../../src/ops.ts";
@@ -16,6 +16,7 @@ import { addDays, isDay, workDay } from "../../../src/workday.ts";
 import type { ChatEntry, OpenTurn } from "./chat";
 import { grillDir, searDir, sessionRoots } from "./config";
 import { parseFrontmatter } from "./frontmatter";
+import { flightGrills, type FlightRow } from "./belay-view";
 import { isClosed, issuesByGrill, stage, STAGES, type Issue, type Stage } from "./issues";
 import { UNFILED } from "./hrefs";
 import { MOCK_FILES, type MockFile } from "./mock";
@@ -176,21 +177,49 @@ export async function navData(): Promise<Nav> {
   return { live: items, seeds: Object.fromEntries(items.map((l) => [l.slug, { turn: openTurn(l.slug), usage: usageFor(l.slug) }])) };
 }
 
+export type HomeRow = FlightRow & { mark: Mark | null };
+
 /**
- * Home: unfinished work only. Grilling sessions, live ones first, then building ones; each by `updated`. Old
- * grill sessions never grill here: most were left `in-progress`, and none can be resumed with `/sear resume`.
+ * Home's In flight (grill Q7): belay's rule, doing issues then grills no issue links to yet, with live grills first.
+ * Old grill sessions never count: most were left `in-progress`, and none can be resumed with `/sear resume`.
  */
-export async function homeData(): Promise<{ grilling: WorkItem[]; building: SessionItem[] }> {
-  const { live, sessions, ctx } = await load();
-  const items = sessions.map((s) => item(s, ctx));
-  const sear = new Set(sessions.filter((s) => s.source === "sear").map((s) => s.slug));
-  return {
-    grilling: [
-      ...liveItems(live, sessions, ctx),
-      ...items.filter((s) => s.stage === "grilling" && !s.live && sear.has(s.slug)),
-    ],
-    building: items.filter((s) => s.stage === "building"),
-  };
+export async function homeFlight(): Promise<HomeRow[]> {
+  const { live, sessions, projects, ctx } = await load();
+  const c = belay();
+  const today = workDay();
+  // Back to the oldest doing issue's start, so each one's latest linked log entry is in range.
+  const logsFrom = c.issues.filter((t) => t.status === "doing").reduce((min, t) => (doingSince(t) < min ? doingSince(t) : min), today);
+  const flight = inFlight(c.projects, c.issues, c.logs(logsFrom, today), sessions.filter((s) => s.source === "sear"), today);
+  const marks = new Map(projects.map((p) => [p.key, mark(p)]));
+  const bySlug = new Map(sessions.map((s) => [s.slug, s]));
+  const working = new Map(live.map((l) => [l.slug, l.working]));
+  const grills = flightGrills(
+    flight.grill,
+    live.flatMap((l) => bySlug.get(l.slug) ?? []),
+  ).map((g): HomeRow => {
+    const s = bySlug.get(g.slug)!;
+    return {
+      kind: "grill",
+      slug: s.slug,
+      topic: s.topic,
+      live: working.has(s.slug),
+      working: working.get(s.slug),
+      openQ: s.questions?.find((q) => q.status === "open")?.n,
+      questions: s.questions?.length,
+      mark: ctx.marks.get(s.slug) ?? null,
+    };
+  });
+  return [
+    ...flight.issues.map(({ issue, idleDays }): HomeRow => ({
+      kind: "issue",
+      id: issue.id,
+      title: issue.title,
+      project: issue.project,
+      idleDays,
+      mark: marks.get(issue.project) ?? null,
+    })),
+    ...grills,
+  ];
 }
 
 const byStage = (sessions: WorkItem[]) =>
@@ -242,10 +271,11 @@ export async function projectsIndex(): Promise<{ projects: ProjectCard[]; unfile
 
 export type SearchIndex = {
   sessions: (Pick<SessionItem, "slug" | "topic" | "stage" | "updated"> & { project: Mark | null })[];
-  projects: Mark[];
+  projects: (Mark & { status: string })[];
+  issues: Pick<BelayIssue, "id" | "title" | "status" | "project">[];
 };
 
-/** Every session (Sear and legacy grill) and non-archived project, for the jump-to palette. */
+/** The command palette's names: every session (Sear and legacy grill), non-archived project and issue. */
 export async function searchIndex(): Promise<SearchIndex> {
   const { sessions, projects, ctx } = await load();
   return {
@@ -256,7 +286,8 @@ export async function searchIndex(): Promise<SearchIndex> {
       updated: s.updated,
       project: ctx.marks.get(s.slug) ?? null,
     })),
-    projects: projects.filter((p) => p.status !== "archived").map(mark),
+    projects: projects.filter((p) => p.status !== "archived").map((p) => ({ ...mark(p), status: p.status })),
+    issues: belay().issues.map(({ id, title, status, project }) => ({ id, title, status, project })),
   };
 }
 

@@ -8,6 +8,7 @@ import type { Ref } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { IssuePicker } from "./controls";
 import { MarkdownField } from "./editors";
+import { useIntent } from "./intents";
 import styles from "./belay.module.css";
 
 type Draft = { title: string; status: "todo" | "idea"; high: boolean; blockers: string[]; body: string };
@@ -16,7 +17,7 @@ const blank = (status: Draft["status"]): Draft => ({ title: "", status, high: fa
 
 /**
  * The + after the Issues · Ideas filter (grill Q10): a new todo, or an idea on Ideas. Closing keeps the draft until
- * it's created or discarded.
+ * it's created or discarded. The palette's New issue opens it too.
  */
 export function CreateIssue({ project, status, candidates }: { project: string; status: Draft["status"]; candidates: Ref[] }) {
   const dialog = React.useRef<HTMLDialogElement>(null);
@@ -33,6 +34,7 @@ export function CreateIssue({ project, status, candidates }: { project: string; 
     if (!draft.title && !draft.body && !draft.blockers.length) setDraft(blank(status));
     dialog.current?.showModal();
   };
+  useIntent("new-issue", project, open);
   const submit = () => {
     if (pending) return;
     if (!draft.title.trim()) return setError("Give it a title");

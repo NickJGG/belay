@@ -1,3 +1,5 @@
+/* Belay's command palette in Sear's palette look (grill Q34). */
+
 .scrim {
   position: fixed;
   inset: 0;
@@ -63,8 +65,13 @@
   cursor: pointer;
 }
 
-.hit.on {
+.hit[data-selected="true"] {
   background: var(--accent-soft);
+}
+
+.hit > :global(.lucide) {
+  flex: none;
+  color: var(--muted);
 }
 
 .hit b {
@@ -81,6 +88,33 @@
   font-size: var(--text-xs);
   font-style: normal;
   color: var(--faint);
+}
+
+/* The mock's .mg-palkey: a key that runs the command outside the palette. */
+.hit kbd {
+  order: 3;
+  margin-left: auto;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* The mock's .mg-palgroup. */
+.group [cmdk-group-heading] {
+  padding: 10px 12px 4px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.crumb {
+  flex: none;
+  color: var(--text);
+  font-size: var(--text-sm);
 }
 
 .note {

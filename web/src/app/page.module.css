@@ -39,6 +39,21 @@
   font-size: var(--text-sm);
 }
 
+/* Home (grill Q7), from the mock's .mg-h1, .mg-meta and .mg-sectitle. */
+.homeTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: var(--leading-tight);
+}
+
+.homeDate {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
 .section {
   display: flex;
   flex-direction: column;
@@ -47,10 +62,20 @@
 
 .sectionTitle {
   font-family: var(--font-display);
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--muted);
-  letter-spacing: 0;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.homeNote {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.homeNote a {
+  color: var(--brand);
 }
 
 .empty {

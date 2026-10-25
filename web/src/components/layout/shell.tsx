@@ -13,6 +13,7 @@ import { clampDrawer, COLLAPSED_DEFAULTS, pageKind, parseCollapsed, SIDEBAR_KEY,
 import { cn } from "@/lib/utils";
 import tabStyles from "./live-tabs.module.css";
 import { LiveTabs, turnState } from "./live-tabs";
+import { PaletteProvider } from "./palette";
 import { Rail } from "./rail";
 import { SlotProvider } from "./shell-slot";
 import { SiteNav } from "./site-nav";
@@ -20,13 +21,15 @@ import styles from "./shell.module.css";
 
 /**
  * Every page's chrome: the sidebar (or its rail, or the phone's dock), the live Tabs over the page, and the Drawer
- * docked beside it while a Tab is live. Re-renders the page on session and Live changes.
+ * docked beside it while a Tab is live, and the command palette. Re-renders the page on session and Live changes.
  */
 export function AppShell({ live, seeds, children }: { live: LiveItem[]; seeds: Record<string, DrawerSeed>; children: React.ReactNode }) {
   return (
     <LiveProvider live={live} seeds={seeds}>
       <SlotProvider>
-        <Frame>{children}</Frame>
+        <PaletteProvider>
+          <Frame>{children}</Frame>
+        </PaletteProvider>
       </SlotProvider>
     </LiveProvider>
   );

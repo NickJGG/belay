@@ -3,7 +3,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { History, Layers, X } from "lucide-react";
+import { Copy, History, LayoutTemplate, X } from "lucide-react";
+import { PageCommands, type PageCommand } from "@/components/layout/palette";
 import { RailRow } from "@/components/layout/rail";
 import { SessionQuestions, type SessionNav } from "@/components/layout/session-nav";
 import { ShellSlot } from "@/components/layout/shell-slot";
@@ -333,6 +334,26 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
+  // The grill page holds its /sear resume command (grill Q17) while no terminal is attached; once one is, the Drawer says what to do.
+  const resume = !live && doc.status === "in-progress" ? `/sear resume ${doc.slug}` : null;
+  const [copied, setCopied] = React.useState(false);
+  const copyResume = React.useCallback(() => {
+    if (!resume) return;
+    navigator.clipboard.writeText(resume).then(
+      () => setCopied(true),
+      () => {},
+    );
+  }, [resume]);
+  React.useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(t);
+  }, [copied]);
+  const commands = React.useMemo<PageCommand[]>(
+    () => (resume ? [{ id: "resume", label: "Copy the resume command", icon: <Copy size={14} aria-hidden />, run: copyResume }] : []),
+    [resume, copyResume],
+  );
+
   const title = q ? q.title : view.kind === "today" ? "Today" : "Current design";
   const expl = q ? (
     optValue === BEFORE ? (
@@ -390,6 +411,7 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
   return (
     <div className={styles.root}>
       <SessionSlot doc={doc} view={view} nav={nav} pulse={pulse} />
+      <PageCommands heading={doc.slug} items={commands} />
       <div className={styles.ws}>
         <Bar
           title={title}
@@ -408,9 +430,17 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
           pick={pick}
           comment={comment}
         />
-        {expl || pickError || (specError && spec) ? (
+        {expl || pickError || resume || (specError && spec) ? (
           <div className={styles.explLine}>
             {expl ? <div>{expl}</div> : null}
+            {resume ? (
+              <div className={styles.resume}>
+                No terminal attached. Run <code>{resume}</code> in a session started with <code>sear</code> to answer from here.
+                <button type="button" className={styles.more} onClick={copyResume}>
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+            ) : null}
             {specError && spec ? <div className={styles.err}>The latest mock edit didn&apos;t load ({specError}); showing the previous one.</div> : null}
             {pickError ? <div className={styles.err}>{pickError}</div> : null}
           </div>
@@ -520,7 +550,7 @@ function SessionSlot({ doc, view, nav, pulse }: { doc: SessionDoc; view: View; n
   const rail = (
     <>
       {doc.mock ? (
-        <RailRow href="#current" icon={<Layers size={14} aria-hidden />} label="Current design" title="Current design" on={here === "#current"} />
+        <RailRow href="#current" icon={<LayoutTemplate size={14} aria-hidden />} label="Current design" title="Current design" on={here === "#current"} />
       ) : null}
       {doc.mock?.page === "existing" ? (
         <RailRow href="#today" icon={<History size={14} aria-hidden />} label="Today" title="Today" on={here === "#today"} />

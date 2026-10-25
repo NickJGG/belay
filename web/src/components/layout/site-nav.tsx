@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { UNFILED } from "@/lib/hrefs";
 import { cn } from "@/lib/utils";
 import { Mark, Wordmark } from "./logo";
-import { openSearch } from "./search";
+import { openPalette } from "./palette";
 import { useSlot, type Slot } from "./shell-slot";
 import styles from "./site-nav.module.css";
 
@@ -65,7 +65,7 @@ export function SiteNav({ collapsed, onCollapse }: { collapsed: boolean; onColla
             </React.Fragment>
           );
         })}
-        <button type="button" className={styles.item} onClick={openSearch}>
+        <button type="button" className={styles.item} onClick={openPalette}>
           <Search size={18} aria-hidden />
           <span>Search</span>
           <kbd className={styles.kbd}>Ctrl K</kbd>

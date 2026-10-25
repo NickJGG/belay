@@ -74,3 +74,32 @@ export function projectGroups<P extends { status: string; focus: boolean; open: 
     shelved: projects.filter((p) => p.status !== "active"),
   };
 }
+
+export type FlightIssue = { kind: "issue"; id: string; title: string; project: string; idleDays?: number };
+
+export type FlightGrill = {
+  kind: "grill";
+  slug: string;
+  topic: string;
+  live: boolean;
+  working?: boolean;
+  /** The first open question's number. */
+  openQ?: number;
+  questions?: number;
+};
+
+export type FlightRow = FlightIssue | FlightGrill;
+
+/** What an In flight row says at its right (grill Q7): idle or doing, a live grill's turn, else its open question. */
+export function flightWhy(r: FlightRow): string {
+  if (r.kind === "issue") return r.idleDays ? `idle ${r.idleDays} days` : "doing";
+  if (r.live) return `live · ${r.working ? "Claude is working…" : "your turn"}`;
+  if (r.openQ) return `Q${r.openQ} open`;
+  return grillStanding({ live: false, stage: "grilling", status: "in-progress", questions: r.questions });
+}
+
+/** Belay's In flight grills with the live ones moved first, and any live grill its rule left out (no project tag) added. */
+export function flightGrills<G extends { slug: string }>(flight: G[], live: G[]): G[] {
+  const on = new Set(live.map((g) => g.slug));
+  return [...live, ...flight.filter((g) => !on.has(g.slug))];
+}

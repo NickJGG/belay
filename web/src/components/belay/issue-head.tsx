@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { MoreHorizontal } from "lucide-react";
+import { Flag, MoreHorizontal } from "lucide-react";
 import { keyCommand, STATUS_KEYS } from "../../../../src/keys.ts";
 import type { Issue } from "../../../../src/store.ts";
 import { openLinkedFile, removeIssue, setIssuePriority, setIssueStatus, setIssueTitle } from "@/app/actions";
 import { PageHeader } from "@/components/layout/page-header";
+import { PageCommands, type PageCommand } from "@/components/layout/palette";
 import { projectHref } from "@/lib/hrefs";
 import { cn } from "@/lib/utils";
 import { Confirm, MenuButton, useAction, useOptimisticAction } from "./controls";
@@ -53,7 +54,8 @@ function TitleEdit({ id, title }: { id: string; title: string }) {
 
 /**
  * The issue page's header (grill Q12): ‹, the status icon (belay's status menu, keys 1–5), the key, the title, a !
- * toggle for high priority (also the ! key), and ⋯ with Open plan, Open file and Delete.
+ * toggle for high priority (also the ! key), and ⋯ with Open plan, Open file and Delete. The palette lists the
+ * status and ! commands first while it's open.
  */
 export function IssueHead({
   issue,
@@ -92,9 +94,20 @@ export function IssueHead({
   }, []);
 
   const open = (kind: "plan" | "file") => run(() => openLinkedFile(issue.id, kind));
+  const commands: PageCommand[] = [
+    ...STATUS_KEYS.filter((s) => s !== status).map((s) => ({
+      id: s,
+      label: `Set status: ${statusName(s)}`,
+      icon: <StatusIcon status={s} />,
+      shortcut: String(STATUS_KEYS.indexOf(s) + 1),
+      run: () => setStatus(s),
+    })),
+    { id: "high", label: high ? "Remove high priority" : "Mark high priority", icon: <Flag size={14} aria-hidden />, shortcut: "!", run: () => setHigh(!high) },
+  ];
 
   return (
     <>
+      <PageCommands heading={`${issue.id} · ${issue.title}`} items={commands} />
       <PageHeader
         back={{
           href: projectHref(issue.project, issue.status === "idea" ? "?view=ideas" : ""),

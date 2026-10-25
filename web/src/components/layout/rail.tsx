@@ -7,7 +7,7 @@ import { useTheme } from "next-themes";
 import { Moon, PanelLeftOpen, Search, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Mark } from "./logo";
-import { openSearch } from "./search";
+import { openPalette } from "./palette";
 import { useSlot } from "./shell-slot";
 import { NAV } from "./site-nav";
 import styles from "./rail.module.css";
@@ -33,7 +33,7 @@ export function Rail({ onExpand }: { onExpand: () => void }) {
           return <RailRow key={item.href} href={item.href} icon={<Icon size={16} aria-hidden />} label={item.label} title={item.label} on={item.on(pathname)} />;
         })}
         <RailRow
-          onClick={openSearch}
+          onClick={openPalette}
           icon={<Search size={16} aria-hidden />}
           label={
             <>

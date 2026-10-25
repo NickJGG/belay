@@ -4,6 +4,7 @@ import * as React from "react";
 import { createLog } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useIntent } from "./intents";
 import { toastError } from "./toaster";
 import styles from "./belay.module.css";
 
@@ -20,6 +21,8 @@ export function LogComposer({ project, kinds, days }: { project: string; kinds: 
   const [count, setCount] = React.useState("");
   const [day, setDay] = React.useState(days[0]?.[0] ?? "today");
   const [pending, start] = React.useTransition();
+  const textRef = React.useRef<HTMLTextAreaElement>(null);
+  useIntent("log", project, () => textRef.current?.focus());
   const submit = () => {
     if (pending || !text.trim()) return;
     start(async () => {
@@ -33,6 +36,7 @@ export function LogComposer({ project, kinds, days }: { project: string; kinds: 
   return (
     <div className={styles.composer}>
       <textarea
+        ref={textRef}
         className={styles.composerText}
         aria-label="What you did"
         placeholder="Log what you did…"

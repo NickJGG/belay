@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { test } from "node:test";
-import { dayLabel, grillStanding, kindTotals, projectGroups, shortDay, windowDays } from "../belay-view.ts";
+import { dayLabel, flightGrills, flightWhy, grillStanding, kindTotals, projectGroups, shortDay, windowDays } from "../belay-view.ts";
 import { belayIgnored, belayWatched } from "../watch-paths.ts";
 
 test("day labels are relative to today, with the year only when it differs", () => {
@@ -70,4 +70,22 @@ test("belay's watcher sees issues, projects, log days and order.yaml, in either 
     assert.equal(belayIgnored(root)(at(".git")), true);
     assert.equal(belayIgnored(root)(at("settings.yaml")), true);
   }
+});
+
+test("an In flight row says idle or doing, a live grill's turn, else its open question", () => {
+  const issue = { kind: "issue" as const, id: "SEAR-7", title: "t", project: "SEAR" };
+  assert.equal(flightWhy(issue), "doing");
+  assert.equal(flightWhy({ ...issue, idleDays: 4 }), "idle 4 days");
+  const grill = { kind: "grill" as const, slug: "g", topic: "t", live: false };
+  assert.equal(flightWhy({ ...grill, live: true }), "live · your turn");
+  assert.equal(flightWhy({ ...grill, live: true, working: true, openQ: 3 }), "live · Claude is working…");
+  assert.equal(flightWhy({ ...grill, openQ: 3 }), "Q3 open");
+  assert.equal(flightWhy({ ...grill, questions: 2 }), "2 questions");
+  assert.equal(flightWhy(grill), "started");
+});
+
+test("live grills lead In flight, once each, untagged ones included", () => {
+  const g = (slug: string) => ({ slug });
+  assert.deepEqual(flightGrills([g("a"), g("b"), g("c")], [g("c"), g("z")]).map((x) => x.slug), ["c", "z", "a", "b"]);
+  assert.deepEqual(flightGrills([g("a")], []).map((x) => x.slug), ["a"]);
 });
