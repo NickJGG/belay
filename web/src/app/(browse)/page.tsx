@@ -33,7 +33,7 @@ export default async function HomePage() {
           <ul className={course.cards}>
             {courses.map((c) => (
               <li key={c.course.course}>
-                <CourseCard card={c} />
+                <CourseCard card={c} variant="home" />
               </li>
             ))}
           </ul>

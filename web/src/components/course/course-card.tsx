@@ -1,9 +1,9 @@
 import type * as React from "react";
 import Link from "next/link";
-import { Flag } from "lucide-react";
+import { BookOpen, Flag, Hammer, Layers, type LucideIcon } from "lucide-react";
 import { buttonClass, type ButtonVariant } from "@/components/ui/button";
 import { PALETTE } from "@/lib/course-art";
-import type { CardData, UpNextItem } from "@/lib/course-home";
+import type { CardData, UpNextItem, UpNextKind } from "@/lib/course-home";
 import { courseHref } from "@/lib/hrefs";
 import { cn } from "@/lib/utils";
 import { CourseTerrain } from "./course-terrain";
@@ -23,8 +23,39 @@ function action(i: UpNextItem): string {
   return "Start";
 }
 
-/** A course card: its terrain cover, trait chips, unit bar and goal, then an Up next band with its most urgent routine. */
-export function CourseCard({ card }: { card: CardData }) {
+const KIND_ICON: Record<UpNextKind, LucideIcon> = { Lesson: BookOpen, Review: Layers, Checkpoint: Flag, Build: Hammer };
+
+function Chips({ traits }: { traits: string[] }) {
+  if (!traits.length) return null;
+  return (
+    <span className={styles.chips}>
+      {traits.map((t) => (
+        <span key={t} className={styles.chip}>
+          {t}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function UnitBar({ units, className }: { units: (number | null)[]; className?: string }) {
+  return (
+    <span className={cn(styles.bar, className)} aria-hidden>
+      {units.map((done, i) => (
+        <i key={i} className={cn(styles.seg, done === null && styles.segOff)}>
+          {done ? <b style={{ width: `${done * 100}%` }} /> : null}
+        </i>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * A course card. `full` (/courses): terrain cover, trait chips, unit bar and goal, then an Up next band with its
+ * most urgent routine. `home`: faded terrain behind the head, a course-colour bar, and one row with the lead's
+ * kind icon, title and button, or the Build nudge when nothing is actionable.
+ */
+export function CourseCard({ card, variant = "full" }: { card: CardData; variant?: "full" | "home" }) {
   const { course: c, units, checkpoint, lead, rest, build } = card;
   const showCheckpoint = lead?.kind !== "Checkpoint";
 
@@ -32,31 +63,51 @@ export function CourseCard({ card }: { card: CardData }) {
     <StartButton key={i.kind} course={i.course} routine={i.routine!} label={label} className={buttonClass(variant, "sm")} resume={resume} />
   );
 
+  if (variant === "home") {
+    const next = lead ?? build;
+    const Icon = next ? KIND_ICON[next.kind] : null;
+    return (
+      <div className={cn(styles.card, styles.homeCard)} style={{ "--hue": PALETTE[c.hue] } as React.CSSProperties}>
+        <span className={styles.homeArtFade} aria-hidden>
+          <span className={styles.homeArt}>
+            <CourseTerrain slug={c.course} width={400} height={130} />
+          </span>
+        </span>
+        <Chips traits={c.traits} />
+        <Link href={courseHref(c.course)} className={styles.title}>
+          {c.title}
+        </Link>
+        <UnitBar units={units} className={styles.barHome} />
+        {next && Icon ? (
+          <div className={styles.nextRow}>
+            <Icon className={styles.nextIcon} aria-label={next.kind} />
+            <span className={styles.nextTitle}>
+              {lead ? (
+                lead.title
+              ) : (
+                <>
+                  {next.title} · <code>/learn:build</code>
+                </>
+              )}
+            </span>
+            {lead ? <span className={styles.actions}>{button(lead, action(lead), lead.kind === "Checkpoint" ? "outline" : "default", true)}</span> : null}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className={styles.card} style={{ "--hue": PALETTE[c.hue] } as React.CSSProperties}>
       <span className={styles.cover}>
         <CourseTerrain slug={c.course} width={400} height={96} className={styles.terrain} />
       </span>
-      {c.traits.length ? (
-        <span className={styles.chips}>
-          {c.traits.map((t) => (
-            <span key={t} className={styles.chip}>
-              {t}
-            </span>
-          ))}
-        </span>
-      ) : null}
+      <Chips traits={c.traits} />
       <Link href={courseHref(c.course)} className={styles.title}>
         {c.title}
       </Link>
       <span className={styles.barRow}>
-        <span className={styles.bar} aria-hidden>
-          {units.map((done, i) => (
-            <i key={i} className={cn(styles.seg, done === null && styles.segOff)}>
-              {done ? <b style={{ width: `${done * 100}%` }} /> : null}
-            </i>
-          ))}
-        </span>
+        <UnitBar units={units} />
         <span className={styles.count}>
           <b>{c.topics.done}</b>/{c.topics.total} topics
         </span>
