@@ -22,7 +22,12 @@ const ctx = (over: Partial<LaunchContext> = {}): LaunchContext => ({
   ...over,
 });
 
-const CHANNEL_ARGS = ['--dangerously-load-development-channels', 'plugin:belay@belay'];
+const CHANNEL_ARGS = [
+  '--disallowedTools',
+  'PowerShell,ScheduleWakeup,ListAgents,ReportFindings,Artifact,ArtifactComments,ArtifactData,mcp__claude_ai_Claude_Docs',
+  '--dangerously-load-development-channels',
+  'plugin:belay@belay',
+];
 
 test('claude runs in the cwd with the channel, the user args after it, and BELAY_CHANNEL set', () => {
   const spec = launchSpec('claude', ['--resume', 'x'], ctx());

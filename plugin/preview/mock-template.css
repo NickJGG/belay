@@ -1,4 +1,4 @@
-/* Grill mock styles. Copy to <session dir>/preview.mock.css. Loads inside the mock frames only, after preview.app.css.
+/* Grill mock styles. Written to <session dir>/preview.mock.css. Loads inside the mock frames only, after preview.app.css.
    The frame's <html> carries data-theme="light|dark" and, in dark, the class "dark". */
 
 /* ---------- FILL: the project's design tokens. Light first, dark under [data-theme="dark"]. ---------- */

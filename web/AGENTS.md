@@ -52,7 +52,7 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - `plugin/SKILL.md` is the `/grill` skill; from a marketplace it shows as `/belay:grill`.
 - `plugin/references/session-format.md` defines `session.json`, `chat.jsonl` and the mock patch order.
 - `belay claude` / `belay learn` (`../src/launch.ts`) start `claude` with
-  `--dangerously-load-development-channels plugin:belay@belay` and `BELAY_CHANNEL=1` (the skills' "channel loaded"
+  `--dangerously-load-development-channels plugin:belay@belay`, `--disallowedTools` for tools they never use, and `BELAY_CHANNEL=1` (the skills' "channel loaded"
   check); `belay learn` starts it in `~/Learning`. Both relaunch `claude` while `<data>/.run/restart` exists when it
   exits (a lesson's restart). `../scripts/accept-dev-channels.ps1` presses Enter on the dev-channels dialog.
 

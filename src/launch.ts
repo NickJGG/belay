@@ -9,7 +9,20 @@ import { fileURLToPath } from 'node:url';
 import { runDir } from './config.ts';
 
 export const CHANNEL = 'plugin:belay@belay';
-const CHANNEL_ARGS = ['--dangerously-load-development-channels', CHANNEL];
+// Tools these sessions never use, kept out of every call's context. The flag is variadic, so the channel flag
+// after it ends the list before a user's prompt can be read as a tool name.
+// A bare `mcp__<server>` rule covers every tool on that server.
+const UNUSED_TOOLS = [
+  'PowerShell',
+  'ScheduleWakeup',
+  'ListAgents',
+  'ReportFindings',
+  'Artifact',
+  'ArtifactComments',
+  'ArtifactData',
+  'mcp__claude_ai_Claude_Docs',
+];
+const CHANNEL_ARGS = ['--disallowedTools', UNUSED_TOOLS.join(','), '--dangerously-load-development-channels', CHANNEL];
 
 export interface LaunchSpec {
   cwd: string;

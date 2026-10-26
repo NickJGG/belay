@@ -135,7 +135,7 @@ A mockup of the frontend changes being proposed, so the user can look at a desig
 
 **Where.** In the session folder, beside `session.json`. It's permanent. Never in the scratchpad, never an Artifact, never a Claude Doc, never in the repo.
 
-**Start from the templates.** At the first mock, copy [`P/preview/spec-template.js`](./preview/spec-template.js) → `preview.spec.js` and [`P/preview/mock-template.css`](./preview/mock-template.css) → `preview.mock.css`, then fill them in, and set the session's `mock` settings in `session.json`. The site provides everything around the mock: the question list, option selector, Before, Current design, Today, Desktop/Phone, Compare and the conversation. Never write any of that into the spec.
+**Start from the templates.** At the first mock, Read [`P/preview/spec-template.js`](./preview/spec-template.js) and [`P/preview/mock-template.css`](./preview/mock-template.css), then Write the filled-in `preview.spec.js` and `preview.mock.css` straight into the session folder. Never `cp` them first: Write refuses to overwrite a file it hasn't read, so the whole mock gets written twice. Then set the session's `mock` settings in `session.json`. The site provides everything around the mock: the question list, option selector, Before, Current design, Today, Desktop/Phone, Compare and the conversation. Never write any of that into the spec.
 
 **Files.**
 - `session.json`: the questions, options and their `patch`es, and each mocked question's `mock` fields (format reference). Questions and options never go in the spec.
