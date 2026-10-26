@@ -87,6 +87,7 @@ export function Frame({
   screen,
   floor,
   label,
+  labelText,
   comment = false,
   pin = null,
   onPin,
@@ -95,7 +96,9 @@ export function Frame({
   phone: boolean;
   screen: "shell" | "page";
   floor: number;
-  label: string;
+  label: React.ReactNode;
+  /** The label as plain text, for its hover title and the frame's title. */
+  labelText: string;
   /** Comment mode: hovering outlines an element and a click pins it (`onPin`) instead of reaching the mock. */
   comment?: boolean;
   /** Selector of the pinned element to mark in this frame. */
@@ -192,10 +195,12 @@ export function Frame({
 
   return (
     <div className={styles.frame}>
-      <div className={styles.frameLabel}>{label}</div>
+      <div className={styles.frameLabel} title={labelText}>
+        {label}
+      </div>
       <div ref={fitRef} className={phone ? styles.fitPhone : styles.fit}>
         <div className={styles.sizer} style={sizer}>
-          <iframe ref={frameRef} className={styles.mock} style={frameStyle} title={label || "Mock"} />
+          <iframe ref={frameRef} className={styles.mock} style={frameStyle} title={labelText || "Mock"} />
         </div>
       </div>
     </div>

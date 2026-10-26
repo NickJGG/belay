@@ -125,23 +125,15 @@
   padding: 0 var(--space-4) 10px;
 }
 
-.scroll {
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.scroll::-webkit-scrollbar {
-  display: none;
-}
-
-.scroll > .seg {
-  flex-wrap: nowrap;
-}
-
 .ctls {
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-4);
+}
+
+/* Option buttons' height. */
+.ctls .seg > button {
+  padding: 5px 12px;
+  line-height: 1.5;
 }
 
 .lgrp {
@@ -239,46 +231,111 @@ a.chip:hover {
   color: var(--text);
 }
 
-.named > button {
-  padding: 5px 12px;
+/* Options flow like text (option-selector-overflow Q3/Q4): a family is one inline pill that breaks between
+   variants and stays open at the break (slice). The line height spaces the wrapped rows. */
+.opts {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  margin-block: -4px;
+  line-height: 40px;
 }
 
-.named b {
+.fam {
+  display: inline;
+  margin-right: 6px;
+  padding: 6px 0;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-md);
+  -webkit-box-decoration-break: slice;
+  box-decoration-break: slice;
+}
+
+.fam:has(.kid) {
+  padding-right: 3px;
+}
+
+.famHead {
+  white-space: nowrap;
+}
+
+.opts button {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: calc(var(--radius-md) - 1px);
+  color: var(--muted);
+  line-height: 1.5;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.opts button:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.opts b {
   margin-right: 4px;
   font-family: var(--font-mono);
 }
 
-.named u {
+.opts u {
   margin-left: 4px;
   font-size: var(--text-xs);
   text-decoration: none;
   color: var(--brand);
 }
 
-.named > button.on {
-  box-shadow: inset 1px 0 0 var(--line-strong), inset 0 -2px 0 var(--brand);
-}
-
-/* A variant's dashed edge stands in for the divider. */
-.named > button.kid {
-  padding-left: 8px;
-  border-left: 1px dashed var(--line-strong);
-  box-shadow: none;
-}
-
-.named > button.kid.on {
+.opts button.on {
+  background: var(--accent-strong);
+  color: var(--text);
   box-shadow: inset 0 -2px 0 var(--brand);
 }
 
-.named .out {
-  color: var(--faint);
-  text-decoration: line-through;
+/* A variant sits in the root's inset well, joined to it by a ›. */
+.opts button.kid {
+  padding: 5px 7px;
+  border-radius: 0;
+  background: color-mix(in srgb, #000 35%, var(--panel));
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.45);
+  font-size: var(--text-xs);
 }
 
-.named .more {
+:global(.light) .opts button.kid {
+  background: color-mix(in srgb, #000 6%, var(--panel));
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.18);
+}
+
+.famHead > button.kid {
+  position: relative;
+  margin-left: 18px;
+  border-radius: 5px 0 0 5px;
+}
+
+.famHead > button.kid::before {
+  content: "›";
+  position: absolute;
+  left: -13px;
   color: var(--faint);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
+}
+
+.fam > button.kid:last-child {
+  border-radius: 0 5px 5px 0;
+}
+
+.fam > .famHead:last-child > button.kid {
+  border-radius: 5px;
+}
+
+.opts button.kid.on {
+  background: var(--accent-strong);
+  box-shadow: inset 0 -2px 0 var(--brand);
+}
+
+.opts .out {
+  color: var(--faint);
+  text-decoration: line-through;
 }
 
 .tagPicked {
@@ -336,7 +393,7 @@ a.chip:hover {
   color: var(--muted);
 }
 
-.explLine b {
+.frameLabel b {
   margin-right: 6px;
   color: var(--text);
   font-weight: 600;
@@ -494,9 +551,7 @@ a.chip:hover {
   flex: none;
   padding: 6px 10px;
   border-bottom: 1px solid var(--line);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--faint);
+  color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

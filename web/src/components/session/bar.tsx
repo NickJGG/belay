@@ -145,7 +145,7 @@ function OptButton({ q, o, on, kid, onPick }: { q: Question; o: Opt; on: boolean
   );
 }
 
-/** Before, then each option family: a variant shows only while its root or one of its variants is selected. */
+/** Before, then each option family as one pill: the root, then every variant in its well. Flows and wraps like text. */
 export function OptionSelector({
   q,
   value,
@@ -157,29 +157,27 @@ export function OptionSelector({
   before: boolean;
   onPick: (key: string) => void;
 }) {
+  const opt = (o: Opt, kid?: boolean) => <OptButton key={o.key} q={q} o={o} on={value === o.key} kid={kid} onPick={() => onPick(o.key)} />;
   return (
-    <span className={cn(styles.seg, styles.named)} role="group" aria-label="Option">
+    <div className={styles.opts} role="group" aria-label="Option">
       {before ? (
-        <button type="button" className={cn(value === BEFORE && styles.on)} aria-pressed={value === BEFORE} onClick={() => onPick(BEFORE)}>
-          Before
-        </button>
+        <span className={styles.fam}>
+          <button type="button" className={cn(value === BEFORE && styles.on)} aria-pressed={value === BEFORE} onClick={() => onPick(BEFORE)}>
+            Before
+          </button>
+        </span>
       ) : null}
-      {families(q).map(({ root, kids }) => {
-        const open = value === root.key || kids.some((k) => k.key === value);
-        return [
-          <OptButton key={root.key} q={q} o={root} on={value === root.key} onPick={() => onPick(root.key)} />,
-          ...(open
-            ? kids.map((k) => <OptButton key={k.key} q={q} o={k} on={value === k.key} kid onPick={() => onPick(k.key)} />)
-            : kids.length
-              ? [
-                  <button key={`${root.key}+`} type="button" className={styles.more} onClick={() => onPick(kids[0].key)} title={`${kids.length} variants of ${root.key}`}>
-                    +{kids.length}
-                  </button>,
-                ]
-              : []),
-        ];
-      })}
-    </span>
+      {families(q).map(({ root, kids }) => (
+        <span key={root.key} className={styles.fam}>
+          {/* The root and its first variant never split across lines. */}
+          <span className={styles.famHead}>
+            {opt(root)}
+            {kids.length ? opt(kids[0], true) : null}
+          </span>
+          {kids.slice(1).map((k) => opt(k, true))}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -309,9 +307,7 @@ export function Bar({
       </div>
       {opts ? (
         <div className={styles.tools}>
-          <span className={styles.scroll}>
-            <OptionSelector q={opts} value={opt} before={mocked} onPick={onOpt} />
-          </span>
+          <OptionSelector q={opts} value={opt} before={mocked} onPick={onOpt} />
         </div>
       ) : null}
       {controlKeys.length ? (

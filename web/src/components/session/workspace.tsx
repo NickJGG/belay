@@ -20,7 +20,7 @@ import {
   type ViewState,
 } from "@/lib/behaviours";
 import type { LiveItem, Mark } from "@/lib/data";
-import { frameDoc, loadSpec, renderBody, routeLabel, type MockFile, type Spec } from "@/lib/mock";
+import { frameDoc, loadSpec, renderBody, type MockFile, type Spec } from "@/lib/mock";
 import {
   BEFORE,
   context,
@@ -213,15 +213,32 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
       ]
     : [];
 
+  /** The frame label: what this frame draws, from the option (or view) it shows. */
+  const optionLine = (o: string): { label: React.ReactNode; labelText: string } => {
+    const line = (lead: string, text: string, from?: string) => ({
+      label: (
+        <>
+          <b>{lead}</b>
+          {from ? <span className={styles.from}>from {from}</span> : null} {text}
+        </>
+      ),
+      labelText: `${lead}${from ? ` from ${from}` : ""} ${text}`.trim(),
+    });
+    if (stageView.kind === "today") return line("Today.", "The page as it was before this session. This never changes.");
+    const current = `Every decision you’ve made so far, combined. Nothing proposed: a part whose question is still open is drawn as it ${mock?.page === "existing" ? "looks before this session" : "will sit, as a labelled grey block"}.`;
+    if (stageView.kind === "current") return line("Current design.", view.kind === "q" ? `Q${view.n} has no mock. ${current}` : current);
+    if (o === BEFORE) return line("Before.", "This question’s region without its change: your other picks, but not this one.");
+    const opt = q?.opts?.find((x) => x.key === o);
+    return opt ? line(`${opt.key} · ${opt.name}`, opt.expl ?? "", opt.from) : line(o, "");
+  };
+
   const render = (o: string) => {
     if (!spec || !mock) return null;
     const sq = stageView.kind === "q" ? q : null;
     const d = decisions(doc, spec.BASE, stageView, o);
     const ctx = context(controls, sq, st.ctl, phone);
     const html = frameDoc({ body: renderBody(spec, d, ctx), theme, styles: styleUrls });
-    const route = routeLabel(spec, d, ctx);
-    const what = stageView.kind === "today" ? "Today" : stageView.kind === "current" ? (view.kind === "q" ? `Current design · Q${view.n} has no mock` : "Current design") : o === BEFORE ? "Before" : `option ${o}`;
-    return { html, label: [route, what, phone ? "390px" : null].filter(Boolean).join(" · ") };
+    return { html, ...optionLine(o) };
   };
 
   const [commentMode, setCommentMode] = React.useState(false);
@@ -370,25 +387,6 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
   );
 
   const title = q ? q.title : view.kind === "today" ? "Today" : "Current design";
-  const expl = q ? (
-    optValue === BEFORE ? (
-      <>
-        <b>Before.</b> This question’s region without its change: your other picks, but not this one.
-      </>
-    ) : selected ? (
-      <>
-        <b>
-          {selected.key} · {selected.name}
-        </b>
-        {selected.from ? <span className={styles.from}>from {selected.from}</span> : null} {selected.expl}
-      </>
-    ) : null
-  ) : view.kind === "today" ? (
-    "The page as it was before this session. This never changes."
-  ) : (
-    `Every decision you’ve made so far, combined. Nothing proposed: a part whose question is still open is drawn as it ${mock?.page === "existing" ? "looks before this session" : "will sit, as a labelled grey block"}.`
-  );
-
   let stage: React.ReactNode;
   if (!mock) {
     stage = <QuestionCard q={q} doc={doc} />;
@@ -401,7 +399,7 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
     const b = render(vs)!;
     stage = (
       <Split ratio={split} onRatio={setSplit}>
-        <Frame html={a.html} phone={phone} screen={screen} floor={mock.floor} label={a.label} {...frameProps(optValue)} />
+        <Frame html={a.html} phone={phone} screen={screen} floor={mock.floor} label={a.label} labelText={a.labelText} {...frameProps(optValue)} />
         <div className={styles.paneWrap}>
           <label className={styles.vsPick}>
             vs{" "}
@@ -414,13 +412,13 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
               ))}
             </select>
           </label>
-          <Frame html={b.html} phone={phone} screen={screen} floor={mock.floor} label={b.label} {...frameProps(vs)} />
+          <Frame html={b.html} phone={phone} screen={screen} floor={mock.floor} label={b.label} labelText={b.labelText} {...frameProps(vs)} />
         </div>
       </Split>
     );
   } else {
     const a = render(optValue)!;
-    stage = <Frame html={a.html} phone={phone} screen={screen} floor={mock.floor} label={a.label} {...frameProps(optValue)} />;
+    stage = <Frame html={a.html} phone={phone} screen={screen} floor={mock.floor} label={a.label} labelText={a.labelText} {...frameProps(optValue)} />;
   }
 
   return (
@@ -445,9 +443,8 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
           pick={pick}
           comment={comment}
         />
-        {expl || pickError || resume || (specError && spec) ? (
+        {pickError || resume || (specError && spec) ? (
           <div className={styles.explLine}>
-            {expl ? <div>{expl}</div> : null}
             {resume ? (
               <div className={styles.resume}>
                 No terminal attached. Run <code>{resume}</code> in a session started with <code>belay claude</code> to answer from here.
