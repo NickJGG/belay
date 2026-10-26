@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Columns2, MessageSquarePlus, Monitor, Smartphone } from "lucide-react";
+import { Columns2, Menu, MessageSquarePlus, Monitor, Smartphone } from "lucide-react";
 import { Popover } from "@/components/ui/popover";
 import { BEFORE, families, statusChip, type Controls, type Opt, type Question } from "@/lib/session-doc";
 import { cn } from "@/lib/utils";
@@ -209,6 +209,30 @@ function Answer({ text }: { text: string }) {
   );
 }
 
+/** The phone's way to the questions, where the Outline isn't shown: "Qn of N" opens its rows in a sheet. */
+function OutlineMenu({ label, children }: { label: string; children: React.ReactNode }) {
+  const [open, setOpen] = React.useState(false);
+  const close = React.useCallback(() => setOpen(false), []);
+  return (
+    <span className={styles.menu}>
+      <Popover
+        open={open}
+        onClose={close}
+        label="Outline"
+        focus="[aria-current], a[href]"
+        trigger={
+          <button type="button" className={styles.btn} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            <Menu size={14} aria-hidden /> {label}
+          </button>
+        }
+      >
+        {/* A view row navigates, so it closes the sheet; an option row only switches the option. */}
+        <div onClick={(e) => (e.target as Element).closest("a") && close()}>{children}</div>
+      </Popover>
+    </span>
+  );
+}
+
 export function Bar({
   title,
   q,
@@ -225,6 +249,8 @@ export function Bar({
   onCompare,
   pick,
   comment,
+  outline,
+  total,
 }: {
   title: string;
   q: Question | null;
@@ -242,6 +268,9 @@ export function Bar({
   onCompare: () => void;
   pick: PickProps | null;
   comment: CommentProps | null;
+  /** The Outline's rows, for the phone's menu. */
+  outline: React.ReactNode;
+  total: number;
 }) {
   const chip = q ? statusChip(q) : null;
   const opts = q && q.opts?.length ? q : null;
@@ -250,6 +279,7 @@ export function Bar({
   return (
     <div className={styles.bar}>
       <div className={styles.top}>
+        <OutlineMenu label={q ? `Q${q.n} of ${total}` : `${total} questions`}>{outline}</OutlineMenu>
         {q ? <span className={styles.qbadge}>Q{q.n}</span> : null}
         <div className={cn(styles.tt, q?.answer && styles.ttWide)}>
           <div className={styles.tline}>
@@ -270,43 +300,43 @@ export function Bar({
           {q?.note && !q.answer ? <div className={styles.note} dangerouslySetInnerHTML={{ __html: q.note }} /> : null}
           {q?.answer ? <Answer key={q.n} text={q.answer} /> : null}
         </div>
-        {mocked || decide ? (
-          <span className={styles.acts}>
-            {mocked ? (
-              <Seg<Device>
-                label="Device"
-                items={[
-                  ["desktop", "Desktop", <Monitor key="d" size={14} aria-hidden />],
-                  ["phone", "Phone", <Smartphone key="p" size={14} aria-hidden />],
-                ]}
-                value={device}
-                onPick={onDevice}
-              />
-            ) : null}
-            {compareOn ? (
-              <button type="button" className={cn(styles.btn, compare && styles.btnOn)} aria-pressed={compare} onClick={onCompare} title="Compare (Shift+letter pins the other side)">
-                <Columns2 size={14} aria-hidden /> Compare
-              </button>
-            ) : null}
-            {mocked && decide ? <span className={styles.sep} aria-hidden /> : null}
-            {comment ? (
-              <button
-                type="button"
-                className={cn(styles.btn, comment.on && styles.btnOn)}
-                aria-pressed={comment.on}
-                disabled={comment.disabled}
-                title={comment.why ?? (comment.on ? "Click an element in the mock (Esc to stop)" : "Comment on an element of the mock")}
-                onClick={comment.onToggle}
-              >
-                <MessageSquarePlus size={14} aria-hidden /> Comment
-              </button>
-            ) : null}
-            {pick ? <PickButton pick={pick} /> : null}
-          </span>
-        ) : null}
       </div>
+      {mocked || decide ? (
+        <span className={styles.acts}>
+          {mocked ? (
+            <Seg<Device>
+              label="Device"
+              items={[
+                ["desktop", "Desktop", <Monitor key="d" size={14} aria-hidden />],
+                ["phone", "Phone", <Smartphone key="p" size={14} aria-hidden />],
+              ]}
+              value={device}
+              onPick={onDevice}
+            />
+          ) : null}
+          {compareOn ? (
+            <button type="button" className={cn(styles.btn, compare && styles.btnOn)} aria-pressed={compare} onClick={onCompare} title="Compare (Shift+letter pins the other side)">
+              <Columns2 size={14} aria-hidden /> Compare
+            </button>
+          ) : null}
+          {mocked && decide ? <span className={styles.sep} aria-hidden /> : null}
+          {comment ? (
+            <button
+              type="button"
+              className={cn(styles.btn, comment.on && styles.btnOn)}
+              aria-pressed={comment.on}
+              disabled={comment.disabled}
+              title={comment.why ?? (comment.on ? "Click an element in the mock (Esc to stop)" : "Comment on an element of the mock")}
+              onClick={comment.onToggle}
+            >
+              <MessageSquarePlus size={14} aria-hidden /> Comment
+            </button>
+          ) : null}
+          {pick ? <PickButton pick={pick} /> : null}
+        </span>
+      ) : null}
       {opts ? (
-        <div className={styles.tools}>
+        <div className={cn(styles.tools, styles.optsRow)}>
           <OptionSelector q={opts} value={opt} before={mocked} onPick={onOpt} />
         </div>
       ) : null}

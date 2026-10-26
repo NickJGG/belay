@@ -362,6 +362,15 @@
   flex: 1;
 }
 
+/* The phone's "Qn of N" sheet. */
+.olSheet {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
 /* A question Claude just showed. */
 .olPulse {
   animation: olPulse 1.2s var(--ease) 3;
@@ -379,11 +388,22 @@
 
 /* ---------- bar ---------- */
 
-/* Two rows (session-page-header Q1 a3): who and what you decide, then what you look at. */
+/* The stage header: the question beside its actions, then its controls. Phones (studio Q7) add the "Qn of N" menu and
+   the option pills, which the Outline holds on desktop, and move the actions under the stage. */
 .bar {
   flex: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   border-bottom: 1px solid var(--line);
   background: var(--bg);
+}
+
+.bar > .tools {
+  grid-column: 1 / -1;
+}
+
+.menu {
+  display: none;
 }
 
 .top {
@@ -454,6 +474,7 @@
   align-items: center;
   gap: var(--space-2);
   margin-left: auto;
+  padding-right: var(--space-4);
 }
 
 .sep {
@@ -497,6 +518,12 @@
   padding: 5px 8px;
 }
 
+@media (min-width: 768px) {
+  .optsRow {
+    display: none;
+  }
+}
+
 @media (max-width: 767px) {
   .top,
   .tools {
@@ -505,6 +532,44 @@
 
   .title {
     white-space: normal;
+  }
+
+  .bar {
+    display: contents;
+  }
+
+  .menu {
+    display: inline-flex;
+  }
+
+  .top > .qbadge {
+    display: none;
+  }
+
+  .top {
+    order: 1;
+  }
+
+  .optsRow {
+    order: 2;
+  }
+
+  .ctls {
+    order: 3;
+  }
+
+  .explLine {
+    order: 4;
+  }
+
+  .canvas {
+    order: 5;
+  }
+
+  .acts {
+    order: 6;
+    flex-wrap: wrap;
+    padding: 0 var(--space-4) var(--space-4);
   }
 }
 

@@ -32,12 +32,6 @@ type Props = {
  */
 export function Outline({ doc, here, opt, onOpt, pulse, open, onToggle }: Props) {
   const decided = doc.questions.filter((q) => q.status === "resolved").length;
-  const view = (hash: string, icon: React.ReactNode, label: string) => (
-    <a href={hash} className={cn(styles.olRow, here === hash && styles.olOn)} title={label} aria-label={open ? undefined : label}>
-      <span className={styles.olKey}>{icon}</span>
-      {open ? <span className={styles.olText}>{label}</span> : null}
-    </a>
-  );
   return (
     <aside className={cn(styles.outline, !open && styles.outlineShut)} aria-label="Outline">
       <nav className={styles.olNav} aria-label="Primary">
@@ -63,53 +57,7 @@ export function Outline({ doc, here, opt, onOpt, pulse, open, onToggle }: Props)
         {open ? <b className={styles.olText}>{doc.topic}</b> : null}
       </div>
       <div className={styles.olScroll}>
-        {doc.mock ? (
-          <>
-            {view("#current", <LayoutTemplate size={14} aria-hidden />, "Current design")}
-            {doc.mock.page === "existing" ? view("#today", <History size={14} aria-hidden />, "Today") : null}
-            <span className={styles.olRule} />
-          </>
-        ) : null}
-        {doc.questions.map((q) => {
-          const on = here === `#q-${q.n}`;
-          const chip = statusChip(q);
-          return (
-            <div key={q.n} className={styles.olGroup}>
-              <a
-                href={`#q-${q.n}`}
-                className={cn(styles.olRow, on && styles.olOn, pulse === q.n && styles.olPulse)}
-                title={`Q${q.n} · ${q.short ?? q.title} (${q.status})`}
-                aria-current={on ? "true" : undefined}
-              >
-                <span className={styles.olKey}>
-                  <span className={cn(styles.olQn, styles[`rq-${RAIL_MARK[q.status]}`])}>{q.n}</span>
-                </span>
-                {open ? (
-                  <>
-                    <span className={styles.olText}>{q.short ?? q.title}</span>
-                    <span className={cn(styles.olChip, styles[`olChip-${chip.tone}`])}>{chip.tone === "picked" && q.pick ? `✓ ${q.pick}` : chip.text}</span>
-                  </>
-                ) : null}
-              </a>
-              {on && q.opts?.length ? (
-                <div className={styles.olNest}>
-                  {families(q).map(({ root, kids }) => (
-                    <React.Fragment key={root.key}>
-                      <OptRow q={q} o={root} on={root.key === opt} onOpt={onOpt} open={open} />
-                      {kids.length ? (
-                        <div className={styles.olKids}>
-                          {kids.map((k) => (
-                            <OptRow key={k.key} q={q} o={k} on={k.key === opt} onOpt={onOpt} open={open} />
-                          ))}
-                        </div>
-                      ) : null}
-                    </React.Fragment>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
+        <Rows doc={doc} here={here} opt={opt} onOpt={onOpt} pulse={pulse} open={open} />
       </div>
       <div className={styles.olFoot}>
         <button
@@ -125,6 +73,78 @@ export function Outline({ doc, here, opt, onOpt, pulse, open, onToggle }: Props)
         {open ? <ThemeToggle /> : null}
       </div>
     </aside>
+  );
+}
+
+type RowsProps = Pick<Props, "doc" | "here" | "opt" | "onOpt" | "pulse" | "open">;
+
+/** Current design and Today (with a mock), then the questions with the selected one's options. */
+function Rows({ doc, here, opt, onOpt, pulse, open }: RowsProps) {
+  const view = (hash: string, icon: React.ReactNode, label: string) => (
+    <a href={hash} className={cn(styles.olRow, here === hash && styles.olOn)} title={label} aria-label={open ? undefined : label}>
+      <span className={styles.olKey}>{icon}</span>
+      {open ? <span className={styles.olText}>{label}</span> : null}
+    </a>
+  );
+  return (
+    <>
+      {doc.mock ? (
+        <>
+          {view("#current", <LayoutTemplate size={14} aria-hidden />, "Current design")}
+          {doc.mock.page === "existing" ? view("#today", <History size={14} aria-hidden />, "Today") : null}
+          <span className={styles.olRule} />
+        </>
+      ) : null}
+      {doc.questions.map((q) => {
+        const on = here === `#q-${q.n}`;
+        const chip = statusChip(q);
+        return (
+          <div key={q.n} className={styles.olGroup}>
+            <a
+              href={`#q-${q.n}`}
+              className={cn(styles.olRow, on && styles.olOn, pulse === q.n && styles.olPulse)}
+              title={`Q${q.n} · ${q.short ?? q.title} (${q.status})`}
+              aria-current={on ? "true" : undefined}
+            >
+              <span className={styles.olKey}>
+                <span className={cn(styles.olQn, styles[`rq-${RAIL_MARK[q.status]}`])}>{q.n}</span>
+              </span>
+              {open ? (
+                <>
+                  <span className={styles.olText}>{q.short ?? q.title}</span>
+                  <span className={cn(styles.olChip, styles[`olChip-${chip.tone}`])}>{chip.tone === "picked" && q.pick ? `✓ ${q.pick}` : chip.text}</span>
+                </>
+              ) : null}
+            </a>
+            {on && q.opts?.length ? (
+              <div className={styles.olNest}>
+                {families(q).map(({ root, kids }) => (
+                  <React.Fragment key={root.key}>
+                    <OptRow q={q} o={root} on={root.key === opt} onOpt={onOpt} open={open} />
+                    {kids.length ? (
+                      <div className={styles.olKids}>
+                        {kids.map((k) => (
+                          <OptRow key={k.key} q={q} o={k} on={k.key === opt} onOpt={onOpt} open={open} />
+                        ))}
+                      </div>
+                    ) : null}
+                  </React.Fragment>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/** The Outline's rows for the phone's "Qn of N" sheet, where the pane isn't shown. */
+export function OutlineList(props: Omit<RowsProps, "open">) {
+  return (
+    <div className={styles.olSheet}>
+      <Rows {...props} open />
+    </div>
   );
 }
 

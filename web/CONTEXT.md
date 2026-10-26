@@ -41,7 +41,7 @@ A page you work in rather than read (a Grill, a Lesson, a Course's Work). A Less
 _Avoid_: session page
 
 **Outline**:
-A Grill Workspace's left pane, in place of the sidebar: the app nav, its questions and the selected question's options. Collapsible to a column of question numbers.
+A Grill Workspace's left pane, in place of the sidebar: the app nav, its questions and the selected question's options. Collapsible to a column of question numbers. On a phone it opens as a sheet from the stage header's "Qn of N".
 
 **Reading page**:
 Any page that isn't a Workspace (Home, Projects, an Issue, a Course's tabs), which opens with the sidebar expanded.

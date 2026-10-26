@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils";
 import { Bar, type CommentProps, type PickProps } from "./bar";
 import type { LinkState, Send } from "./drawer";
 import { Frame } from "./frame";
-import { Outline } from "./outline";
+import { Outline, OutlineList } from "./outline";
 import styles from "./session.module.css";
 
 /** What the grill page passes about the grill beside its doc. */
@@ -470,6 +470,8 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
           onCompare={() => remember("compare", (c) => !c)}
           pick={pick}
           comment={comment}
+          outline={<OutlineList doc={doc} here={key} opt={optValue} onOpt={(k) => patch({ opt: k })} pulse={pulse} />}
+          total={doc.questions.length}
         />
         {pickError || resume || (specError && spec) ? (
           <div className={styles.explLine}>
