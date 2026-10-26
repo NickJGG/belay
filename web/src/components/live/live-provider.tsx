@@ -78,6 +78,13 @@ export async function sendTo(slug: string, msg: Record<string, unknown>): Promis
   }
 }
 
+// TEMP: usage-blank diagnosis; remove with the fix.
+const trail: string[] = [];
+function usageTrail(line: string) {
+  trail.push(`${new Date().toISOString().slice(11, 23)} ${line}`);
+  if (trail.length > 30) trail.shift();
+}
+
 /** The live Tabs, the one the Drawer shows, and its conversation kept current from the event stream. */
 export function LiveProvider({ live: incoming, seeds, children }: { live: LiveItem[]; seeds: Record<string, DrawerSeed>; children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
@@ -181,6 +188,9 @@ export function LiveProvider({ live: incoming, seeds, children }: { live: LiveIt
     };
     void reload();
     const unsubscribe = subscribeLive((e) => {
+      // TEMP: usage-blank diagnosis; remove with the fix.
+      if (e.type === "usage") usageTrail(`usage event for ${e.slug} (listener slug ${slug}) limits=${e.usage.fiveHour ? "yes" : "null"}`);
+      else if (e.type === "reconnect" || e.type === "live" || e.type === "sessions") usageTrail(`${e.type}${"slug" in e ? ` ${e.slug}` : ""}`);
       if (e.type === "reconnect") {
         // Steps sent while the stream was down are lost; the refresh that follows brings the server's turn.
         setTurn({ slug, turn: null });
@@ -237,6 +247,18 @@ export function LiveProvider({ live: incoming, seeds, children }: { live: LiveIt
 
   const send: Send = React.useCallback((msg) => (slug ? sendTo(slug, msg) : Promise.resolve("Nothing live is selected")), [slug]);
   const link: LinkState = !selected ? { state: "offline" } : selected.connected ? { state: "connected", working: selected.working } : { state: "disconnected" };
+
+  // TEMP: usage-blank diagnosis; remove with the fix.
+  const shownUsage = usage.slug === slug ? usage.usage : null;
+  React.useEffect(() => {
+    usageTrail(`seed for ${slug}: ${seed ? (seed.usage ? "usage" : "usage null") : "missing"}; seeds=[${Object.keys(seeds).join(",")}]`);
+  }, [seed, seeds, slug]);
+  React.useEffect(() => {
+    usageTrail(`shown slug=${slug} usage.slug=${usage.slug} usage=${usage.usage ? "yes" : "null"} link=${link.state}`);
+    if (link.state === "connected" && !shownUsage) {
+      console.warn("[belay usage-blank]", { slug, usageSlug: usage.slug, hasUsage: !!usage.usage, seedKeys: Object.keys(seeds), seed, trail: [...trail] });
+    }
+  }, [slug, usage, shownUsage, link.state, seeds, seed]);
 
   const value: Live = {
     live,
