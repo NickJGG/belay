@@ -37,8 +37,11 @@ The narrow layout's bar for the selected Tab, above the bottom dock.
 Every `doing` Issue plus every in-progress Grill not yet linked to an Issue.
 
 **Workspace**:
-A page you work in rather than read (a Grill, a Lesson, a Course's Work), which opens with the sidebar collapsed to the rail.
+A page you work in rather than read (a Grill, a Lesson, a Course's Work). A Lesson or Work opens with the sidebar collapsed to the rail; a Grill shows its Outline instead.
 _Avoid_: session page
+
+**Outline**:
+A Grill Workspace's left pane, in place of the sidebar: the app nav, its questions and the selected question's options. Collapsible to a column of question numbers.
 
 **Reading page**:
 Any page that isn't a Workspace (Home, Projects, an Issue, a Course's tabs), which opens with the sidebar expanded.

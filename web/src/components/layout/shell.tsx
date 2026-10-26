@@ -17,12 +17,12 @@ import tabStyles from "./live-tabs.module.css";
 import { LiveTabs, TabMark, tabHover, tabTitle } from "./live-tabs";
 import { PaletteProvider } from "./palette";
 import { Rail } from "./rail";
-import { SlotProvider } from "./shell-slot";
+import { SlotProvider, useSlot } from "./shell-slot";
 import { SiteNav } from "./site-nav";
 import styles from "./shell.module.css";
 
 /**
- * Every page's chrome: the sidebar (pinned open or collapsed to its rail; the phone's dock), the live Tabs over the page, and the Drawer
+ * Every page's chrome: the sidebar (pinned open or collapsed to its rail, or a Workspace's own pane; the phone's dock), the live Tabs over the page, and the Drawer
  * docked beside it while a Tab is live, and the command palette. Re-renders the page on session and Live changes.
  */
 export function AppShell({ live, seeds, children }: { live: LiveItem[]; seeds: Record<string, DrawerSeed>; children: React.ReactNode }) {
@@ -62,6 +62,7 @@ function Frame({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useCollapsed();
   const toggle = () => setCollapsed({ ...collapsed, [kind]: !collapsed[kind] });
   const { selected } = useLive();
+  const { pane } = useSlot();
 
   return (
     <div className={cn(styles.shell, kind === "workspace" && styles.workspace, selected && styles.hasStrip)}>
@@ -69,7 +70,7 @@ function Frame({ children }: { children: React.ReactNode }) {
       {/* Only course pages anchor claims: a grill keeps its view (`#q-3`) in the hash. */}
       {pathname.startsWith("/courses/") ? <FocusHighlight /> : null}
       <SiteNav />
-      <Rail open={!collapsed[kind]} onToggle={toggle} />
+      {pane ?? <Rail open={!collapsed[kind]} onToggle={toggle} />}
       <div className={styles.col}>
         <LiveTabs />
         <main className={styles.main} data-kind={kind}>

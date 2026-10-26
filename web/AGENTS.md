@@ -26,8 +26,8 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 ## Layout
 - `src/components/layout/shell.tsx` is every page's chrome, mounted by the root layout: the sidebar (`rail`, pinned
   open or collapsed to icons), the live Tabs, the Drawer and, on phones, the dock (`site-nav`) and Strip. Pages pass
-  their project or course and section (a Reading page's section rows, `lib/sidebar.ts`) and a Workspace its own rail
-  rows through `<ShellSlot>`. The Drawer's conversation is `live-provider.tsx`'s.
+  their project or course and section (a Reading page's section rows, `lib/sidebar.ts`) through `<ShellSlot>`, and a
+  Workspace may pass its own `pane`, drawn in the rail's place (a grill's Outline, `session/outline.tsx`). The Drawer's conversation is `live-provider.tsx`'s.
 - `layout/palette.tsx` is belay's cmdk command palette, mounted by the shell. A page lists its own commands first with
   `<PageCommands>` (an issue's status keys and !, a grill's resume command, a course's starts, a lesson note's Resume
   conversation). Its New issue and Log what you did reach
@@ -148,6 +148,6 @@ open. Message kinds live in `bridge/protocol.mts`, event types in `bridge/http.m
 - Pictures upload as raw bytes to `POST /api/s/<slug>/images` (same-origin, PNG/JPEG/GIF/WebP, 10 MB) into
   `images/`; `GET`/`DELETE /api/s/<slug>/images/<name>` serve and remove one, and a name `chat.jsonl` uses can't be deleted.
 - The shell keeps `belay:sidebar` (collapsed per page kind), `belay:tab` (the selected Tab), `belay:tabs` (Tab
-  order), `belay:seen` (Tabs opened in this browser; a first visit seeds it with what's live) and `belay:drawer` in
-  localStorage. Per-session UI state is in `belay:session:<slug>`; the view stays in the hash (`#current`,
+  order), `belay:seen` (Tabs opened in this browser; a first visit seeds it with what's live), `belay:drawer` and
+  `belay:outline` (a grill's Outline expanded) in localStorage. Per-session UI state is in `belay:session:<slug>`; the view stays in the hash (`#current`,
   `#today`, `#q-<n>`).

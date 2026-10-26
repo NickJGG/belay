@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { terrain } from "../course-art.ts";
-import { COLLAPSED_DEFAULTS, DRAWER_DEFAULTS, fresh, markSeen, missing, moveTab, orderTabs, pageKind, parseCollapsed, parseDrawer, parseSeen, parseTabOrder, selectTab, sessionSlug } from "../shell.ts";
+import { COLLAPSED_DEFAULTS, DRAWER_DEFAULTS, fresh, markSeen, missing, moveTab, orderTabs, pageKind, parseCollapsed, parseDrawer, parseOutline, parseSeen, parseTabOrder, selectTab, sessionSlug } from "../shell.ts";
 
 describe("page kinds", () => {
   test("a grill page is a workspace; everything else reads", () => {
@@ -21,6 +21,14 @@ describe("page kinds", () => {
     assert.deepEqual(parseCollapsed("not json"), COLLAPSED_DEFAULTS);
     assert.deepEqual(parseCollapsed('{"reading":true}'), { workspace: true, reading: true });
     assert.deepEqual(parseCollapsed('{"workspace":false,"reading":"x"}'), { workspace: false, reading: false });
+  });
+
+  test("a grill's Outline opens expanded unless a toggle stored false", () => {
+    assert.equal(parseOutline(null), true);
+    assert.equal(parseOutline("nope"), true);
+    assert.equal(parseOutline('"false"'), true);
+    assert.equal(parseOutline("false"), false);
+    assert.equal(parseOutline("true"), true);
   });
 });
 

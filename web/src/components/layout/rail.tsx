@@ -48,8 +48,7 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
 
 /**
  * The sidebar (>=768px; the phone keeps the dock), collapsed to icons or pinned `open` with labels: the mark and the
- * app nav on top, then a Reading page's project or course sections, a Workspace's own rows scrolling between, and
- * Theme and Collapse/Expand at the foot.
+ * app nav on top, then a Reading page's project or course sections, and Theme and Collapse/Expand at the foot.
  */
 export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   const pathname = usePathname() ?? "/";
@@ -95,12 +94,6 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
             })}
           </>
         ) : null}
-        {slot.rail ? (
-          <>
-            <RailRule />
-            <div className={styles.railScroll}>{slot.rail}</div>
-          </>
-        ) : null}
         <div className={styles.railFoot}>
           <ThemeRow />
           {open ? (
@@ -122,8 +115,6 @@ export function RailRow({
   label,
   title,
   on,
-  pulse,
-  keyClassName,
 }: {
   href?: string;
   onClick?: () => void;
@@ -131,13 +122,11 @@ export function RailRow({
   label: React.ReactNode;
   title?: string;
   on?: boolean;
-  pulse?: boolean;
-  keyClassName?: string;
 }) {
-  const className = cn(styles.railRow, on && styles.on, pulse && styles.pulse);
+  const className = cn(styles.railRow, on && styles.on);
   const body = (
     <>
-      <span className={cn(styles.railKey, keyClassName)}>{icon}</span>
+      <span className={styles.railKey}>{icon}</span>
       <span className={styles.railLabel}>{label}</span>
     </>
   );

@@ -14,6 +14,17 @@ export const TAB_KEY = "belay:tab";
 export const DRAWER_KEY = "belay:drawer";
 export const TABS_KEY = "belay:tabs";
 export const SEEN_KEY = "belay:seen";
+export const OUTLINE_KEY = "belay:outline";
+
+/** Whether a grill's Outline is expanded: it is unless the last toggle collapsed it. */
+export function parseOutline(raw: string | null): boolean {
+  try {
+    const v: unknown = JSON.parse(raw ?? "");
+    return typeof v === "boolean" ? v : true;
+  } catch {
+    return true;
+  }
+}
 
 /** The grill a `/s/<slug>` page shows, else null. */
 export function sessionSlug(pathname: string): string | null {

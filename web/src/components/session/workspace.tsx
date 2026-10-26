@@ -3,9 +3,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Copy, History, LayoutTemplate, X } from "lucide-react";
+import { Copy, X } from "lucide-react";
 import { PageCommands, type PageCommand } from "@/components/layout/palette";
-import { RailRow } from "@/components/layout/rail";
 import { ShellSlot } from "@/components/layout/shell-slot";
 import { subscribeLive } from "@/components/live/event-hub";
 import { sendTo, useLive } from "@/components/live/live-provider";
@@ -35,10 +34,12 @@ import {
   type View,
 } from "@/lib/session-doc";
 import type { QuestionSummary } from "@/lib/sessions";
+import { OUTLINE_KEY, parseOutline } from "@/lib/shell";
 import { cn } from "@/lib/utils";
 import { Bar, type CommentProps, type PickProps } from "./bar";
 import type { LinkState, Send } from "./drawer";
 import { Frame } from "./frame";
+import { Outline } from "./outline";
 import styles from "./session.module.css";
 
 /** What the grill page passes about the grill beside its doc. */
@@ -135,6 +136,28 @@ function useRemembered(slug: string) {
   return [r, set] as const;
 }
 
+/** Whether the Outline is expanded, per browser. */
+function useOutlineOpen() {
+  const [open, setOpen] = React.useState(true);
+  React.useEffect(() => {
+    let raw: string | null = null;
+    try {
+      raw = localStorage.getItem(OUTLINE_KEY);
+    } catch {}
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is client-only
+    setOpen(parseOutline(raw));
+  }, []);
+  const toggle = React.useCallback(() => {
+    setOpen((o) => {
+      try {
+        localStorage.setItem(OUTLINE_KEY, JSON.stringify(!o));
+      } catch {}
+      return !o;
+    });
+  }, []);
+  return [open, toggle] as const;
+}
+
 const goTo = (hash: string) => {
   if (location.hash !== hash) location.hash = hash;
 };
@@ -174,6 +197,7 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
   const { spec, error: specError, missing } = useSpec(doc.slug, files, mock != null);
 
   const [remembered, remember] = useRemembered(doc.slug);
+  const [outlineOpen, toggleOutline] = useOutlineOpen();
   const { states, device, compare, split } = remembered;
   const setDevice = (d: Remembered["device"]) => remember("device", d);
   const shell = useLive();
@@ -345,6 +369,7 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
         const next = stepView(doc, view, k === "[" ? -1 : 1);
         if (next) goTo(viewHash(next));
       } else if (k === "\\") setDrawer((d) => ({ open: !d.open }));
+      else if (k === "|") toggleOutline();
       else if (k === "p" && pick && !pick.disabled) setPickOpen(true);
       else if (k === "0" && qMocked) patch({ opt: BEFORE });
       else if (/^[a-z]$/.test(k) && q) {
@@ -423,7 +448,10 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
 
   return (
     <div className={styles.root}>
-      <SessionSlot doc={doc} view={view} nav={nav} pulse={pulse} />
+      <SessionSlot
+        nav={nav}
+        pane={<Outline doc={doc} here={key} opt={optValue} onOpt={(k) => patch({ opt: k })} pulse={pulse} open={outlineOpen} onToggle={toggleOutline} />}
+      />
       <PageCommands heading={doc.slug} items={commands} />
       <div className={styles.ws}>
         <Bar
@@ -549,36 +577,11 @@ function QuestionCard({ q, doc }: { q: Question | null; doc: SessionDoc }) {
   );
 }
 
-const RAIL_MARK: Record<string, string> = { resolved: "done", open: "open", deferred: "muted", dropped: "muted", see: "muted" };
-
 // data.ts's UNFILED, which this client module can't import (data.ts is server-only).
 const UNFILED_KEY = "unfiled";
 
-/** Tells the shell where the grill sits, and its rows: Current design, Today and the questions. */
-function SessionSlot({ doc, view, nav, pulse }: { doc: SessionDoc; view: View; nav: SessionNav; pulse: number | null }) {
-  const here = viewHash(view);
+/** Tells the shell where the grill sits, and hands it the Outline. */
+function SessionSlot({ nav, pane }: { nav: SessionNav; pane: React.ReactNode }) {
   const project = React.useMemo(() => ({ key: nav.mark?.key ?? UNFILED_KEY, name: nav.mark?.name ?? "Unfiled" }), [nav.mark]);
-  const rail = (
-    <>
-      {doc.mock ? (
-        <RailRow href="#current" icon={<LayoutTemplate size={14} aria-hidden />} label="Current design" title="Current design" on={here === "#current"} />
-      ) : null}
-      {doc.mock?.page === "existing" ? (
-        <RailRow href="#today" icon={<History size={14} aria-hidden />} label="Today" title="Today" on={here === "#today"} />
-      ) : null}
-      {doc.questions.map((q) => (
-        <RailRow
-          key={q.n}
-          href={`#q-${q.n}`}
-          icon={q.n}
-          keyClassName={styles[`rq-${RAIL_MARK[q.status]}`]}
-          label={q.short ?? q.title}
-          title={`Q${q.n} · ${q.short ?? q.title} (${q.status})`}
-          on={here === `#q-${q.n}`}
-          pulse={pulse === q.n}
-        />
-      ))}
-    </>
-  );
-  return <ShellSlot project={project} section="Grills" rail={rail} />;
+  return <ShellSlot project={project} section="Grills" pane={pane} />;
 }

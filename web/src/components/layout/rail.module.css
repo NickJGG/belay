@@ -33,21 +33,6 @@
     overflow: hidden;
   }
 
-  /* The page's rows scroll between the pinned nav and foot, with no visible bar. */
-  .railScroll {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    overflow: hidden auto;
-    scrollbar-width: none;
-  }
-
-  .railScroll::-webkit-scrollbar {
-    display: none;
-  }
-
   /* Keyboard focus only: a clicked row keeps focus, which would hold the rail open after the pointer leaves. */
   .railWrap:hover .rail,
   .rail:has(:focus-visible) {
@@ -174,17 +159,3 @@
   flex-direction: column;
 }
 
-/* A question Claude just showed. */
-.railRow.pulse {
-  animation: railPulse 1.2s var(--ease) 3;
-}
-
-@keyframes railPulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 0%, transparent);
-  }
-  40% {
-    box-shadow: 0 0 0 5px color-mix(in srgb, var(--brand) 45%, transparent);
-  }
-}

@@ -33,6 +33,350 @@
   color: var(--faint);
 }
 
+/* ---------- outline ---------- */
+
+/* The shell draws it in the rail's place, full height. Collapsed it's just the key column: 10 + 32 + 10 = --rail-w. */
+.outline {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .outline {
+    position: sticky;
+    top: 0;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 270px;
+    height: 100vh;
+    height: 100dvh;
+    padding: var(--space-3) 10px;
+    border-right: 1px solid var(--line);
+    background: var(--bg);
+    font-size: var(--text-sm);
+    overflow: hidden;
+    transition: width 160ms var(--ease);
+  }
+
+  /* Content keeps its final width while the pane animates, so right-aligned bits are uncovered rather than riding the edge. */
+  .outline > * {
+    width: calc(270px - 20px);
+  }
+
+  .outlineShut {
+    width: var(--rail-w);
+  }
+
+  .outlineShut > * {
+    width: 32px;
+  }
+}
+
+/* Every row starts with its 32px key, flush left, so collapsing never moves one. */
+.olRow {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.outlineShut .olRow {
+  width: 32px;
+}
+
+.olRow:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.olRow.olOn {
+  background: color-mix(in srgb, var(--brand) 18%, transparent);
+  color: var(--text);
+}
+
+.olKey {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.olText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The mark keeps the key column; expanded, the app nav sits at the row's right end. */
+.olNav {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.olNav > :first-child {
+  margin-right: auto;
+}
+
+.olNav > :first-child:hover {
+  background: none;
+}
+
+.olMark {
+  width: 24px;
+  height: 24px;
+}
+
+.olHead:hover {
+  background: none;
+  color: var(--muted);
+}
+
+.olHead b {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--text);
+}
+
+.olCount {
+  font-size: 11px;
+  color: var(--faint);
+}
+
+/* The views and questions scroll between the pinned head and foot, with no visible bar. */
+.olScroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden auto;
+  scrollbar-width: none;
+}
+
+.olScroll::-webkit-scrollbar {
+  display: none;
+}
+
+.olGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.olChip {
+  flex: none;
+  max-width: 40%;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
+  color: var(--faint);
+}
+
+.olChip-picked {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+
+.olChip-open {
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 16%, transparent);
+}
+
+.olChip-dropped {
+  text-decoration: line-through;
+}
+
+.olQn {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--panel);
+  font-size: 11px;
+}
+
+/* The selected question's options: roots flush in the key column; variants indented, hanging off a line from their
+   root's letter. Collapsed, every letter stays centred under the question's number. */
+/* The padding gives the collapsed box room above and below its letters; expanded keeps it so nothing shifts. */
+.olNest {
+  display: flex;
+  flex-direction: column;
+  margin: 2px 0 6px;
+  padding: 4px 0;
+}
+
+.olKids {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding-left: 20px;
+}
+
+.olKids::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 8px;
+  left: 16px;
+  width: 1px;
+  background: var(--line-strong);
+}
+
+/* Collapsed, the letters sit on a panel, their cells narrowed to leave a gap inside it. */
+.outlineShut .olNest {
+  border-radius: 7px;
+  background: var(--panel);
+}
+
+.outlineShut .olNest .olRow {
+  width: 24px;
+  min-width: 0;
+  margin-inline: auto;
+}
+
+.outlineShut .olNest .olKey {
+  width: 100%;
+}
+
+/* 26px tall inside the 32px row, which keeps its height so collapsing shifts nothing. */
+.outlineShut .olOpt.olOn::after {
+  inset: 3px 0;
+  border-radius: 4px;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--brand) 22%, transparent);
+}
+
+.outlineShut .olOpt:hover::after {
+  inset: 3px 0;
+  border-radius: 4px;
+}
+
+.outlineShut .olKids {
+  padding-left: 0;
+}
+
+.outlineShut .olKids::before {
+  display: none;
+}
+
+.olOpt {
+  position: relative;
+  isolation: isolate;
+  height: 32px;
+  color: var(--text);
+}
+
+.olRow.olOpt:hover,
+.olRow.olOpt.olOn {
+  background: none;
+}
+
+.olOpt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--radius-md);
+}
+
+.olOpt:hover::after {
+  background: var(--panel-hover);
+}
+
+.olOpt.olOn::after {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 60%, transparent);
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+}
+
+.olOpt .olText {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 6px;
+}
+
+.olName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.olOpt .olKey {
+  height: 32px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.olOpt.olOn .olKey {
+  color: var(--text);
+}
+
+.olOut {
+  opacity: 0.55;
+}
+
+.olRecPill {
+  flex: none;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--brand) 22%, transparent);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 16px;
+}
+
+.olRule {
+  flex: none;
+  height: 1px;
+  margin: 6px 0;
+  background: var(--line);
+}
+
+.olFoot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: var(--space-2);
+}
+
+.olFoot > .olRow {
+  flex: 1;
+}
+
+/* A question Claude just showed. */
+.olPulse {
+  animation: olPulse 1.2s var(--ease) 3;
+}
+
+@keyframes olPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 0%, transparent);
+  }
+  40% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--brand) 45%, transparent);
+  }
+}
+
 /* ---------- bar ---------- */
 
 /* Two rows (session-page-header Q1 a3): who and what you decide, then what you look at. */
