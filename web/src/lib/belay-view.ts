@@ -1,16 +1,13 @@
 /** How belay's records read on the pages: day labels, grill rows' progress, the Projects page's groups. */
 import type { DatedEntry } from "../../../src/logs.ts";
-import { addDays, daysBetween } from "../../../src/workday.ts";
+import { addDays } from "../../../src/workday.ts";
 
 function dateOf(day: string): Date {
   const [y, m, d] = day.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
 
-/** `Today`, `Yesterday`, else `Fri, Oct 2` (with the year when it isn't `today`'s). */
-export function dayLabel(day: string, today: string): string {
-  if (day === today) return "Today";
-  if (day === addDays(today, -1)) return "Yesterday";
+function dateLabel(day: string, today: string): string {
   return dateOf(day).toLocaleDateString("en", {
     weekday: "short",
     month: "short",
@@ -19,10 +16,16 @@ export function dayLabel(day: string, today: string): string {
   });
 }
 
-/** The weekday within the last week, else `Oct 2`. */
-export function shortDay(day: string, today: string): string {
-  const options: Intl.DateTimeFormatOptions = daysBetween(day, today) < 7 ? { weekday: "short" } : { month: "short", day: "numeric" };
-  return dateOf(day).toLocaleDateString("en", options);
+/** `Today`, `Yesterday`, else `Fri, Oct 2` (with the year when it isn't `today`'s). */
+export function dayLabel(day: string, today: string): string {
+  if (day === today) return "Today";
+  if (day === addDays(today, -1)) return "Yesterday";
+  return dateLabel(day, today);
+}
+
+/** A run of empty days: one day as `dayLabel`, else `Tue, Oct 20 – Thu, Oct 22`, never Today or Yesterday. */
+export function gapLabel(from: string, to: string, today: string): string {
+  return from === to ? dayLabel(from, today) : `${dateLabel(from, today)} – ${dateLabel(to, today)}`;
 }
 
 export const WEEK = 7;

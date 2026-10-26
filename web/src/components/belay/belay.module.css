@@ -327,7 +327,8 @@
 .gap::before {
   position: absolute;
   left: -26px;
-  top: 7px;
+  /* centres the 14px ring on an 11.5px × 1.5 head line */
+  top: calc((11.5px * 1.5 - 14px) / 2);
   box-sizing: border-box;
   width: 14px;
   height: 14px;
@@ -341,10 +342,12 @@
   border-color: var(--line-strong);
 }
 
+/* the .head's text values, indented past its padding and chevron */
 .gap {
-  padding: var(--space-1) 0;
+  padding-left: 28px;
   color: var(--muted);
-  font-size: var(--text-sm);
+  font-size: 11.5px;
+  font-weight: 500;
 }
 
 /* ---- facts table: three columns, small uppercase labels above values ---- */

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { test } from "node:test";
-import { dayLabel, flightGrills, grillProgress, kindTotals, projectGroups, shortDay, windowDays } from "../belay-view.ts";
+import { dayLabel, flightGrills, grillProgress, kindTotals, projectGroups, gapLabel, windowDays } from "../belay-view.ts";
 import { belayIgnored, belayWatched } from "../watch-paths.ts";
 
 test("day labels are relative to today, with the year only when it differs", () => {
@@ -9,8 +9,14 @@ test("day labels are relative to today, with the year only when it differs", () 
   assert.equal(dayLabel("2026-10-24", "2026-10-25"), "Yesterday");
   assert.equal(dayLabel("2026-10-23", "2026-10-25"), "Fri, Oct 23");
   assert.equal(dayLabel("2025-12-31", "2026-01-02"), "Wed, Dec 31, 2025");
-  assert.equal(shortDay("2026-10-21", "2026-10-25"), "Wed");
-  assert.equal(shortDay("2026-10-01", "2026-10-25"), "Oct 1");
+});
+
+test("gap labels give a lone day its day label and a run both full ends", () => {
+  assert.equal(gapLabel("2026-10-24", "2026-10-24", "2026-10-26"), "Sat, Oct 24");
+  assert.equal(gapLabel("2026-10-25", "2026-10-25", "2026-10-26"), "Yesterday");
+  assert.equal(gapLabel("2026-10-20", "2026-10-22", "2026-10-26"), "Tue, Oct 20 – Thu, Oct 22");
+  assert.equal(gapLabel("2026-09-29", "2026-10-02", "2026-10-26"), "Tue, Sep 29 – Fri, Oct 2");
+  assert.equal(gapLabel("2025-12-30", "2026-01-01", "2026-01-05"), "Tue, Dec 30, 2025 – Thu, Jan 1");
 });
 
 test("the Activity window is whole weeks, one to fifty-two", () => {

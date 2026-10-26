@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PenLine } from "lucide-react";
 import type { ActivityDay, ActivityEvent } from "../../../../src/home.ts";
 import { firstLine } from "../../../../src/logs.ts";
-import { dayLabel, shortDay } from "@/lib/belay-view";
+import { dayLabel, gapLabel } from "@/lib/belay-view";
 import { issueHref, logHref } from "@/lib/hrefs";
 import { cn } from "@/lib/utils";
 import { Group } from "./group";
@@ -46,7 +46,7 @@ export function Activity({ feed, today, scope, earlierHref }: { feed: ActivityDa
       {feed.map((d) =>
         "gap" in d ? (
           <section key={d.gap.to} className={cn(styles.day, styles.gap)}>
-            {d.gap.from === d.gap.to ? dayLabel(d.gap.from, today) : `${shortDay(d.gap.from, today)}–${shortDay(d.gap.to, today)}`}
+            {gapLabel(d.gap.from, d.gap.to, today)}
           </section>
         ) : (
           <section key={d.day} className={styles.day}>
