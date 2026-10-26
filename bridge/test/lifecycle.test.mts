@@ -27,6 +27,8 @@ let client: Client;
 
 const env = { ...process.env, USERPROFILE: home, HOME: home, BELAY_DATA: data } as Record<string, string>;
 delete env.CLAUDE_PROJECT_DIR;
+// Without it, focus never runs the real script against this machine's terminal tabs.
+delete env.WT_SESSION;
 
 type Maybe<T> = T | undefined | null | false;
 async function waitFor<T>(what: string, check: () => Maybe<T> | Promise<Maybe<T>>, ms = 5000): Promise<T> {
@@ -83,6 +85,7 @@ test("attach writes bridge.json, opens a port and announces the tools", async ()
   assert.match(textOf(r), /^attached demo/);
   const b = bridge();
   assert.equal(b.sessionId, "session-one");
+  assert.equal(b.wt, false);
   assert.match(b.token, /^[0-9a-f]{48}$/);
   assert.equal(typeof b.port, "number");
   assert.notEqual(b.pid, process.pid);
@@ -201,6 +204,10 @@ test("the owner's session id changing (/clear) disconnects; attach reconnects", 
   assert.equal(refused.status, 409);
   assert.match((await refused.json()).error, /grill resume demo/);
   assert.ok((await client.callTool({ name: "reply", arguments: { text: "x" } })).isError);
+  // Focus is handled before the connected check: here it gets as far as the missing WT_SESSION.
+  const focus = await post({ kind: "focus", slug: "demo" });
+  assert.equal(focus.status, 409);
+  assert.equal((await focus.json()).error, "not in Windows Terminal");
 
   const again = await client.callTool({ name: "attach", arguments: { slug: "demo" } });
   assert.match(textOf(again), /re-attached/);

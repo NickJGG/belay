@@ -99,7 +99,7 @@ starts in every session; the channel only registers in sessions launched with th
 ## Bridge protocol
 Idle, the server lists only `attach`: a grill by `slug` (`/grill`) or a lesson by `course` (the `/learn` skills).
 Attaching binds a free 127.0.0.1 port with a fresh token, writes `bridge.json` in the session's folder
-`{port, token, sessionId, pid, at}`, and announces `reply`, `show`, `choice` and `detach`, plus `restart` for a
+`{port, token, sessionId, pid, at, wt}`, and announces `reply`, `show`, `choice` and `detach`, plus `restart` for a
 lesson. The site's hub holds an upstream to every `bridge.json`'s `/events`; a session is Live while that stream is
 open. Message kinds live in `bridge/protocol.mts`, event types in `bridge/http.mts`.
 - Lessons (`bridge/lesson.mts`): attach makes up `lesson-<course>-<yyyymmdd>-<hhmm>` and writes its
@@ -110,6 +110,11 @@ open. Message kinds live in `bridge/protocol.mts`, event types in `bridge/http.m
   launcher relaunches; the new bridge, idle in `~/Learning`, sends the queue as a `kind="command"` message.
 - Requests need a loopback `Host`; an `Origin`, if present, must be `http://{127.0.0.1,localhost}:4747`.
 - A `choice` or `permission` message must match an open one; a slug mismatch or disconnected session gets 409.
+- `focus` is the bridge's own: never forwarded, and answered before the disconnected check. Under Windows Terminal
+  (`WT_SESSION`, so `wt` in `bridge.json`), `bridge/focus.mts` runs `plugin/scripts/focus-terminal-tab.ps1`: it
+  attaches to claude's console (the bridge's parent) and sets a unique title, which only that tab shows, then selects
+  it. If it can't attach, it matches the session title from the transcript. A miss returns the script's reason,
+  which the site toasts.
 - Pictures: `chat`, `comment` and typed `choice` carry `images` (names in the session's `images/`). The bridge
   409s a missing file and lists absolute paths in the channel text. `IMAGE_NAME`/`MAX_IMAGES` mirror `src/lib/images.ts`.
 - Permission requests carry `mode`, read from the transcript's undocumented `permission-mode` entries and

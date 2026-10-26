@@ -17,7 +17,8 @@ export const queueFile = () => path.join(runDir(), "start.json");
 /** While this exists when `claude` exits, `belay claude`'s loop starts it again (lesson.mts). */
 export const restartFile = () => path.join(runDir(), "restart");
 
-export type BridgeFile = { port: number; token: string; sessionId: string | null; pid: number; at: string };
+/** `wt`: the session runs under Windows Terminal, so the site may offer to focus its tab. */
+export type BridgeFile = { port: number; token: string; sessionId: string | null; pid: number; at: string; wt?: boolean };
 
 export function writeBridgeFile(dir: string, info: BridgeFile) {
   mkdirSync(dir, { recursive: true });

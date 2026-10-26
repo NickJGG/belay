@@ -85,18 +85,13 @@ function Frame({ children }: { children: React.ReactNode }) {
 }
 
 function ShellDrawer() {
-  const { selected, chat, turn, usage, link, send, drawer, setDrawer, sheet, setSheet, comment, setComment } = useLive();
+  const { selected, chat, turn, usage, link, send, focusTerminal, drawer, setDrawer, sheet, setSheet, comment, setComment } = useLive();
   if (!selected) return null;
   return (
     <Drawer
       key={selected.slug}
       slug={selected.slug}
       course={selected.course}
-      title={
-        <>
-          {selected.kind} · <Link href={selected.href}>{tabTitle(selected)}</Link>
-        </>
-      }
       chat={chat}
       liveTurn={turn}
       usage={usage}
@@ -108,6 +103,7 @@ function ShellDrawer() {
       onWidth={(w) => setDrawer({ width: clampDrawer(w) })}
       comment={comment}
       onComment={setComment}
+      onFocusTerminal={selected.wt ? focusTerminal : undefined}
       sheet={sheet}
       onSheet={setSheet}
     />

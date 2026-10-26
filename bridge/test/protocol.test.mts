@@ -24,6 +24,12 @@ test("accepts each message kind", () => {
   ok({ kind: "choice", slug: "s", id: "a1b2c3", option: "Yes" });
   ok({ kind: "choice", slug: "s", id: "a1b2c3", text: "neither" });
   ok({ kind: "permission", slug: "s", request_id: "abcde", behavior: "allow" });
+  ok({ kind: "focus", slug: "s" });
+});
+
+test("a focus message carries nothing but its slug", () => {
+  bad({ kind: "focus", slug: "s", transcript: "C:/elsewhere.jsonl" });
+  bad({ kind: "focus" });
 });
 
 test("rejects malformed, unknown and oversized messages", () => {

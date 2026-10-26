@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
   // Opened at 127.0.0.1 (the bridge's allowed origin); Next's dev server only trusts localhost.
   allowedDevOrigins: ["127.0.0.1"],
   devIndicators: { position: "bottom-right" },
+  // The on-by-default dev cache grew to 9 GB on disk and ~7 GB of RAM held by every `belay serve --dev`.
+  experimental: { turbopackFileSystemCacheForDev: false },
 };
 
 export default nextConfig;

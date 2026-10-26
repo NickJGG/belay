@@ -9,13 +9,14 @@ import { join } from "node:path";
 import { applyResult, toStep, type OpenTurn } from "./chat.ts";
 import { toShow, type LessonShow } from "./lesson.ts";
 
-export type BridgeFile = { port: number; token: string; sessionId: string | null; pid: number; at: string };
+/** `wt`: the session runs under Windows Terminal. */
+export type BridgeFile = { port: number; token: string; sessionId: string | null; pid: number; at: string; wt: boolean };
 
 export function readBridgeFile(sessionDir: string): BridgeFile | null {
   try {
     const b = JSON.parse(readFileSync(join(sessionDir, "bridge.json"), "utf8"));
     if (!Number.isInteger(b?.port) || typeof b.token !== "string" || !Number.isInteger(b.pid)) return null;
-    return { port: b.port, token: b.token, sessionId: b.sessionId ?? null, pid: b.pid, at: String(b.at ?? "") };
+    return { port: b.port, token: b.token, sessionId: b.sessionId ?? null, pid: b.pid, at: String(b.at ?? ""), wt: b.wt === true };
   } catch {
     return null;
   }

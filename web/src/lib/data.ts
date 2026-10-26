@@ -60,7 +60,7 @@ export type SessionItem = Pick<SessionSummary, "slug" | "topic" | "status" | "pr
 
 /** A live Tab: a grill, or a lesson (with its `course` and the course's `color`). `href` is the page its Tab opens. */
 export type LiveItem = SessionItem &
-  Pick<LiveSession, "working" | "connected"> & { kind: "grill" | "lesson"; course?: string; color?: string; href: string };
+  Pick<LiveSession, "working" | "connected" | "wt"> & { kind: "grill" | "lesson"; course?: string; color?: string; href: string };
 
 /** A row of the work lists (Home, a project's stages); `working` is set on the live ones. */
 export type WorkItem = SessionItem & Partial<Pick<LiveSession, "working">>;
@@ -162,7 +162,7 @@ function liveItems(live: LiveSession[], sessions: SessionSummary[], ctx: Ctx, le
   const bySlug = new Map(sessions.map((s) => [s.slug, s]));
   const slots = lessons.size ? hues() : new Map<string, number>();
   return live.map((l) => {
-    const state = { working: l.working, connected: l.connected };
+    const state = { working: l.working, connected: l.connected, wt: l.wt };
     const lesson = lessons.get(l.slug);
     if (lesson?.course) {
       const base: SessionItem = { slug: l.slug, topic: lesson.topic, status: lesson.status, live: true, mark: null, stage: "grilling" };

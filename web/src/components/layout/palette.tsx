@@ -3,13 +3,15 @@
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Command } from "cmdk";
-import { ArrowRight, BookOpen, CircleAlert, FilePlus, FileText, GraduationCap, NotebookPen, Search } from "lucide-react";
+import { ArrowRight, BookOpen, CircleAlert, FilePlus, FileText, GraduationCap, NotebookPen, Search, SquareTerminal } from "lucide-react";
 import { requestIntent, type Intent } from "@/components/belay/intents";
 import { StatusIcon } from "@/components/belay/status-icon";
+import { useLive } from "@/components/live/live-provider";
 import { ProjectMark } from "@/components/project-mark";
 import type { SearchIndex } from "@/lib/data";
 import { shortDate } from "@/lib/format";
 import { courseHref, grillHref, issueHref, projectHref, UNFILED } from "@/lib/hrefs";
+import { tabTitle } from "./live-tabs";
 import { Mark } from "./logo";
 import { useSlot } from "./shell-slot";
 import styles from "./palette.module.css";
@@ -73,6 +75,7 @@ function Palette({ commands }: { commands: PageCommandGroup | null }) {
   const router = useRouter();
   const pathname = usePathname();
   const slot = useSlot();
+  const { selected, focusTerminal } = useLive();
   const [open, setOpen] = React.useState(false);
   const [index, setIndex] = React.useState<SearchIndex | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -228,6 +231,13 @@ function Palette({ commands }: { commands: PageCommandGroup | null }) {
                     {here ? <em>{here.name}</em> : null}
                   </Command.Item>
                 ))}
+                {selected?.wt ? (
+                  <Command.Item value="action Go to the terminal tab" className={styles.hit} onSelect={run(focusTerminal)}>
+                    <SquareTerminal size={14} aria-hidden />
+                    <b>Go to the terminal tab</b>
+                    <em>{tabTitle(selected)}</em>
+                  </Command.Item>
+                ) : null}
               </Command.Group>
               <Command.Group heading="Go to" className={styles.group}>
                 {GO_TO.map((g) => (

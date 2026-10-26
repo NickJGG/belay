@@ -51,6 +51,8 @@ export const Message = z.discriminatedUnion("kind", [
     text: Note.optional(),
   }),
   z.object({ kind: z.literal("restart"), slug: Slug, label: z.string().trim().min(1).max(128), wrap: z.boolean().optional() }),
+  // Handled by the bridge itself (focus.mts), never forwarded to Claude.
+  z.object({ kind: z.literal("focus"), slug: Slug }).strict(),
 ]);
 export type Message = z.infer<typeof Message>;
 
@@ -82,7 +84,7 @@ export type Lesson = { course: string };
  * The notification for a forwarded message; every one names the site and the session. A push is text only, so
  * attached pictures (files in `imagesDir`) are listed as absolute paths for Claude to Read.
  */
-export function toChannel(m: Exclude<Message, { kind: "permission" }>, imagesDir = ".", lesson?: Lesson): Channel {
+export function toChannel(m: Exclude<Message, { kind: "permission" | "focus" }>, imagesDir = ".", lesson?: Lesson): Channel {
   const c = channelOf(m, lesson);
   const images = imagesOf(m);
   if (!images.length) return c;
@@ -91,7 +93,7 @@ export function toChannel(m: Exclude<Message, { kind: "permission" }>, imagesDir
   return { ...c, content: `${c.content}\n\nAttached pictures (Read each before answering):\n${list}` };
 }
 
-function channelOf(m: Exclude<Message, { kind: "permission" }>, lesson?: Lesson): Channel {
+function channelOf(m: Exclude<Message, { kind: "permission" | "focus" }>, lesson?: Lesson): Channel {
   const head = lesson ? `Belay site, lesson \`${m.slug}\` on ${lesson.course}` : `Belay site, grill \`${m.slug}\``;
   const meta: Record<string, string> = { slug: m.slug, kind: m.kind, ...(lesson ? { course: lesson.course } : {}) };
   switch (m.kind) {

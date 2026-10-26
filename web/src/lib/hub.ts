@@ -27,12 +27,13 @@ import { belayIgnored, belayWatched, courseIgnored, courseLocate, locate, sessio
  *   start     the queued lesson start (start-queue.ts) was set or cleared, by `/api/lesson/start`
  */
 
-export type LiveSession = { slug: string; working: boolean; connected: boolean; sessionId: string | null };
+/** `wt`: its terminal is a Windows Terminal tab, which the bridge can focus. */
+export type LiveSession = { slug: string; working: boolean; connected: boolean; sessionId: string | null; wt: boolean };
 
 export type HubEvent =
   | { type: "sessions"; slug: string }
   | { type: "file"; slug: string; name: string }
-  | ({ type: "live"; up: boolean } & LiveSession)
+  | ({ type: "live"; up: boolean } & Omit<LiveSession, "wt">)
   | { type: "bridge"; slug: string; event: BridgeEvent }
   | { type: "usage"; slug: string; usage: Usage }
   | { type: "belay" }
@@ -186,7 +187,7 @@ export async function liveSessions(): Promise<LiveSession[]> {
   const out: LiveSession[] = [];
   for (const [slug, up] of h.bridges) {
     const { up: on, working, connected, sessionId } = up.state();
-    if (on) out.push({ slug, working, connected, sessionId });
+    if (on) out.push({ slug, working, connected, sessionId, wt: up.file.wt });
   }
   return out;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronRight, ImageIcon, MessageSquare, Paperclip, SendHorizontal, User, X } from "lucide-react";
+import { ChevronRight, ImageIcon, MessageSquare, Paperclip, SendHorizontal, SquareTerminal, User, X } from "lucide-react";
 import { Prose } from "@/components/content/prose";
 import { Mark } from "@/components/layout/logo";
 import { IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_IMAGES } from "@/lib/images";
@@ -417,7 +417,7 @@ export function Drawer({
   onWidth,
   comment,
   onComment,
-  title,
+  onFocusTerminal,
   sheet,
   onSheet,
 }: {
@@ -435,8 +435,8 @@ export function Drawer({
   onWidth: (w: number) => void;
   comment: PendingComment | null;
   onComment: (c: PendingComment | null) => void;
-  /** The Tab it shows, beside "Conversation" in the head. */
-  title: React.ReactNode;
+  /** Raises the session's terminal tab; unset hides the button. */
+  onFocusTerminal?: () => void;
   /** The narrow layout's full-screen sheet, opened from the Strip. */
   sheet: boolean;
   onSheet: (open: boolean) => void;
@@ -613,7 +613,11 @@ export function Drawer({
       <header className={styles.drawerHead}>
         <span className={cn(styles.headDot, working && styles.headDotPulse)} aria-hidden />
         <span className={styles.headTitle}>Conversation</span>
-        <span className={styles.headSub}>{title}</span>
+        {onFocusTerminal ? (
+          <button type="button" className={styles.iconBtn} onClick={onFocusTerminal} aria-label="Go to the terminal tab" title="Go to the terminal tab">
+            <SquareTerminal size={16} aria-hidden />
+          </button>
+        ) : null}
         <button type="button" className={cn(styles.iconBtn, styles.collapse)} onClick={() => onOpen(false)} aria-label="Collapse the conversation">
           <ChevronRight size={16} aria-hidden />
         </button>

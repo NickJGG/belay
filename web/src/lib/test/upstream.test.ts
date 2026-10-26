@@ -49,14 +49,18 @@ test("readBridgeFile accepts the bridge's shape and rejects anything else", () =
   assert.equal(readBridgeFile(dir), null);
   mkdirSync(dir);
   writeFileSync(path.join(dir, "bridge.json"), JSON.stringify({ port: 1, token: "t", sessionId: "x", pid: 2, at: "now" }));
-  assert.deepEqual(readBridgeFile(dir), { port: 1, token: "t", sessionId: "x", pid: 2, at: "now" });
+  assert.deepEqual(readBridgeFile(dir), { port: 1, token: "t", sessionId: "x", pid: 2, at: "now", wt: false });
+  writeFileSync(path.join(dir, "bridge.json"), JSON.stringify({ port: 1, token: "t", sessionId: "x", pid: 2, at: "now", wt: true }));
+  assert.equal(readBridgeFile(dir)?.wt, true);
+  writeFileSync(path.join(dir, "bridge.json"), JSON.stringify({ port: 1, token: "t", sessionId: "x", pid: 2, at: "now", wt: "yes" }));
+  assert.equal(readBridgeFile(dir)?.wt, false);
   writeFileSync(path.join(dir, "bridge.json"), JSON.stringify({ port: "1", token: "t", pid: 2 }));
   assert.equal(readBridgeFile(dir), null);
 });
 
 test("an open stream is Live; events update state and pass through; a drop reconnects", async () => {
   const bridge = await fakeBridge("tok");
-  const file: BridgeFile = { port: bridge.port, token: "tok", sessionId: null, pid: process.pid, at: "" };
+  const file: BridgeFile = { port: bridge.port, token: "tok", sessionId: null, pid: process.pid, at: "", wt: false };
   const events: BridgeEvent[] = [];
   const states: UpstreamState[] = [];
   const up = connectUpstream(file, { onEvent: (e) => events.push(e), onChange: (s) => states.push(s) });
@@ -90,7 +94,7 @@ test("a wrong token or a dead pid is never Live", async () => {
   const bridge = await fakeBridge("tok");
   try {
     const wrong = connectUpstream(
-      { port: bridge.port, token: "nope", sessionId: null, pid: process.pid, at: "" },
+      { port: bridge.port, token: "nope", sessionId: null, pid: process.pid, at: "", wt: false },
       { onEvent: () => {}, onChange: () => {} },
     );
     await wrong.ready;
@@ -98,7 +102,7 @@ test("a wrong token or a dead pid is never Live", async () => {
     wrong.close();
 
     const dead = connectUpstream(
-      { port: bridge.port, token: "tok", sessionId: null, pid: 2 ** 22 + 12345, at: "" },
+      { port: bridge.port, token: "tok", sessionId: null, pid: 2 ** 22 + 12345, at: "", wt: false },
       { onEvent: () => {}, onChange: () => {} },
     );
     await dead.ready;
@@ -112,7 +116,7 @@ test("a wrong token or a dead pid is never Live", async () => {
 test("the open turn follows the snapshot, step and result events, and clears at turn end", async () => {
   const bridge = await fakeBridge("tok");
   const up = connectUpstream(
-    { port: bridge.port, token: "tok", sessionId: null, pid: process.pid, at: "" },
+    { port: bridge.port, token: "tok", sessionId: null, pid: process.pid, at: "", wt: false },
     { onEvent: () => {}, onChange: () => {} },
   );
   try {

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
+import { toastError } from "@/components/belay/toaster";
 import type { LinkState, PendingComment, Send } from "@/components/session/drawer";
 import { applyResult, toStep, type ChatEntry, type OpenTurn } from "@/lib/chat";
 import type { DrawerSeed, LiveItem } from "@/lib/data";
@@ -27,6 +28,8 @@ type Live = {
   usage: Usage | null;
   link: LinkState;
   send: Send;
+  /** Raises the selected Tab's Windows Terminal tab (only offered when it has `wt`); a miss toasts why. */
+  focusTerminal: () => void;
   drawer: DrawerPrefs;
   setDrawer: (p: Partial<DrawerPrefs> | ((p: DrawerPrefs) => Partial<DrawerPrefs>)) => void;
   /** The narrow layout's full-screen Drawer, opened from the Strip. */
@@ -246,6 +249,7 @@ export function LiveProvider({ live: incoming, seeds, children }: { live: LiveIt
   }
 
   const send: Send = React.useCallback((msg) => (slug ? sendTo(slug, msg) : Promise.resolve("Nothing live is selected")), [slug]);
+  const focusTerminal = React.useCallback(() => void send({ kind: "focus" }).then((err) => err && toastError(err)), [send]);
   const link: LinkState = !selected ? { state: "offline" } : selected.connected ? { state: "connected", working: selected.working } : { state: "disconnected" };
 
   // TEMP: usage-blank diagnosis; remove with the fix.
@@ -271,6 +275,7 @@ export function LiveProvider({ live: incoming, seeds, children }: { live: LiveIt
     usage: usage.slug === slug ? usage.usage : null,
     link,
     send,
+    focusTerminal,
     drawer,
     setDrawer,
     sheet,

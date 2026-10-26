@@ -32,15 +32,16 @@ const TAIL = 250;
 const log = (...args) => console.error("[belay-bridge]", ...args);
 let modules = null;
 const importAll = async () => {
-    const [files, protocol, http, transcript, lesson, { z }] = await Promise.all([
+    const [files, protocol, http, transcript, lesson, focus, { z }] = await Promise.all([
         import("./files.mjs"),
         import("./protocol.mjs"),
         import("./http.mjs"),
         import("./transcript.mjs"),
         import("./lesson.mjs"),
+        import("./focus.mjs"),
         import("zod"),
     ]);
-    return { files, protocol, http, transcript, lesson, z };
+    return { files, protocol, http, transcript, lesson, focus, z };
 };
 const load = () => (modules ??= importAll().then((m) => {
     loaded = m;
@@ -123,6 +124,8 @@ async function lockSession(l, claimed) {
         sessionId: l.sessionId,
         pid: process.pid,
         at: new Date().toISOString(),
+        // The bridge inherits claude's environment.
+        wt: !!process.env.WT_SESSION,
     });
     broadcast({ type: "session", slug: l.slug, sessionId: l.sessionId });
 }
@@ -163,6 +166,13 @@ async function onMessage(m) {
     const l = live;
     if (!l)
         return "not attached";
+    if (m.kind === "focus") {
+        const { files, focus } = await load();
+        // The parent is claude.exe, whose console is the tab's. After a /clear the owner file names the new session,
+        // whose title the tab shows if the script has to fall back to matching it.
+        const id = files.ownerSessionId() ?? l.sessionId;
+        return focus.focusTab({ wt: !!process.env.WT_SESSION, claudePid: process.ppid, id, dir: id ? files.transcriptDir(id) : null });
+    }
     if (!l.connected)
         return `disconnected: run \`/grill resume ${l.slug}\` in the terminal`;
     const { files, protocol } = await load();

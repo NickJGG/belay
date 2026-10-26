@@ -48,6 +48,8 @@ export const Message = z.discriminatedUnion("kind", [
         text: Note.optional(),
     }),
     z.object({ kind: z.literal("restart"), slug: Slug, label: z.string().trim().min(1).max(128), wrap: z.boolean().optional() }),
+    // Handled by the bridge itself (focus.mts), never forwarded to Claude.
+    z.object({ kind: z.literal("focus"), slug: Slug }).strict(),
 ]);
 export function parseMessage(body) {
     try {

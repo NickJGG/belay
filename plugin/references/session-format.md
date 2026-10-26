@@ -8,7 +8,7 @@ One folder per grill: `C:\Users\Nick\Belay\grills\<slug>\` (`BELAY_DATA` moves t
 | `<slug>.md` | `render-md.js` | Rendered from `session.json` after every save, in grill's markdown format, so belay keeps reading it. Never edit it by hand. |
 | `chat.jsonl` | the bridge and `log-chat.js` | Every message from both sides, one JSON object per line. |
 | `images/` | the site | Pictures attached to drawer messages, named `<UTC stamp>-<6 hex>.<ext>`; a message's `images` lists names in it. Kept with the session. |
-| `bridge.json` | the bridge | `{port, token, sessionId, pid, at}` while a terminal is attached. Never touch it. |
+| `bridge.json` | the bridge | `{port, token, sessionId, pid, at, wt}` while a terminal is attached (`wt`: it runs under Windows Terminal). Never touch it. |
 | `preview.spec.js`, `preview.mock.css`, `preview.app.css`, `preview.data.js` | the skill | The mocks (see SKILL.md, Mocks). Only once the session has one. |
 
 ## session.json
