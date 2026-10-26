@@ -72,7 +72,7 @@ const coursesJs = load(path.join(SCRIPTS, "courses.js")) as CoursesJs;
 const cardsJs = load(path.join(SCRIPTS, "cards.js")) as CardsJs;
 const fsrsJs = load(path.join(SCRIPTS, "fsrs.js")) as { today: () => string };
 
-export const root = () => process.env.HANDHOLD_ROOT || path.join(os.homedir(), "Learning");
+export const root = () => process.env.LEARNING_ROOT || path.join(os.homedir(), "Learning");
 
 export const SLUG = /^[a-z0-9][a-z0-9-]*$/i;
 

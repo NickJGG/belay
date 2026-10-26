@@ -537,7 +537,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
     return text(`choice ${id} is up on the site; the answer arrives as a kind="choice" message with id ${id}`);
 });
 /**
- * An idle session in the Handhold root sends the site's queued start as a `kind="command"` message, which runs the
+ * An idle session in the Learning root sends the site's queued start as a `kind="command"` message, which runs the
  * routine's skill, which attaches. It checks at startup (a restart's fresh session) and then every second while idle
  * (a `belay learn` started before the button was pressed). Only the files module loads until a start is queued.
  */

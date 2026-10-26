@@ -255,7 +255,7 @@ test("bridge.json is removed when Claude Code exits", async () => {
   await waitFor("bridge.json removed", () => !existsSync(bridgeFile));
 });
 
-test("a lesson: a queued start runs in the Handhold root, attach by course, show, attempt, restart and detach", async () => {
+test("a lesson: a queued start runs in the Learning root, attach by course, show, attempt, restart and detach", async () => {
   const learning = path.join(root, "learning");
   const course = path.join(learning, "demo-course");
   mkdirSync(path.join(course, "knowledge"), { recursive: true });
@@ -268,7 +268,7 @@ test("a lesson: a queued start runs in the Handhold root, attach by course, show
   const got: Note[] = [];
   const lc = new Client({ name: "lesson-test", version: "0" });
   lc.fallbackNotificationHandler = async (n) => void got.push(n as Note);
-  const env3 = { ...env, HANDHOLD_ROOT: learning };
+  const env3 = { ...env, LEARNING_ROOT: learning };
   await lc.connect(new StdioClientTransport({ command: process.execPath, args: [SERVER], cwd: learning, env: env3, stderr: "ignore" }));
   try {
     const cmd = await waitFor("queued command", () => got.find((n) => n.params?.meta && (n.params.meta as Record<string, string>).kind === "command"));

@@ -29,7 +29,7 @@ import { resolveWikiTarget } from "../wiki-target.ts";
 import { listWork, workPath, writeWork } from "../work.ts";
 
 const tmp = mkdtempSync(path.join(os.tmpdir(), "belay-courses-"));
-process.env.HANDHOLD_ROOT = tmp;
+process.env.LEARNING_ROOT = tmp;
 after(() => rmSync(tmp, { recursive: true, force: true }));
 
 const put = (rel: string, text: string) => {

@@ -140,7 +140,7 @@ open. Message kinds live in `bridge/protocol.mts`, event types in `bridge/http.m
   `BELAY_DATA`); `projects.ts` sorts its projects and files untagged sessions by belay's fuzzy match.
 - Live sync: the hub also watches the data dir's issues, projects, log days and `order.yaml` (`belayWatched`) and
   sends a `belay` event, on which `LiveRefresh` re-renders the page, whether a page, the CLI or Claude wrote it.
-- Courses live in `~/Learning` (`HANDHOLD_ROOT`). The hub watches its visible course paths (`visibleParts`: never
+- Courses live in `~/Learning` (`LEARNING_ROOT`). The hub watches its visible course paths (`visibleParts`: never
   `exercises/`, `rubrics/` or dot folders) and sends `course` events; `LiveRefresh` acts on all but `work/`, which
   the Work tab's editor reloads itself.
 - Collapsible groups keep the ones toggled from their default in the `belay-collapsed` cookie, so the server

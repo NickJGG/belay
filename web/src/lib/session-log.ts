@@ -59,7 +59,7 @@ export type SessionState = {
   messages: number;
   /** Course-relative files the session's tools wrote, as `<course>/<rel>`. */
   wrote: string[];
-  /** The last Handhold routine started (typed or via the Skill tool); `closed` once its log.md is written. */
+  /** The last learn routine started (typed or via the Skill tool); `closed` once its log.md is written. */
   routine: { kind: Routine; course: string; closed: boolean } | null;
   focus: Focus | null;
 };
@@ -423,7 +423,7 @@ const slugDir = (cwd: string) => path.join(PROJECTS, cwd.replace(/[^a-zA-Z0-9]/g
 export const liveLogDir = () => slugDir(root());
 
 /**
- * Log folders whose sessions may be Handhold ones: the Learning root's (every session), and the
+ * Log folders whose sessions may be learn sessions: the Learning root's (every session), and the
  * home folder's, where earlier `/learn` sessions ran (only those that invoked `/learn`).
  */
 const sources = () => [
@@ -515,7 +515,7 @@ export function latestLiveSession(): string | null {
   return best?.id ?? null;
 }
 
-/** Summaries of every Handhold session with at least one message, newest first. */
+/** Summaries of every learn session with at least one message, newest first. */
 export function listSessions(): SessionState[] {
   const index = (g.__lessonLogIndex ??= new Map());
   const out: SessionState[] = [];

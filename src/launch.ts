@@ -42,10 +42,10 @@ export interface LaunchContext {
   platform: NodeJS.Platform;
 }
 
-/** `learn` runs in the Handhold root, for lessons. */
+/** `learn` runs in the Learning root, for lessons. */
 export function launchSpec(mode: 'claude' | 'learn', argv: string[], c: LaunchContext): LaunchSpec {
   return {
-    cwd: mode === 'learn' ? c.env.HANDHOLD_ROOT || join(c.home, 'Learning') : c.cwd,
+    cwd: mode === 'learn' ? c.env.LEARNING_ROOT || join(c.home, 'Learning') : c.cwd,
     args: [...CHANNEL_ARGS, ...argv],
     // BELAY_CHANNEL tells /grill and /learn the channel is loaded, so site messages can reach this session.
     env: { ...c.env, BELAY_CHANNEL: '1' },

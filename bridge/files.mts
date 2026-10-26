@@ -9,8 +9,8 @@ export const grillsDir = () => path.join(dataDir(), "grills");
 export const lessonsDir = () => path.join(dataDir(), "lessons");
 export const runDir = () => path.join(dataDir(), ".run");
 export const sessionDir = (slug: string, lesson = false) => path.join(lesson ? lessonsDir() : grillsDir(), slug);
-export const learningRoot = () => process.env.HANDHOLD_ROOT || path.join(os.homedir(), "Learning");
-/** Whether `dir` is the Handhold root, where a queued lesson start may run. */
+export const learningRoot = () => process.env.LEARNING_ROOT || path.join(os.homedir(), "Learning");
+/** Whether `dir` is the Learning root, where a queued lesson start may run. */
 export const inLearningRoot = (dir: string) => path.relative(path.resolve(learningRoot()), path.resolve(dir)) === "";
 /** The site's queued lesson start (`web/src/lib/start-queue.ts` writes it). */
 export const queueFile = () => path.join(runDir(), "start.json");

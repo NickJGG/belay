@@ -38,9 +38,9 @@ test('claude runs in the cwd with the channel, the user args after it, and BELAY
   assert.equal(spec.acceptDialog, true);
 });
 
-test('learn runs in HANDHOLD_ROOT, else ~/Learning', () => {
+test('learn runs in LEARNING_ROOT, else ~/Learning', () => {
   assert.equal(launchSpec('learn', [], ctx()).cwd, join(resolve('/home/me'), 'Learning'));
-  assert.equal(launchSpec('learn', [], ctx({ env: { HANDHOLD_ROOT: 'D:/courses' } })).cwd, 'D:/courses');
+  assert.equal(launchSpec('learn', [], ctx({ env: { LEARNING_ROOT: 'D:/courses' } })).cwd, 'D:/courses');
 });
 
 test('the dialog helper is skipped under mintty and off Windows', () => {

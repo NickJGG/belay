@@ -1,7 +1,7 @@
 /**
  * `<data>/.run/start.json`: the routine the learner started on the site, waiting for a fresh session. `{label, command,
  * course, routine, at}`, `at` in epoch ms; stale after 10 minutes. The site writes and clears it here; the bridge
- * (bridge/lesson.mts) reads it in a lesson's `restart` tool and consumes it when a session starts in the Handhold root.
+ * (bridge/lesson.mts) reads it in a lesson's `restart` tool and consumes it when a session starts in the Learning root.
  */
 import fs from "node:fs";
 import path from "node:path";

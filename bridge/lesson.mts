@@ -1,9 +1,9 @@
 /**
- * Lessons on the bridge: the Handhold root, the `show` targets a lesson may point the site at, and the start flow.
+ * Lessons on the bridge: the Learning root, the `show` targets a lesson may point the site at, and the start flow.
  *
  * Starting a routine from the site restarts into a fresh session: the site writes `~/Belay/.run/start.json`, the
  * lesson's `restart` tool writes `~/Belay/.run/restart` and ends `claude`, `belay claude`'s loop relaunches it, and the new bridge
- * (idle, in the Handhold root) consumes the queue and sends it as a `kind="command"` message.
+ * (idle, in the Learning root) consumes the queue and sends it as a `kind="command"` message.
  */
 import { execFile } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";

@@ -1,6 +1,6 @@
-/** Handhold routines and the commands that run them. Imports nothing, so client components can use it. */
+/** Learn routines and the commands that run them. Imports nothing, so client components can use it. */
 
-/** A Handhold routine a start button runs. */
+/** A learn routine a start button runs. */
 export type Routine = "lesson" | "quick" | "review" | "checkpoint";
 
 /** The command a routine runs in a session, and what its button says it started. */

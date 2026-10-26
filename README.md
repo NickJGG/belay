@@ -14,7 +14,7 @@ claude plugin install belay@belay
 
 The marketplace loads the plugin in place, so edits take effect at the next session start or `/reload-plugins`.
 
-`belay claude [args]` starts Claude Code with the plugin's channel loaded (the `/grill` skill needs it); `belay learn [args]` does the same in `~/Learning` (`HANDHOLD_ROOT`) for lessons. Both relaunch Claude when a lesson asks to restart.
+`belay claude [args]` starts Claude Code with the plugin's channel loaded (the `/grill` skill needs it); `belay learn [args]` does the same in `~/Learning` (`LEARNING_ROOT`) for lessons. Both relaunch Claude when a lesson asks to restart.
 
 ## Dashboard setup
 

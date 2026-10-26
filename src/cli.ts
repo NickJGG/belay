@@ -80,7 +80,7 @@ const HELP = `belay — what should I work on?
                                     skill runs it when its plan is accepted); in-progress grills are refused
   claude [args]                     Claude Code with the Belay channel (args go to claude); relaunches when a
                                     lesson restarts its session
-  learn [args]                      the same, in the Handhold root (HANDHOLD_ROOT, default ~/Learning)
+  learn [args]                      the same, in the Learning root (LEARNING_ROOT, default ~/Learning)
   search <words>...                 issues (title, description, comments) and grill sessions (slug, topic, project) with every word
   serve [--port <n>] [--no-open] [--dev]
                                     dashboard at http://127.0.0.1:4747/ (Ctrl+C to stop); builds web/
