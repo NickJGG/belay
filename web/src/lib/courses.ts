@@ -261,6 +261,9 @@ export function readSyllabus(course: string): Unit[] {
   return coursesJs.syllabus(readCourseFile(course, "syllabus.md") ?? "");
 }
 
+/** A topic's label: its title, or the slug for a topic the course doesn't list. */
+export const topicTitle = (c: Pick<Overview, "titles">, topic: string) => c.titles[topic] ?? topic;
+
 /** Syllabus topics for Markdown rendering: status for map colouring, href when a note exists. */
 export function topicIndex(course: Course): Record<string, { status: TopicStatus; href?: string }> {
   const out: Record<string, { status: TopicStatus; href?: string }> = {};

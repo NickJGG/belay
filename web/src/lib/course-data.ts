@@ -24,6 +24,7 @@ import {
   splitTitle,
   today,
   topicProgress,
+  topicTitle,
   unitOf,
   visiblePath,
   type Course,
@@ -74,7 +75,7 @@ export type CourseIndex = {
   lessons: (LessonEntry & { course: string; courseTitle: string })[];
   notes: { course: string; slug: string; title: string }[];
   sources: { course: string; id: string; title: string }[];
-  misconceptions: { course: string; topic: string; claim: string }[];
+  misconceptions: { course: string; topic: string; topicTitle: string; claim: string }[];
 };
 
 /** The palette's course names: courses, then their lessons, notes, sources and misconceptions. */
@@ -88,7 +89,9 @@ export async function courseIndex(): Promise<CourseIndex> {
     out.sources.push(...listSources(c.course).map(({ id, title }) => ({ course: c.course, id, title })));
     const { mine, field } = listMisconceptions(c.course);
     out.misconceptions.push(
-      ...[...mine, ...field].flatMap((m) => (m.topic ? [{ course: c.course, topic: m.topic, claim: plain(splitMisconception(m.text).claim) }] : [])),
+      ...[...mine, ...field].flatMap((m) =>
+        m.topic ? [{ course: c.course, topic: m.topic, topicTitle: topicTitle(c, m.topic), claim: plain(splitMisconception(m.text).claim) }] : [],
+      ),
     );
   }
   return out;

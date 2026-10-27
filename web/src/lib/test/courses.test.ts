@@ -244,6 +244,8 @@ describe("course cards", () => {
   test("the band leads with the lesson, unless many cards or a checkpoint are due", () => {
     const lesson = cardData(summary({}), [0, 0, null]);
     assert.equal(lesson.lead?.kind, "Lesson");
+    assert.equal(lesson.lead?.title, "matmul-flops");
+    assert.equal(cardData(summary({ titles: { "matmul-flops": "Matmul FLOPs" } }), []).lead?.title, "Matmul FLOPs");
     assert.equal(lesson.lead?.meta, "In progress · Unit 1 · no cards due");
     const review = cardData(summary({ cards: { total: 30, due: 25, overdue: 0, new: 0, nextDue: null } }), []);
     assert.deepEqual([review.lead?.kind, ...review.rest.map((r) => r.kind)], ["Review", "Lesson"]);

@@ -14,7 +14,7 @@ import { sectionNeighbours, sidebarSections } from "../../../src/sidebar.ts";
 import type { Issue as BelayIssue, Project as BelayProject } from "../../../src/store.ts";
 import { addDays, isDay, workDay } from "../../../src/workday.ts";
 import type { ChatEntry, OpenTurn } from "./chat";
-import { courseIndex, type CourseIndex } from "./course-data";
+import { courseIndex, courseList, type CourseIndex } from "./course-data";
 import { courseColor, hues } from "./courses";
 import { grillsDir, lessonsDir } from "./config";
 import { parseFrontmatter } from "./frontmatter";
@@ -25,7 +25,7 @@ import { MOCK_FILES, type MockFile } from "./mock";
 import type { SessionDoc } from "./session-doc";
 import { readChat, readSessionDoc } from "./session-files";
 import { focusFor, liveSessions, openTurn, usageFor, type LiveSession } from "./hub";
-import { lessonHref, type LessonShow } from "./lesson";
+import { lessonHref, lessonTopic, type LessonShow } from "./lesson";
 import { fileSessions, projectsOf, type Project } from "./projects";
 import type { Usage } from "./usage";
 import { byUpdated, isSlug, listSessions, readSession, type SessionMemo, type SessionSummary } from "./sessions";
@@ -60,7 +60,14 @@ export type SessionItem = Pick<SessionSummary, "slug" | "topic" | "status" | "pr
 
 /** A live Tab: a grill, or a lesson (with its `course` and the course's `color`). `href` is the page its Tab opens. */
 export type LiveItem = SessionItem &
-  Pick<LiveSession, "working" | "connected" | "wt"> & { kind: "grill" | "lesson"; course?: string; color?: string; href: string };
+  Pick<LiveSession, "working" | "connected" | "wt"> & {
+    kind: "grill" | "lesson";
+    course?: string;
+    color?: string;
+    /** A lesson's course topic titles, for Follow along's claim hovers. */
+    titles?: Record<string, string>;
+    href: string;
+  };
 
 /** A row of the work lists (Home, a project's stages); `working` is set on the live ones. */
 export type WorkItem = SessionItem & Partial<Pick<LiveSession, "working">>;
@@ -158,15 +165,23 @@ async function load() {
   return { live, sessions, projects, ctx, lessons };
 }
 
-function liveItems(live: LiveSession[], sessions: SessionSummary[], ctx: Ctx, lessons = new Map<string, SessionSummary>()): LiveItem[] {
+function liveItems(
+  live: LiveSession[],
+  sessions: SessionSummary[],
+  ctx: Ctx,
+  lessons = new Map<string, SessionSummary>(),
+  titles = new Map<string, Record<string, string>>(),
+): LiveItem[] {
   const bySlug = new Map(sessions.map((s) => [s.slug, s]));
   const slots = lessons.size ? hues() : new Map<string, number>();
   return live.map((l) => {
     const state = { working: l.working, connected: l.connected, wt: l.wt };
     const lesson = lessons.get(l.slug);
     if (lesson?.course) {
-      const base: SessionItem = { slug: l.slug, topic: lesson.topic, status: lesson.status, live: true, mark: null, stage: "grilling" };
-      return { ...base, ...state, kind: "lesson", course: lesson.course, color: courseColor({ hue: slots.get(lesson.course) ?? 0 }), href: lessonHref(lesson.course) };
+      const t = titles.get(lesson.course) ?? {};
+      const base: SessionItem = { slug: l.slug, topic: lessonTopic(lesson.topic, t), status: lesson.status, live: true, mark: null, stage: "grilling" };
+      const color = courseColor({ hue: slots.get(lesson.course) ?? 0 });
+      return { ...base, ...state, kind: "lesson", course: lesson.course, color, titles: t, href: lessonHref(lesson.course) };
     }
     const s = bySlug.get(l.slug);
     const base: SessionItem = s
@@ -198,7 +213,8 @@ function tree(sessions: SessionSummary[], projects: Project[], ctx: Ctx) {
 /** What every page's chrome needs: the live tabs, and what the Drawer starts from for each. */
 export async function navData(): Promise<Nav> {
   const { live, sessions, ctx, lessons } = await load();
-  const items = liveItems(live, sessions, ctx, lessons);
+  const titles = new Map(lessons.size ? (await courseList()).map((c) => [c.course, c.titles]) : []);
+  const items = liveItems(live, sessions, ctx, lessons, titles);
   const seed = (slug: string): DrawerSeed => ({ turn: openTurn(slug), usage: usageFor(slug), focus: focusFor(slug) });
   return { live: items, seeds: Object.fromEntries(items.map((l) => [l.slug, seed(l.slug)])) };
 }

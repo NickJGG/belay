@@ -1,4 +1,4 @@
-import { checkpointLabel, unitFractions, type CourseSummary, type Overview, type TopicStatus, type Unit } from "./courses.ts";
+import { checkpointLabel, topicTitle, unitFractions, type CourseSummary, type Overview, type TopicStatus, type Unit } from "./courses.ts";
 import type { Routine } from "./routines.ts";
 
 /*
@@ -73,7 +73,7 @@ function upNext(c: CourseSummary): UpNextItem[] {
     items.push({
       ...base,
       kind: "Lesson",
-      title: c.next.topic,
+      title: topicTitle(c, c.next.topic),
       meta: `${where} · ${due > 0 ? `starts with your ${plural(due, "due card")}` : "no cards due"}`,
       routine: "lesson",
       topicStatus: c.next.status,

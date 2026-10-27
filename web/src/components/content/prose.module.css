@@ -125,13 +125,14 @@
   pointer-events: none;
 }
 
-/* A claim chip's tooltip is the claim itself, not a quote. */
+/* A claim chip's tooltip is its topic's title over the claim itself, not a quote. */
 .prose .claim {
   color: var(--muted);
 }
 
 .prose .claim[data-quote]:is(:hover, :focus-visible)::after {
   content: attr(data-quote);
+  white-space: pre-line;
 }
 
 .prose :is([id]:target, [data-focus]) {

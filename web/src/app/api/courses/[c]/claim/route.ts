@@ -1,9 +1,9 @@
-import { readCourseFile } from "@/lib/courses";
+import { readCourseFile, splitTitle } from "@/lib/courses";
 
 const TOPIC = /^[a-z0-9][a-z0-9-]*$/;
 const ID = /^c\d+$/;
 
-/** `?topic&id`: the text of claim `^id` in `knowledge/<topic>.md`, without its source citations. */
+/** `?topic&id`: the text of claim `^id` in `knowledge/<topic>.md`, without its source citations, and the note's title. */
 export async function GET(request: Request, ctx: { params: Promise<{ c: string }> }) {
   const { c } = await ctx.params;
   const q = new URL(request.url).searchParams;
@@ -21,5 +21,5 @@ export async function GET(request: Request, ctx: { params: Promise<{ c: string }
     .replace(/^\s*(?:[-*+]|\d+\.)\s+/, "")
     .replace(/\s+/g, " ")
     .trim();
-  return Response.json({ text });
+  return Response.json({ text, title: splitTitle(md!).title });
 }

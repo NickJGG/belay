@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
-import { coursePage, lessonHref, showKey, showPage, toShow } from "../lesson.ts";
+import { coursePage, lessonHref, lessonSlug, lessonTopic, showKey, showPage, toShow } from "../lesson.ts";
 import { listSessions, readSession } from "../sessions.ts";
 import { missing, pageKind, pageTab } from "../shell.ts";
 import { clearQueue, QUEUE_TTL, queueFile, readQueue, writeQueue } from "../start-queue.ts";
@@ -49,6 +49,8 @@ describe("Follow along targets", () => {
     });
     assert.equal(showPage({ course: "llm", target: "work", path: "work/../course.md" }), null);
     assert.equal(showPage({ course: "llm", target: "claim", topic: "chain-rule", id: "4" }), null);
+    assert.equal(showPage({ course: "llm", target: "claim", topic: "chain-rule", id: "c4" }, { "chain-rule": "The chain rule" })?.title, "The chain rule");
+    assert.equal(showPage({ course: "llm", target: "claim", topic: "chain-rule", id: "c4" }, { "chain-rule": "The chain rule" })?.label, "chain-rule · c4");
   });
 
   test("toShow takes a lesson's show event and refuses a grill's", () => {
@@ -61,6 +63,18 @@ describe("Follow along targets", () => {
     assert.equal(toShow({ type: "show", q: 3, opt: "a" }), null);
     assert.equal(toShow({ type: "reply", course: "llm", target: "whiteboard" }), null);
     assert.notEqual(showKey({ course: "llm", target: "claim", topic: "t", id: "c1" }), showKey({ course: "llm", target: "claim", topic: "t", id: "c2" }));
+  });
+
+  test("a lesson's attach topic reads as its title, and either form names the slug", () => {
+    const titles = { "chain-rule": "The chain rule" };
+    assert.equal(lessonTopic("Lesson · chain-rule", titles), "Lesson · The chain rule");
+    assert.equal(lessonTopic("Lesson · The chain rule", titles), "Lesson · The chain rule");
+    assert.equal(lessonTopic("Card review", titles), "Card review");
+    assert.equal(lessonSlug("Lesson · chain-rule", titles), "chain-rule");
+    assert.equal(lessonSlug("Lesson · The chain rule", titles), "chain-rule");
+    assert.equal(lessonSlug("Lesson · unknown", titles), null);
+    assert.equal(lessonSlug("Quick review", titles), null);
+    assert.equal(lessonSlug(undefined, titles), null);
   });
 
   test("a lesson's Tab lands on its Now page", () => {

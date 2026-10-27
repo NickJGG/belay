@@ -1,6 +1,6 @@
 import { postToBridge } from "@/lib/bridge-post";
 import { runDir } from "@/lib/config";
-import { getCourse } from "@/lib/courses";
+import { getCourse, topicTitle } from "@/lib/courses";
 import { navData } from "@/lib/data";
 import { announceStart } from "@/lib/hub";
 import { routineCommand, type Routine } from "@/lib/routines";
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   const course = getCourse(c);
   if (!course) return Response.json({ error: `no course ${c}` }, { status: 404 });
 
-  const { label, command } = routineCommand(routine, c, course.next?.topic, course.checkpoint?.unit);
+  const { label, command } = routineCommand(routine, c, course.next ? topicTitle(course, course.next.topic) : undefined, course.checkpoint?.unit);
   const queued = writeQueue(runDir(), { label, command, course: c, routine });
   announceStart(queued);
 

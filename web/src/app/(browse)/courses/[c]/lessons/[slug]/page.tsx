@@ -7,7 +7,7 @@ import styles from "@/components/course/course.module.css";
 import { DetailHead } from "@/components/course/detail-head";
 import { ShellSlot } from "@/components/layout/shell-slot";
 import { courseData, lessonDetail } from "@/lib/course-data";
-import { courseColor, topicIndex } from "@/lib/courses";
+import { courseColor, topicIndex, topicTitle } from "@/lib/courses";
 import { courseHref } from "@/lib/hrefs";
 
 type Props = { params: Promise<{ c: string; slug: string }> };
@@ -49,7 +49,7 @@ export default async function LessonPage({ params }: Props) {
       <Facts
         facts={[
           ["Date", weekDay(d.date)],
-          ["Topic", course.knowledge.has(d.topic) ? <Link href={courseHref(c, `/knowledge/${d.topic}`)}>{d.topic}</Link> : d.topic],
+          ["Topic", course.knowledge.has(d.topic) ? <Link href={courseHref(c, `/knowledge/${d.topic}`)}>{topicTitle(course, d.topic)}</Link> : topicTitle(course, d.topic)],
           ["Unit", d.unit ? <Link href={`${base}/syllabus`}>{`${d.unit.n} · ${d.unit.title}`}</Link> : <None />],
           ["Exercises", exercises ? `${exercises} · ${alone} alone` : <None />],
           ["Claims", claims || <None />],

@@ -370,7 +370,7 @@ const ATTACH = {
         properties: {
             slug: { type: "string", description: "A grill's session slug, e.g. grill-preview-bridge" },
             course: { type: "string", description: "A lesson's course folder, e.g. llm-architecture" },
-            topic: { type: "string", description: "A lesson's title on the site, e.g. Lesson · backprop-autograd" },
+            topic: { type: "string", description: "A lesson's title on the site, e.g. Lesson · Backpropagation and autograd" },
             sessionId: { type: "string", description: "This Claude Code session's id, as the skill gives it" },
         },
     },

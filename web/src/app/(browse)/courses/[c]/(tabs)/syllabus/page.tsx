@@ -6,6 +6,7 @@ import belay from "@/components/belay/belay.module.css";
 import styles from "@/components/course/course.module.css";
 import { checkpointText, TopicIcon } from "@/components/course/topic-icon";
 import { courseData } from "@/lib/course-data";
+import { topicTitle } from "@/lib/courses";
 import { courseHref } from "@/lib/hrefs";
 import { cn } from "@/lib/utils";
 
@@ -59,10 +60,10 @@ export default async function SyllabusTab({ params }: { params: Promise<{ c: str
                     <TopicIcon status={t.status} />
                     {ready && course.knowledge.has(t.topic) ? (
                       <Link href={courseHref(c, `/knowledge/${t.topic}`)} className={cn(belay.grow, belay.stretch)}>
-                        {t.topic}
+                        {topicTitle(course, t.topic)}
                       </Link>
                     ) : (
-                      <span className={belay.grow}>{t.topic}</span>
+                      <span className={belay.grow}>{topicTitle(course, t.topic)}</span>
                     )}
                   </li>
                 ))}

@@ -336,13 +336,13 @@ function Palette({ commands }: { commands: PageCommandGroup | null }) {
                     {index.misconceptions.map((m, i) => (
                       <Command.Item
                         key={`${m.course}/${i}`}
-                        value={`misconception ${m.course} ${m.topic} ${m.claim}`}
+                        value={`misconception ${m.course} ${m.topic} ${m.topicTitle} ${m.claim}`}
                         className={styles.hit}
                         onSelect={go(courseHref(m.course, "/misconceptions"))}
                       >
                         <CircleAlert size={14} aria-hidden />
                         <b>{m.claim}</b>
-                        <em>{m.topic}</em>
+                        <em>{m.topicTitle}</em>
                       </Command.Item>
                     ))}
                   </Command.Group>

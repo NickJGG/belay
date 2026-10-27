@@ -6,9 +6,10 @@ import styles from "@/components/course/course.module.css";
 import { DetailHead } from "@/components/course/detail-head";
 import { ShellSlot } from "@/components/layout/shell-slot";
 import { courseData } from "@/lib/course-data";
-import { courseColor, courseDir, fileMtime, readCourseFile, splitTitle, topicIndex } from "@/lib/courses";
+import { courseColor, courseDir, fileMtime, readCourseFile, splitTitle, topicIndex, topicTitle } from "@/lib/courses";
 import { navData } from "@/lib/data";
 import { courseHref } from "@/lib/hrefs";
+import { lessonSlug } from "@/lib/lesson";
 
 type Props = { params: Promise<{ c: string }> };
 
@@ -17,12 +18,6 @@ function boardTime(d: Date) {
   const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   return d.toDateString() === new Date().toDateString() ? time : `${d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}, ${time}`;
 }
-
-/** The knowledge topic a lesson's title (`Lesson · <topic>`) names, if the course has it. */
-const topicOf = (title: string | undefined, known: Set<string>) => {
-  const t = title?.replace(/^Lesson · /, "");
-  return t && known.has(t) ? t : null;
-};
 
 async function liveTitle(c: string) {
   return (await navData()).live.find((l) => l.kind === "lesson" && l.course === c)?.topic;
@@ -45,7 +40,7 @@ export default async function NowPage({ params }: Props) {
   if (!course) notFound();
   const live = await liveTitle(c);
   const title = live ?? "Whiteboard";
-  const topic = topicOf(live, course.knowledge) ?? course.next?.topic ?? null;
+  const topic = lessonSlug(live, course.titles) ?? course.next?.topic ?? null;
   const text = readCourseFile(c, "now.md");
   const mtime = fileMtime(c, "now.md");
   const dir = courseDir(c);
@@ -62,7 +57,7 @@ export default async function NowPage({ params }: Props) {
       <Facts
         facts={[
           ["Course", <Link key="c" href={courseHref(c)}>{course.title}</Link>],
-          ["Topic", topic && course.knowledge.has(topic) ? <Link key="t" href={courseHref(c, `/knowledge/${topic}`)}>{topic}</Link> : topic ?? <None />],
+          ["Topic", topic && course.knowledge.has(topic) ? <Link key="t" href={courseHref(c, `/knowledge/${topic}`)}>{topicTitle(course, topic)}</Link> : topic ? topicTitle(course, topic) : <None />],
           ["Board", mtime ? `updated ${boardTime(mtime)}` : <None />],
         ]}
       />

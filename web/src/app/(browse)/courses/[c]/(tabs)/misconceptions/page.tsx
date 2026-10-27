@@ -3,6 +3,7 @@ import { Group } from "@/components/belay/group";
 import { Prose } from "@/components/content/prose";
 import styles from "@/components/course/course.module.css";
 import { courseData, misconceptionGroups, type MisconceptionItem } from "@/lib/course-data";
+import { topicTitle } from "@/lib/courses";
 import { cn } from "@/lib/utils";
 
 function Items({ course, items }: { course: string; items: MisconceptionItem[] }) {
@@ -41,7 +42,7 @@ export default async function MisconceptionsTab({ params }: { params: Promise<{ 
           <Group
             key={g.topic}
             id={`${c}:misc:${g.topic || "other"}`}
-            label={g.topic || "Other"}
+            label={g.topic ? topicTitle(course, g.topic) : "Other"}
             count={g.items.length}
             defaultOpen={g.topic === course.next?.topic}
             headClassName={styles.unitHead}

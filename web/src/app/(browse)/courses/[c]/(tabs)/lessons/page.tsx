@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import belay from "@/components/belay/belay.module.css";
 import styles from "@/components/course/course.module.css";
 import { courseData } from "@/lib/course-data";
-import { listLessons } from "@/lib/courses";
+import { listLessons, topicTitle } from "@/lib/courses";
 import { shortDate } from "@/lib/format";
 import { courseHref } from "@/lib/hrefs";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,8 @@ import { cn } from "@/lib/utils";
  */
 export default async function LessonsTab({ params }: { params: Promise<{ c: string }> }) {
   const { c } = await params;
-  if (!(await courseData(c))) notFound();
+  const course = await courseData(c);
+  if (!course) notFound();
   const lessons = listLessons(c);
   if (!lessons.length) return <p className={belay.empty}>No lessons yet. Each /learn session adds a lesson note here.</p>;
   return (
@@ -26,7 +27,7 @@ export default async function LessonsTab({ params }: { params: Promise<{ c: stri
           <Link href={courseHref(c, `/lessons/${l.slug}`)} className={cn(belay.grow, belay.stretch)}>
             {l.title}
           </Link>
-          <span className={styles.lead}>{l.topic}</span>
+          <span className={styles.lead}>{topicTitle(course, l.topic)}</span>
         </li>
       ))}
     </ul>

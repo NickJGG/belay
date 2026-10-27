@@ -29,12 +29,19 @@ export function toShow(e: Record<string, unknown>): LessonShow | null {
   return showPage(s) ? s : null;
 }
 
-/** The page a show points at and how the Follow pill names it; null when its fields don't name one. */
-export function showPage(s: LessonShow): { href: string; label: string } | null {
+/**
+ * The page a show points at and how the Follow pill names it; null when its fields don't name one. A claim keeps
+ * `slug · cN` as its label, with its topic's title from `titles` as the hover.
+ */
+export function showPage(s: LessonShow, titles: Record<string, string> = {}): { href: string; label: string; title?: string } | null {
   switch (s.target) {
     case "claim":
       if (!s.topic || !SLUG.test(s.topic) || !s.id || !/^c\d+$/.test(s.id)) return null;
-      return { href: resolveWikiTarget(s.course, `knowledge/${s.topic}#^${s.id}`), label: `${s.topic} · ${s.id}` };
+      return {
+        href: resolveWikiTarget(s.course, `knowledge/${s.topic}#^${s.id}`),
+        label: `${s.topic} · ${s.id}`,
+        ...(titles[s.topic] ? { title: titles[s.topic] } : {}),
+      };
     case "source":
       if (!s.id || !SLUG.test(s.id)) return null;
       return { href: resolveWikiTarget(s.course, `sources/${s.id}`), label: s.id };
@@ -46,6 +53,20 @@ export function showPage(s: LessonShow): { href: string; label: string } | null 
       return { href: courseHref(s.course, `/work/${parts.slice(1).map(encodeURIComponent).join("/")}`), label: parts.join("/") };
     }
   }
+}
+
+const LESSON = /^Lesson · (.+)$/;
+
+/** A lesson's attach topic (`Lesson · <topic>`) with a topic slug swapped for its title; older lessons attached with the slug. */
+export const lessonTopic = (topic: string, titles: Record<string, string>) =>
+  topic.replace(LESSON, (all, t: string) => (titles[t] ? `Lesson · ${titles[t]}` : all));
+
+/** The topic slug a lesson's attach topic names, by slug or by title; null for other routines or an unknown topic. */
+export function lessonSlug(topic: string | undefined, titles: Record<string, string>): string | null {
+  const t = topic && LESSON.exec(topic)?.[1];
+  if (!t) return null;
+  if (Object.hasOwn(titles, t)) return t;
+  return Object.keys(titles).find((slug) => titles[slug] === t) ?? null;
 }
 
 /** A show's identity, so Follow along jumps once per new show and not again for a repeat of the last. */

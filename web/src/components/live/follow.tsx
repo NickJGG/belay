@@ -28,7 +28,7 @@ function writing(): boolean {
 }
 
 export function FollowAlong() {
-  const { focus, sheet } = useLive();
+  const { focus, sheet, selected } = useLive();
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const [following, setFollowing] = React.useState(true);
@@ -36,7 +36,7 @@ export function FollowAlong() {
   // The page Follow along is navigating to, so arriving there isn't taken for wandering.
   const expected = React.useRef<string | null>(null);
   const lastPath = React.useRef(pathname);
-  const page = focus ? showPage(focus) : null;
+  const page = focus ? showPage(focus, selected?.titles) : null;
 
   const go = React.useCallback(
     (href: string) => {
@@ -107,7 +107,7 @@ export function FollowAlong() {
       ) : (
         <div className={styles.pill}>
           <i className={styles.dot} aria-hidden />
-          <span>Claude is on {page.label}</span>
+          <span title={page.title}>Claude is on {page.label}</span>
           <button
             type="button"
             onClick={() => {
