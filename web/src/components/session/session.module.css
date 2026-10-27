@@ -1176,7 +1176,8 @@ a.chip:hover {
     height: 100dvh;
     padding-bottom: 0;
     border-left: 1px solid var(--line);
-    background: none;
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    backdrop-filter: blur(24px);
   }
 }
 
