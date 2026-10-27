@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { GrillSession } from '../src/grill.ts';
-import { activity, doingSince, IDLE_DAYS, inFlight, lastTouch } from '../src/home.ts';
+import { activity, activityGrid, doingSince, IDLE_DAYS, inFlight, lastTouch } from '../src/home.ts';
 import type { DatedEntry } from '../src/logs.ts';
 import type { Issue, Project } from '../src/store.ts';
 
@@ -121,4 +121,47 @@ test('activity: scoped to one project, archived or not', () => {
       .map((e) => (e.type === 'log' ? `log ${e.entry.project}` : e.issue.id));
   assert.deepEqual(events('BEL'), ['log BEL', 'BEL-1']);
   assert.deepEqual(events('OLD'), ['log OLD', 'OLD-1']);
+});
+
+const doneAt = (id: string, at: string, over: Partial<Issue> = {}) =>
+  issue(id, { status: 'done', transitions: [{ at: '2026-09-01T10:00', to: 'todo', by: 'user' }, { at, from: 'todo', to: 'done', by: 'user' }], ...over });
+
+test('activityGrid: last week and this week, Sunday first, days after today future', () => {
+  const grid = activityGrid([project('BEL')], [], [], TODAY);
+  assert.equal(grid.length, 14);
+  assert.equal(grid[0].day, '2026-09-27');
+  assert.equal(grid[13].day, '2026-10-10');
+  assert.deepEqual(grid.filter((d) => d.future).map((d) => d.day), ['2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10']);
+  assert.ok(grid.every((d) => d.level === 0));
+  assert.equal(activityGrid([project('BEL')], [], [], '2026-10-04')[0].day, '2026-09-27');
+});
+
+test('activityGrid: moves to done by transition, lessons weighted five, levels against the busiest day', () => {
+  const issues = [
+    doneAt('BEL-1', '2026-10-05T10:00'),
+    doneAt('BEL-2', '2026-10-05T11:00'),
+    doneAt('BEL-3', '2026-10-06T03:00'),
+    // updated on a grid day, but its move to done is before the grid
+    doneAt('BEL-4', '2026-09-20T10:00', { updated: '2026-10-06' }),
+    issue('BEL-5', { status: 'doing', transitions: started('2026-10-06T10:00') }),
+  ];
+  const grid = new Map(activityGrid([project('BEL')], issues, ['2026-10-06', '2026-10-06', '2026-09-28'], TODAY).map((d) => [d.day, d]));
+  assert.deepEqual(grid.get('2026-10-05'), { day: '2026-10-05', done: 3, lessons: 0, level: 2, future: false });
+  assert.deepEqual(grid.get('2026-10-06'), { day: '2026-10-06', done: 0, lessons: 2, level: 4, future: false });
+  assert.deepEqual(grid.get('2026-09-28'), { day: '2026-09-28', done: 0, lessons: 1, level: 2, future: false });
+  assert.equal(grid.get('2026-10-01')!.level, 0);
+});
+
+test('activityGrid: archived projects skipped, an issue counted once a day', () => {
+  const twice = issue('BEL-1', {
+    status: 'done',
+    transitions: [
+      { at: '2026-10-05T10:00', from: 'doing', to: 'done', by: 'user' },
+      { at: '2026-10-05T11:00', from: 'done', to: 'doing', by: 'user' },
+      { at: '2026-10-05T12:00', from: 'doing', to: 'done', by: 'user' },
+    ],
+  });
+  const projects = [project('BEL'), project('OLD', { status: 'archived' })];
+  const grid = activityGrid(projects, [twice, doneAt('OLD-1', '2026-10-05T10:00')], [], TODAY);
+  assert.equal(grid.find((d) => d.day === '2026-10-05')!.done, 1);
 });

@@ -32,7 +32,9 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   `<PageCommands>` (an issue's status keys and !, a grill's resume command, a course's starts, a lesson note's Resume
   conversation). Its New issue and Log what you did reach
   the project page's form through `belay/intents.ts`.
-- Home (`/`) is In flight, from the CLI's `inFlight` (`homeFlight` in `data.ts`), then Your courses (`homeCourses`).
+- Home (`/`) is a header with the 5h/7d usage rings (seeded by `homePulse` in `data.ts`, then the hub's account-wide
+  `limits` events) and the CLI's two-week `activityGrid`, then In flight, from the CLI's `inFlight` (`homeFlight`),
+  then Your courses (`homeCourses`).
 - Course pages: `/courses` (course cards), `/courses/<c>` (Overview: Goal, the current unit's journey and next
   step, a calendar) and its tabs `{syllabus,map,lessons,notes,misconceptions,cards,work}` under one layout holding
   the course header, and the detail pages `/courses/<c>/{knowledge,lessons,sources}/<x>`. Their pieces are in

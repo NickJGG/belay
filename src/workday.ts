@@ -41,6 +41,11 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((utc(b) - utc(a)) / 86_400_000);
 }
 
+/** 0 for Sunday to 6 for Saturday. */
+export function dayOfWeek(day: string): number {
+  return dateOf(day).getDay();
+}
+
 /** The Monday of `day`'s week. */
 export function weekStart(day: string): string {
   return addDays(day, -((dateOf(day).getDay() + 6) % 7));

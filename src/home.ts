@@ -1,8 +1,8 @@
-/** The dashboard's derived views: what's In flight, and the Activity of recent work days. */
+/** The dashboard's derived views: what's In flight, the Activity of recent work days, and Home's activity grid. */
 import type { GrillSession } from './grill.ts';
 import type { DatedEntry } from './logs.ts';
 import type { Issue, IssueStatus, Project } from './store.ts';
-import { addDays, daysBetween, updatedDay, workDayOf } from './workday.ts';
+import { addDays, dayOfWeek, daysBetween, updatedDay, workDayOf } from './workday.ts';
 
 /** Work days without a transition, comment or linked log entry after which a `doing` issue is Idle. */
 export const IDLE_DAYS = 3;
@@ -99,4 +99,45 @@ export function activity(projects: Project[], issues: Issue[], logs: DatedEntry[
     else out.push({ gap: { from: day, to: day } });
   }
   return out;
+}
+
+export interface GridDay {
+  day: string;
+  /** Issues moved to done that day. */
+  done: number;
+  lessons: number;
+  /** 0 when nothing happened, else 1–4: the day's score in quarters of the busiest day's. */
+  level: number;
+  future: boolean;
+}
+
+/** A lesson outweighs an issue moved to done. */
+const LESSON_WEIGHT = 5;
+
+/**
+ * Home's activity grid: last week and this week, Sunday first. A day scores its issues moved to done (by
+ * transition, not `updated`) plus LESSON_WEIGHT per lesson in `lessonDays` (one entry per lesson). Grills and
+ * commits don't count; archived projects are left out.
+ */
+export function activityGrid(projects: Project[], issues: Issue[], lessonDays: string[], today: string): GridDay[] {
+  const from = addDays(today, -dayOfWeek(today) - 7);
+  const days = Array.from({ length: 14 }, (_, i) => addDays(from, i));
+  const archived = new Set(projects.filter((p) => p.status === 'archived').map((p) => p.key));
+  const done = new Map<string, number>();
+  for (const issue of issues) {
+    if (archived.has(issue.project)) continue;
+    const doneDays = new Set((issue.transitions ?? []).filter((t) => t.from && t.to === 'done').map((t) => workDayOf(t.at)));
+    for (const day of doneDays) done.set(day, (done.get(day) ?? 0) + 1);
+  }
+  const lessons = new Map<string, number>();
+  for (const day of lessonDays) lessons.set(day, (lessons.get(day) ?? 0) + 1);
+
+  const rows = days.map((day) => {
+    const future = day > today;
+    const d = future ? 0 : (done.get(day) ?? 0);
+    const l = future ? 0 : (lessons.get(day) ?? 0);
+    return { day, done: d, lessons: l, score: d + LESSON_WEIGHT * l, future };
+  });
+  const max = Math.max(0, ...rows.map((r) => r.score));
+  return rows.map(({ score, ...r }) => ({ ...r, level: score ? Math.ceil((score / max) * 4) : 0 }));
 }

@@ -1983,6 +1983,52 @@ button.groupHead:hover {
   background: var(--line-strong);
 }
 
+/* Home's header: the plan limits as larger rings, each with its % over the window's name. */
+.limits {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.limit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: var(--radius-md);
+}
+
+/* `--proj`: the faded arc on to where the limit will be at its reset, toned by that level. */
+.limit .ring {
+  width: 28px;
+  height: 28px;
+  background: conic-gradient(
+    var(--tone) var(--pct),
+    color-mix(in oklab, var(--proj-tone, var(--tone)) 40%, var(--line)) 0 var(--proj, 0%),
+    var(--line) 0
+  );
+  mask: radial-gradient(circle, transparent 9px, #000 10px);
+}
+
+.limit .ringCold {
+  background: var(--line-strong);
+}
+
+.limitText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.limitText b {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.limitText small {
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
 /* The collapsed Drawer, desktop only: the narrow layout has the shell's Strip instead. */
 .strip {
   display: none;

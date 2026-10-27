@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { subscribeLive } from "@/components/live/event-hub";
 import type { Limit, Usage } from "@/lib/usage";
 import { cn } from "@/lib/utils";
 import styles from "./session.module.css";
@@ -8,6 +9,7 @@ import styles from "./session.module.css";
 /*
  * The status line's numbers in the drawer: context and plan-limit pills, shown exactly
  * as the last payload had them, and a prompt cache ring that drains client-side towards `expiresAt`.
+ * Home's header shows the plan limits again as rings.
  */
 
 /** statusline.sh's `format_remaining`: `3d4h`, `2h10m`, `45m`. */
@@ -139,14 +141,112 @@ export function CacheRing({ usage, compact = false }: { usage: Usage | null; com
   );
 }
 
-/** With `tip`, focusable so keyboard users see it too. */
-function Ring({ className, pct, label, tip }: { className?: string | null; pct?: number; label: string; tip?: string }) {
+/** The pills' tones: over 50 warn, over 75 bad. */
+const toneLevel = (pct: number) => (pct <= 50 ? 0 : pct <= 75 ? 1 : 2);
+const toneOf = (pct: number) => [null, styles.ringWarn, styles.ringBad][toneLevel(pct)];
+const PROJ_TONE = ["ok", "warn", "bad"];
+
+/**
+ * Where `limit` will stand at its reset at the window's average pace so far, capped at 100. None at 0% (no pace
+ * yet) or without a reset time. Linear, like `forecast`.
+ */
+function projected(limit: NonNullable<Limit>, windowSecs: number, at: number) {
+  if (limit.resetsAt == null) return undefined;
+  const elapsed = windowSecs - (limit.resetsAt - at);
+  if (elapsed <= 0 || limit.pct <= 0) return undefined;
+  return Math.min((limit.pct * windowSecs) / elapsed, 100);
+}
+
+function LimitRing({ name, limit, windowSecs, at }: { name: string; limit: Limit; windowSecs: number; at: number }) {
+  const text = (value: string) => (
+    <span className={styles.limitText}>
+      <b>{value}</b>
+      <small>{name}</small>
+    </span>
+  );
+  if (!limit) {
+    return (
+      <Ring className={styles.ringCold} wrapClassName={styles.limit} label={`${name} limit: no data yet`} tip="No data yet">
+        {text("–")}
+      </Ring>
+    );
+  }
+  // Past its reset, the last payload's percentage no longer holds.
+  const reset = limit.resetsAt != null && limit.resetsAt <= at;
+  const pct = reset ? 0 : Math.min(limit.pct, 100);
+  const proj = reset ? undefined : projected(limit, windowSecs, at);
+  const tip = reset ? "Reset" : limit.resetsAt != null ? `Resets ${remaining(limit.resetsAt - at)}` : undefined;
+  const label = [`${name} limit ${Math.round(pct)}% used`, proj != null && `~${Math.round(proj)}% by reset`, tip].filter(Boolean).join(" · ");
   return (
-    <span className={cn(styles.ringWrap, styles.tipped)} tabIndex={tip ? 0 : undefined} role="img" aria-label={label}>
+    <Ring
+      className={toneOf(pct)}
+      wrapClassName={styles.limit}
+      pct={pct}
+      vars={proj == null ? undefined : { "--proj": `${proj}%`, "--proj-tone": `var(--${PROJ_TONE[toneLevel(proj)]})` }}
+      label={label}
+      tip={tip}
+    >
+      {text(`${Math.round(pct)}%`)}
+    </Ring>
+  );
+}
+
+/** Home's 5h and 7d limits as rings, from `seed` and then the hub's account-wide `limits` events. */
+export function UsageRings({ seed }: { seed: Usage | null }) {
+  const [state, setState] = React.useState({ seed, usage: seed });
+  // A refresh that brings the server's copy starts from it.
+  if (state.seed !== seed) setState({ seed, usage: seed });
+  const { usage } = state;
+  // Null until the first tick, so the server's and the browser's first render agree.
+  const [now, setNow] = React.useState<number | null>(null);
+
+  React.useEffect(
+    () =>
+      subscribeLive((e) => {
+        if (e.type === "limits") setState((s) => ({ ...s, usage: e.usage }));
+      }),
+    [],
+  );
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now() / 1000), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const at = Math.max(usage?.at ?? 0, now ?? 0);
+  return (
+    <span className={styles.limits} aria-label="Claude usage limits">
+      <LimitRing name="5h" limit={usage?.fiveHour ?? null} windowSecs={FIVE_HOURS} at={at} />
+      <LimitRing name="7d" limit={usage?.sevenDay ?? null} windowSecs={SEVEN_DAYS} at={at} />
+    </span>
+  );
+}
+
+/** With `tip`, focusable so keyboard users see it too. `children` sit beside the ring. */
+function Ring({
+  className,
+  wrapClassName,
+  pct,
+  vars,
+  label,
+  tip,
+  children,
+}: {
+  className?: string | null;
+  wrapClassName?: string;
+  pct?: number;
+  /** More custom properties for the ring. */
+  vars?: Record<string, string>;
+  label: string;
+  tip?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <span className={cn(styles.ringWrap, styles.tipped, wrapClassName)} tabIndex={tip ? 0 : undefined} role="img" aria-label={label}>
       <span
         className={cn(styles.ring, className)}
-        style={pct == null ? undefined : ({ "--pct": `${pct}%` } as React.CSSProperties)}
+        style={(pct == null ? vars : { "--pct": `${pct}%`, ...vars }) as React.CSSProperties}
       />
+      {children}
       {tip ? (
         <span className={styles.tip} aria-hidden>
           {tip}

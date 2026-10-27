@@ -1,0 +1,66 @@
+.grid {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.days,
+.cells {
+  display: grid;
+  grid-template-columns: repeat(7, 16px);
+  gap: 3px;
+}
+
+.days small {
+  color: var(--faint);
+  font-size: 10px;
+  line-height: 1;
+  text-align: center;
+}
+
+.cells i {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+}
+
+.l0 {
+  background: var(--line);
+}
+
+.l1 {
+  background: color-mix(in oklab, var(--brand) 30%, var(--line));
+}
+
+.l2 {
+  background: color-mix(in oklab, var(--brand) 55%, var(--line));
+}
+
+.l3 {
+  background: color-mix(in oklab, var(--brand) 78%, var(--line));
+}
+
+.l4 {
+  background: var(--brand);
+}
+
+.cells .today {
+  outline: 1.5px solid var(--text);
+  outline-offset: 1px;
+}
+
+.future {
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.cells .tip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-weight: 400;
+}
+
+.cells .tip b {
+  font-weight: 600;
+}

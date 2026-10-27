@@ -22,6 +22,7 @@ import { belayIgnored, belayWatched, courseIgnored, courseLocate, locate, sessio
  *   live      a bridge's stream opened or closed, or its working/connected state changed
  *   bridge    one bridge event, tagged with its session's slug
  *   usage     a live session's meters, from the status line's POST to /api/usage (matched by the bridge's sessionId)
+ *   limits    the account-wide 5h and 7d limits from that same POST, live session or not (Home's rings)
  *   belay     an issue, project, log day or order.yaml in belay's data dir changed (by a page, the CLI or Claude)
  *   course    a visible file of a course folder changed (see `visibleParts`), as `{course, path}`
  *   start     the queued lesson start (start-queue.ts) was set or cleared, by `/api/lesson/start`
@@ -36,6 +37,7 @@ export type HubEvent =
   | ({ type: "live"; up: boolean } & Omit<LiveSession, "wt">)
   | { type: "bridge"; slug: string; event: BridgeEvent }
   | { type: "usage"; slug: string; usage: Usage }
+  | { type: "limits"; usage: Usage }
   | { type: "belay" }
   | { type: "course"; course: string; path: string }
   | { type: "start"; queue: Queue | null };
@@ -165,13 +167,23 @@ export function usageFor(slug: string): Usage | null {
   return h.usage.snapshot(h.bridges.get(slug)?.state().sessionId ?? null);
 }
 
+/** The account-wide limits, or null before the status line's first POST. */
+export function accountUsage(): Usage | null {
+  return hub().usage.snapshot(null);
+}
+
+// Not a slug, so it can't share a session's resend throttle.
+const LIMITS_TARGET = ":limits";
+
 /**
- * Stores one status line payload and sends each live session whose meters it changed its new snapshot. A
- * payload changes its own session's context and cache, and every session's limits.
+ * Stores one status line payload and sends each live session whose meters it changed its new snapshot, and
+ * every page the account's limits. A payload changes its own session's context and cache, and every session's limits.
  */
 export function recordUsage(p: StatusLine) {
   const h = hub();
   h.usage.record(p);
+  const limits = h.usage.snapshot(null);
+  if (limits && h.usage.due(LIMITS_TARGET, limits)) h.emit({ type: "limits", usage: limits });
   for (const [slug, up] of h.bridges) {
     const s = up.state();
     if (!s.up || !s.connected) continue;

@@ -4,7 +4,7 @@ import path from "node:path";
 import { connection } from "next/server";
 import { cache } from "react";
 import { dataDir } from "../../../src/config.ts";
-import { activity, doingSince, inFlight, type ActivityDay } from "../../../src/home.ts";
+import { activity, activityGrid, doingSince, inFlight, type ActivityDay, type GridDay } from "../../../src/home.ts";
 import { loadLog, type DatedEntry, type LogEntry } from "../../../src/logs.ts";
 import { linkedPath } from "../../../src/open.ts";
 import { Ctx as BelayCtx, bodyHash, logDays } from "../../../src/ops.ts";
@@ -15,7 +15,7 @@ import type { Issue as BelayIssue, Project as BelayProject } from "../../../src/
 import { addDays, isDay, workDay } from "../../../src/workday.ts";
 import type { ChatEntry, OpenTurn } from "./chat";
 import { courseIndex, courseList, type CourseIndex } from "./course-data";
-import { courseColor, hues } from "./courses";
+import { courseColor, hues, listCourses, listLessons } from "./courses";
 import { grillsDir, lessonsDir } from "./config";
 import { parseFrontmatter } from "./frontmatter";
 import { flightGrills } from "./belay-view";
@@ -24,7 +24,7 @@ import { grillHref, UNFILED } from "./hrefs";
 import { MOCK_FILES, type MockFile } from "./mock";
 import type { SessionDoc } from "./session-doc";
 import { readChat, readSessionDoc } from "./session-files";
-import { focusFor, liveSessions, openTurn, usageFor, type LiveSession } from "./hub";
+import { accountUsage, focusFor, liveSessions, openTurn, usageFor, type LiveSession } from "./hub";
 import { lessonHref, lessonTopic, type LessonShow } from "./lesson";
 import { fileSessions, projectsOf, type Project } from "./projects";
 import type { Usage } from "./usage";
@@ -258,6 +258,17 @@ export async function homeFlight(): Promise<{ issues: FlightIssue[]; grills: Fli
     mark: marks.get(issue.project) ?? null,
   }));
   return { issues, grills };
+}
+
+export type HomePulse = { today: string; grid: GridDay[]; usage: Usage | null };
+
+/** Home's header: the two-week activity grid (issues done and every course's lessons), and the account's limits. */
+export async function homePulse(): Promise<HomePulse> {
+  await connection();
+  const c = belay();
+  const today = workDay();
+  const lessonDays = listCourses().flatMap((course) => listLessons(course.course).map((l) => l.date));
+  return { today, grid: activityGrid(c.projects, c.issues, lessonDays, today), usage: accountUsage() };
 }
 
 const byStage = (sessions: WorkItem[]) =>
