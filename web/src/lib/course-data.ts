@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { cache } from "react";
 import { byUrgency, type CardData } from "./course-home";
 import {
+  cardForecast,
   citedBy,
   courseColor,
   fileCreated,
@@ -15,12 +16,14 @@ import {
   listKnowledge,
   listLessons,
   listMisconceptions,
+  listSessions,
   listSources,
   noteStats,
   readCourseFile,
   splitMisconception,
   splitTitle,
   today,
+  topicProgress,
   unitOf,
   visiblePath,
   type Course,
@@ -44,6 +47,15 @@ export const courseData = cache(async (c: string): Promise<Course | null> => {
   await connection();
   return getCourse(c);
 });
+
+/** A course's log.md sessions, oldest first. */
+export const courseSessions = cache(async (c: string) => listSessions(c));
+
+/** How far a topic is from done, by /learn's Close criteria; null when the course is unknown. */
+export const courseProgress = cache(async (c: string, topic: string) => topicProgress(c, topic));
+
+/** Cards falling due per day, overdue ones counted on today. */
+export const courseForecast = cache(async (c: string) => cardForecast(c));
 
 /** The Courses page: every course's card, most urgent first. */
 export async function courseCards(): Promise<CardData[]> {

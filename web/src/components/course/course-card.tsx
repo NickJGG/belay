@@ -1,12 +1,13 @@
 import type * as React from "react";
 import Link from "next/link";
-import { BookOpen, Flag, Hammer, Layers, type LucideIcon } from "lucide-react";
+import { BookOpen, Flag, Hammer, Layers, Play, type LucideIcon } from "lucide-react";
 import { buttonClass, type ButtonVariant } from "@/components/ui/button";
 import { PALETTE } from "@/lib/course-art";
 import type { CardData, UpNextItem, UpNextKind } from "@/lib/course-home";
 import { courseHref } from "@/lib/hrefs";
 import { cn } from "@/lib/utils";
 import { CourseTerrain } from "./course-terrain";
+import { MarkRead } from "./mark-read";
 import { StartButton } from "./start-buttons";
 import styles from "./course-card.module.css";
 
@@ -17,13 +18,22 @@ function goalLead(goal: string | null): string | null {
   return `${lead}.`;
 }
 
-function action(i: UpNextItem): string {
+export function action(i: UpNextItem): string {
   if (i.kind === "Review") return "Review";
   if (i.kind === "Lesson") return i.topicStatus === "in-progress" ? "Continue" : "Start";
   return "Start";
 }
 
-const KIND_ICON: Record<UpNextKind, LucideIcon> = { Lesson: BookOpen, Review: Layers, Checkpoint: Flag, Build: Hammer };
+/** A secondary button's label, which names what it starts. */
+export const restLabel = (i: UpNextItem) => (i.kind === "Lesson" ? `${action(i)} lesson` : i.kind);
+
+export const KIND_ICON: Record<UpNextKind, LucideIcon> = { Lesson: Play, Reading: BookOpen, Review: Layers, Checkpoint: Flag, Build: Hammer };
+
+/** An Up next item's button: Mark read for reading, otherwise its routine's start. */
+export function UpNextButton({ item, label, variant, resume = false }: { item: UpNextItem; label: string; variant: ButtonVariant; resume?: boolean }) {
+  if (item.kind === "Reading") return <MarkRead course={item.course} source={item.source!} variant={variant} />;
+  return <StartButton course={item.course} routine={item.routine!} label={label} className={buttonClass(variant, "sm")} resume={resume} />;
+}
 
 function Chips({ traits }: { traits: string[] }) {
   if (!traits.length) return null;
@@ -38,7 +48,7 @@ function Chips({ traits }: { traits: string[] }) {
   );
 }
 
-function UnitBar({ units, className }: { units: (number | null)[]; className?: string }) {
+export function UnitBar({ units, className }: { units: (number | null)[]; className?: string }) {
   return (
     <span className={cn(styles.bar, className)} aria-hidden>
       {units.map((done, i) => (
@@ -60,7 +70,7 @@ export function CourseCard({ card, variant = "full" }: { card: CardData; variant
   const showCheckpoint = lead?.kind !== "Checkpoint";
 
   const button = (i: UpNextItem, label: string, variant: ButtonVariant, resume = false) => (
-    <StartButton key={i.kind} course={i.course} routine={i.routine!} label={label} className={buttonClass(variant, "sm")} resume={resume} />
+    <UpNextButton key={i.kind} item={i} label={label} variant={variant} resume={resume} />
   );
 
   if (variant === "home") {
@@ -141,7 +151,7 @@ export function CourseCard({ card, variant = "full" }: { card: CardData; variant
               {lead.kind === "Lesson" && lead.due > 0 ? (
                 <StartButton course={lead.course} routine="review" label="Cards only" className={buttonClass("ghost", "sm")} />
               ) : null}
-              {rest.map((i) => button(i, i.kind === "Lesson" ? `${action(i)} lesson` : i.kind, i.kind === "Checkpoint" ? "outline" : "ghost"))}
+              {rest.map((i) => button(i, restLabel(i), i.kind === "Checkpoint" ? "outline" : "ghost"))}
             </span>
           </div>
         ) : null}

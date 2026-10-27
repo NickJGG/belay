@@ -33,12 +33,14 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   conversation). Its New issue and Log what you did reach
   the project page's form through `belay/intents.ts`.
 - Home (`/`) is In flight, from the CLI's `inFlight` (`homeFlight` in `data.ts`), then Your courses (`homeCourses`).
-- Course pages: `/courses` (course cards), `/courses/<c>` (Syllabus) and its tabs `{map,lessons,notes,
-  misconceptions,cards,work}` under one layout holding the course header, and the detail pages
-  `/courses/<c>/{knowledge,lessons,sources}/<x>`. Their pieces are in `src/components/course/`; their data is
-  `lib/course-data.ts` over `lib/courses.ts`, which loads the learn skill's `scripts/courses.js` and `cards.js`
-  (formats.md is the contract). The site writes only `work/` (`/api/work`), and a lesson note's Resume conversation
-  (`app/course-actions.ts`) opens `claude --resume` in Windows Terminal.
+- Course pages: `/courses` (course cards), `/courses/<c>` (Overview: Goal, the current unit's journey and next
+  step, a calendar) and its tabs `{syllabus,map,lessons,notes,misconceptions,cards,work}` under one layout holding
+  the course header, and the detail pages `/courses/<c>/{knowledge,lessons,sources}/<x>`. Their pieces are in
+  `src/components/course/`; their data is `lib/course-data.ts` over `lib/courses.ts`, which loads the learn skill's
+  `scripts/courses.js` and `cards.js` (formats.md is the contract). The site never edits course Markdown: it writes
+  `work/` (`/api/work`) and otherwise only runs the learn skill's own write ops (Mark read, `/api/courses/<c>/read`
+  → `courses.js read`). A lesson note's Resume conversation (`app/course-actions.ts`) opens `claude --resume` in
+  Windows Terminal.
 - Lessons: a live lesson's Tab opens `/courses/<c>/now`, its Workspace. Start buttons
   (`course/start-buttons.tsx`) POST `/api/lesson/start`, which queues the routine (`lib/start-queue.ts`) and asks a
   live lesson to restart into it; Follow along (`live/follow.tsx`) follows the lesson's `show`s (`lib/lesson.ts`).
@@ -62,12 +64,12 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - The site runs on port 4747 (`belay serve`), the only site origin the bridge accepts; changing it also needs
   `BELAY_SITE_PORT`.
 - Keep `src/lib/` data modules (`sessions`, `projects`, `issues`, `frontmatter`, `upstream`, `format`, `shell`,
-  `course-art`, `belay-view`, `watch-paths`, `courses`, `course-paths`, `course-home`, `course-nav`, `wiki-target`,
+  `course-art`, `belay-view`, `watch-paths`, `courses`, `calendar`, `course-paths`, `course-home`, `course-nav`, `wiki-target`,
   `work`, `session-log`, `routines`, `lesson`, `start-queue`, `sidebar`) free of `server-only` and `@/` imports: `pnpm test:site` runs them under plain
   `node --test`, which resolves neither. They may import the CLI's `../../../src/*.ts`.
 - Client components take only types from `lib/data`, `lib/belay-view`, `lib/courses`, `lib/course-home` and the CLI's
   `store.ts`, whose runtime pulls in `node:fs`. Values they need live in import-free modules: `lib/hrefs`,
-  `lib/collapsed`, `lib/course-nav`, `lib/routines`, `lib/lesson`, and the CLI's `keys`, `picker` and `time`.
+  `lib/collapsed`, `lib/course-nav`, `lib/calendar`, `lib/routines`, `lib/lesson`, and the CLI's `keys`, `picker` and `time`.
 - Every write goes through a CLI op (via `actions.ts`), and adding one to the app means adding it to the CLI first.
 - `src/proxy.ts` applies belay's host guard (`src/guard.ts`) to every request but `/api/usage`, which checks its own.
 - `src/lib/session-doc.ts`'s `decisions`/`context` mirror `plugin/scripts/session.js`, and a test checks that

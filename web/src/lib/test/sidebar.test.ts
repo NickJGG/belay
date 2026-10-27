@@ -29,7 +29,8 @@ describe("sidebar sections", () => {
   test("a course detail page lights its section", () => {
     assert.deepEqual(lit(sidebarSections({ kind: "reading", course }, "/courses/llm/knowledge/attention")), ["Notes"]);
     assert.deepEqual(lit(sidebarSections({ kind: "reading", course }, "/courses/llm/lessons/one")), ["Lessons"]);
-    assert.deepEqual(lit(sidebarSections({ kind: "reading", course }, "/courses/llm")), ["Syllabus"]);
+    assert.deepEqual(lit(sidebarSections({ kind: "reading", course }, "/courses/llm")), ["Overview"]);
+    assert.deepEqual(lit(sidebarSections({ kind: "reading", course }, "/courses/llm/syllabus")), ["Syllabus"]);
     assert.deepEqual(lit(sidebarSections({ kind: "reading", course, section: "Cards" }, "/courses/llm/x")), ["Cards"]);
   });
 });

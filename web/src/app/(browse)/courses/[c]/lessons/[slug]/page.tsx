@@ -50,7 +50,7 @@ export default async function LessonPage({ params }: Props) {
         facts={[
           ["Date", weekDay(d.date)],
           ["Topic", course.knowledge.has(d.topic) ? <Link href={courseHref(c, `/knowledge/${d.topic}`)}>{d.topic}</Link> : d.topic],
-          ["Unit", d.unit ? <Link href={base}>{`${d.unit.n} · ${d.unit.title}`}</Link> : <None />],
+          ["Unit", d.unit ? <Link href={`${base}/syllabus`}>{`${d.unit.n} · ${d.unit.title}`}</Link> : <None />],
           ["Exercises", exercises ? `${exercises} · ${alone} alone` : <None />],
           ["Claims", claims || <None />],
           ["Open questions", questions || <None />],

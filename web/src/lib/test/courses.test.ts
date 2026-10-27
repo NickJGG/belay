@@ -3,11 +3,12 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync }
 import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
-import { cardData } from "../course-home.ts";
+import { cardData, journeySteps } from "../course-home.ts";
 import { sectionOf } from "../course-nav.ts";
 import {
   citedBy,
   courseDir,
+  getCourse,
   inProgress,
   lessonStats,
   listKnowledge,
@@ -20,6 +21,7 @@ import {
   splitTitle,
   visibleParts,
   type CourseSummary,
+  type Unit,
 } from "../courses.ts";
 import { relativeDue } from "../format.ts";
 import { routineCommand } from "../routines.ts";
@@ -167,7 +169,8 @@ describe("course links", () => {
   });
 
   test("sectionOf lights the tab a page belongs to", () => {
-    assert.deepEqual(sectionOf("/courses/llm"), { course: "llm", section: "Syllabus", detail: false });
+    assert.deepEqual(sectionOf("/courses/llm"), { course: "llm", section: "Overview", detail: false });
+    assert.deepEqual(sectionOf("/courses/llm/syllabus"), { course: "llm", section: "Syllabus", detail: false });
     assert.deepEqual(sectionOf("/courses/llm/cards"), { course: "llm", section: "Cards", detail: false });
     assert.deepEqual(sectionOf("/courses/llm/knowledge/x"), { course: "llm", section: "Notes", detail: true });
     assert.deepEqual(sectionOf("/courses/llm/sources/x"), { course: "llm", section: "Notes", detail: true });
@@ -212,6 +215,7 @@ describe("work/", () => {
 });
 
 describe("course cards", () => {
+  const kinds = (card: ReturnType<typeof cardData>) => [card.lead?.kind, ...card.rest.map((r) => r.kind)];
   const summary = (o: Partial<CourseSummary>): CourseSummary => ({
     course: "llm",
     title: "LLM Architecture",
@@ -225,6 +229,7 @@ describe("course cards", () => {
     next: { topic: "matmul-flops", status: "in-progress", unit: 1 },
     last: null,
     checkpoint: { unit: 1, title: "Maths", result: "pending", left: ["matmul-flops"], due: false },
+    titles: {},
     units: 3,
     created: null,
     hue: 0,
@@ -244,6 +249,54 @@ describe("course cards", () => {
     assert.deepEqual([review.lead?.kind, ...review.rest.map((r) => r.kind)], ["Review", "Lesson"]);
     const cp = cardData(summary({ checkpoint: { unit: 1, title: "Maths", result: "pending", left: [], due: true } }), []);
     assert.equal(cp.lead?.kind, "Checkpoint");
+  });
+
+  test("unread reading leads the lesson, after a checkpoint or a big review", () => {
+    const reading = { source: "ddia-ch2", status: "todo" as const, label: "DDIA ch. 2", sections: ["Replication", "Partitioning"] };
+    const next = { topic: "matmul-flops", status: "todo" as const, unit: 1, reading };
+    const card = cardData(summary({ next, cards: { total: 5, due: 5, overdue: 0, new: 5, nextDue: null } }), []);
+    assert.deepEqual([card.lead?.kind, ...card.rest.map((r) => r.kind)], ["Reading", "Lesson"]);
+    assert.equal(card.lead?.title, "Read DDIA ch. 2");
+    assert.equal(card.lead?.meta, "Replication, Partitioning");
+    assert.equal(card.lead?.source, "ddia-ch2");
+    assert.equal(card.rest[0].meta, "Unit 1 · starts with your 5 due cards");
+    const review = cardData(summary({ next, cards: { total: 30, due: 25, overdue: 0, new: 0, nextDue: null } }), []);
+    assert.deepEqual([review.lead?.kind, ...review.rest.map((r) => r.kind)], ["Review", "Reading", "Lesson"]);
+    const cp = cardData(summary({ next, checkpoint: { unit: 1, title: "Maths", result: "fail", left: [], due: false } }), []);
+    assert.deepEqual([cp.lead?.kind, ...cp.rest.map((r) => r.kind)], ["Checkpoint", "Reading", "Lesson"]);
+  });
+
+  test("a read-after unit's reading comes after its topics, beside the checkpoint", () => {
+    put("ra/course.md", "---\nbuild: accepted\nreading: start\nread-after: [1]\n---\n");
+    const syllabus = (status: string) =>
+      `## Unit 1 · Designs\n- [ ] chat · ${status}\n- [ ] read · ddia-ch5 · todo · DDIA ch. 5 · Leaders and Followers\n- checkpoint 1 · pending\n`;
+    put("ra/syllabus.md", syllabus("todo"));
+    assert.deepEqual(kinds(cardData(getCourse("ra")!, [])), ["Lesson"]);
+    put("ra/syllabus.md", syllabus("done"));
+    const done = cardData(getCourse("ra")!, []);
+    assert.deepEqual(kinds(done), ["Checkpoint", "Reading"]);
+    assert.equal(done.rest[0].title, "Read DDIA ch. 5");
+  });
+
+  test("the journey strip folds a run of reading into one step and lights the next topic", () => {
+    const read = (source: string, status: "todo" | "done") => ({ kind: "read" as const, source, status, label: source, sections: [] });
+    const items: Unit["items"] = [
+      read("a", "done"),
+      read("b", "todo"),
+      { kind: "topic", topic: "chat", status: "in-progress" },
+      { kind: "topic", topic: "feed", status: "todo" },
+      { kind: "checkpoint", result: "pending", date: null, score: null },
+    ];
+    const unit: Unit = { n: 1, title: "Designs", topics: [], checkpoint: null, reading: [], items };
+    const steps = journeySteps({ next: { topic: "chat", status: "in-progress", unit: 1 }, checkpoint: null, titles: { chat: "Designing a chat service" } }, unit);
+    assert.deepEqual(steps, [
+      { kind: "reading", label: "Reading", sub: "1 of 2 read", state: "part" },
+      { kind: "topic", label: "Designing a chat service", sub: "In progress", state: "now" },
+      { kind: "topic", label: "feed", sub: "", state: "todo" },
+      { kind: "checkpoint", label: "Checkpoint 1", sub: "", state: "todo" },
+    ]);
+    const due = { unit: 1, title: "Designs", result: "pending" as const, left: [], due: true };
+    assert.deepEqual(journeySteps({ next: null, checkpoint: due, titles: {} }, unit).map((s) => s.state), ["part", "todo", "todo", "now"]);
   });
 
   test("routines run their /learn command", () => {

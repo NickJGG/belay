@@ -1,5 +1,6 @@
 export const SECTIONS = [
-  { suffix: "", label: "Syllabus" },
+  { suffix: "", label: "Overview" },
+  { suffix: "/syllabus", label: "Syllabus" },
   { suffix: "/map", label: "Map" },
   { suffix: "/lessons", label: "Lessons" },
   { suffix: "/notes", label: "Notes" },
@@ -11,6 +12,7 @@ export const SECTIONS = [
 export type Section = (typeof SECTIONS)[number]["label"];
 
 const BY_SEGMENT: Record<string, Section> = {
+  syllabus: "Syllabus",
   map: "Map",
   lessons: "Lessons",
   notes: "Notes",
@@ -31,7 +33,7 @@ export function sectionOf(
   if (!m) return null;
   const course = decodeURIComponent(m[1]);
   const [, , first, rest] = m;
-  if (!first) return { course, section: "Syllabus", detail: false };
+  if (!first) return { course, section: "Overview", detail: false };
   if (first === "knowledge" || first === "sources") return { course, section: "Notes", detail: !!rest };
   if (first === "lessons" && rest) return { course, section: "Lessons", detail: true };
   if (first === "work") return { course, section: "Work", detail: false };

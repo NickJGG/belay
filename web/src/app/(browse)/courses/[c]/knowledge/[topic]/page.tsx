@@ -39,7 +39,7 @@ export default async function KnowledgePage({ params }: Props) {
       <DetailHead title={d.title} back={{ href: `${base}/notes`, label: "Notes" }} color={courseColor(course)} seed={c} file={d.abs} />
       <Facts
         facts={[
-          ["Unit", d.unit ? <Link href={base}>{`${d.unit.n} · ${d.unit.title}`}</Link> : <None />],
+          ["Unit", d.unit ? <Link href={`${base}/syllabus`}>{`${d.unit.n} · ${d.unit.title}`}</Link> : <None />],
           [
             "Status",
             d.status ? (

@@ -1,7 +1,10 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { execFile } from "node:child_process";
 import { createRequire } from "node:module";
+import { promisify } from "node:util";
+import { forecast } from "./calendar.ts";
 import { PALETTE } from "./course-art.ts";
 import { visibleParts } from "./course-paths.ts";
 
@@ -20,12 +23,34 @@ const load = createRequire(path.join(SCRIPTS, "package.json"));
 export type TopicStatus = "todo" | "in-progress" | "done";
 export type Topic = { topic: string; status: TopicStatus };
 export type CheckpointResult = "pending" | "pass" | "partial" | "fail";
+export type Checkpoint = { result: CheckpointResult; date: string | null; score: number | null };
+/** A unit's `read` line: one source's chapter and the sections to read in it. */
+export type Reading = { source: string; status: "todo" | "done"; label: string; sections: string[] };
+export type UnitItem = ({ kind: "read" } & Reading) | ({ kind: "topic" } & Topic) | ({ kind: "checkpoint" } & Checkpoint);
 export type Unit = {
   n: number;
   title: string;
   topics: Topic[];
-  checkpoint: { result: CheckpointResult; date: string | null; score: number | null } | null;
+  checkpoint: Checkpoint | null;
+  reading: Reading[];
+  /** The unit's block in order: reading, topics and checkpoint as the syllabus lists them. */
+  items: UnitItem[];
 };
+
+/** A log.md entry; `kind` is full, quick, voice, review or checkpoint. */
+export type Session = {
+  date: string;
+  time: string | null;
+  kind: string;
+  topics: string[];
+  quiz: string | null;
+  cardsReviewed: number | null;
+  cardsAdded: number | null;
+  ended: "complete" | "early";
+};
+
+/** A topic's done criteria, as /learn's Close checks them. */
+export type TopicProgress = { applyAlone: boolean; lastQuiz: string | null; quizOk: boolean };
 
 export type Overview = {
   course: string;
@@ -36,7 +61,8 @@ export type Overview = {
   traits: string[];
   cards: { total: number; due: number; overdue: number; new: number; nextDue: string | null };
   topics: { done: number; total: number };
-  next: (Topic & { unit: number }) | null;
+  /** `reading`: the unit's first unread chapter that comes before the topic. */
+  next: (Topic & { unit: number; reading?: Reading }) | null;
   last: { date: string; kind: string } | null;
   checkpoint: {
     unit: number;
@@ -44,7 +70,11 @@ export type Overview = {
     result: CheckpointResult;
     left: string[];
     due: boolean;
+    /** A read-after unit's unread reading, once its topics are done. */
+    reading?: Reading;
   } | null;
+  /** Topic slug → its knowledge note's title, or a tidied slug before it is built. */
+  titles: Record<string, string>;
 };
 
 type Frontmatter = Record<string, string | string[] | Record<string, string | string[]>>;
@@ -54,6 +84,8 @@ type CoursesJs = {
   syllabus: (text: string) => Unit[];
   overview: (course: string, date: string) => Overview;
   all: (date: string) => Overview[];
+  sessions: (dir: string) => Session[];
+  progress: (dir: string, topic: string) => TopicProgress;
 };
 
 type CardsJs = {
@@ -298,6 +330,29 @@ export function listLessons(course: string): LessonEntry[] {
       return { slug, date, topic, title: title ?? topic };
     })
     .reverse();
+}
+
+export function listSessions(course: string): Session[] {
+  const dir = courseDir(course);
+  return dir ? coursesJs.sessions(dir) : [];
+}
+
+export function topicProgress(course: string, topic: string): TopicProgress | null {
+  const dir = courseDir(course);
+  return dir ? coursesJs.progress(dir, topic) : null;
+}
+
+/** Cards falling due per day from today on; overdue cards count as today's. */
+export const cardForecast = (course: string) => forecast(listCards(course).map((c) => c.due), today());
+
+const run = promisify(execFile);
+
+/** Marks a source's reading lines done (todo with `undo`) through the learn skill's own write op. */
+export async function markRead(course: string, source: string, undo = false): Promise<{ source: string; units: number[]; status: string }> {
+  if (!courseDir(course) || !SLUG.test(source)) throw new Error("unknown course or source");
+  const args = [path.join(SCRIPTS, "courses.js"), "read", course, source, ...(undo ? ["--undo"] : [])];
+  const { stdout } = await run(process.execPath, args, { env: { ...process.env, LEARNING_ROOT: root() } });
+  return JSON.parse(stdout);
 }
 
 export type CardRow = {

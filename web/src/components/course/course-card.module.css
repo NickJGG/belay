@@ -230,6 +230,12 @@
   background: color-mix(in srgb, var(--warn) 14%, transparent);
 }
 
+/* Reading happens off the site, so it gets the quiet chip rather than an action's colour. */
+.kindReading {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
 .kindLesson {
   color: var(--ok);
   background: color-mix(in srgb, var(--ok) 14%, transparent);
