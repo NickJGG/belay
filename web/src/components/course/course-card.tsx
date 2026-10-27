@@ -24,9 +24,6 @@ export function action(i: UpNextItem): string {
   return "Start";
 }
 
-/** A secondary button's label, which names what it starts. */
-export const restLabel = (i: UpNextItem) => (i.kind === "Lesson" ? `${action(i)} lesson` : i.kind);
-
 export const KIND_ICON: Record<UpNextKind, LucideIcon> = { Lesson: Play, Reading: BookOpen, Review: Layers, Checkpoint: Flag, Build: Hammer };
 
 /** An Up next item's button: Mark read for reading, otherwise its routine's start. */
@@ -61,101 +58,46 @@ export function UnitBar({ units, className }: { units: (number | null)[]; classN
 }
 
 /**
- * A course card. `full` (/courses): terrain cover, trait chips, unit bar and goal, then an Up next band with its
- * most urgent routine. `home`: faded terrain behind the head, a course-colour bar, and one row with the lead's
- * kind icon, title and button, or the Build nudge when nothing is actionable.
+ * A course card: faded terrain behind the head, trait chips, title, a course-colour bar, and one row with the lead's
+ * kind icon, title and button, or the Build nudge when nothing is actionable. `extras` (/courses) adds the goal's
+ * first clause under the bar, clamped to two lines.
  */
-export function CourseCard({ card, variant = "full" }: { card: CardData; variant?: "full" | "home" }) {
-  const { course: c, units, checkpoint, lead, rest, build } = card;
-  const showCheckpoint = lead?.kind !== "Checkpoint";
-
-  const button = (i: UpNextItem, label: string, variant: ButtonVariant, resume = false) => (
-    <UpNextButton key={i.kind} item={i} label={label} variant={variant} resume={resume} />
-  );
-
-  if (variant === "home") {
-    const next = lead ?? build;
-    const Icon = next ? KIND_ICON[next.kind] : null;
-    return (
-      <div className={cn(styles.card, styles.homeCard)} style={{ "--hue": PALETTE[c.hue] } as React.CSSProperties}>
-        <span className={styles.homeArtFade} aria-hidden>
-          <span className={styles.homeArt}>
-            <CourseTerrain slug={c.course} width={400} height={130} />
-          </span>
-        </span>
-        <Chips traits={c.traits} />
-        <Link href={courseHref(c.course)} className={styles.title}>
-          {c.title}
-        </Link>
-        <UnitBar units={units} className={styles.barHome} />
-        {next && Icon ? (
-          <div className={styles.nextRow}>
-            <Icon className={styles.nextIcon} aria-label={next.kind} />
-            <span className={styles.nextTitle}>
-              {lead ? (
-                lead.title
-              ) : (
-                <>
-                  {next.title} · <code>/learn:build</code>
-                </>
-              )}
-            </span>
-            {lead ? <span className={styles.actions}>{button(lead, action(lead), lead.kind === "Checkpoint" ? "outline" : "default", true)}</span> : null}
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-
+export function CourseCard({ card, extras = false }: { card: CardData; extras?: boolean }) {
+  const { course: c, units, lead, build } = card;
+  const next = lead ?? build;
+  const Icon = next ? KIND_ICON[next.kind] : null;
   return (
-    <div className={styles.card} style={{ "--hue": PALETTE[c.hue] } as React.CSSProperties}>
-      <span className={styles.cover}>
-        <CourseTerrain slug={c.course} width={400} height={96} className={styles.terrain} />
+    <div className={cn(styles.card, styles.homeCard)} style={{ "--hue": PALETTE[c.hue] } as React.CSSProperties}>
+      <span className={styles.homeArtFade} aria-hidden>
+        <span className={styles.homeArt}>
+          <CourseTerrain slug={c.course} width={400} height={130} />
+        </span>
       </span>
       <Chips traits={c.traits} />
       <Link href={courseHref(c.course)} className={styles.title}>
         {c.title}
       </Link>
-      <span className={styles.barRow}>
-        <UnitBar units={units} />
-        <span className={styles.count}>
-          <b>{c.topics.done}</b>/{c.topics.total} topics
-        </span>
-      </span>
-      {c.goal ? <span className={styles.summary}>{goalLead(c.goal)}</span> : null}
-      <div className={styles.foot}>
-        {showCheckpoint ? (
-          <span className={styles.pills}>
-            <span className={cn(styles.pill, checkpoint.due && styles.pillOk)}>
-              <Flag aria-hidden />
-              {checkpoint.text}
-            </span>
+      <UnitBar units={units} className={styles.barHome} />
+      {extras && c.goal ? <span className={cn(styles.summary, styles.goal)}>{goalLead(c.goal)}</span> : null}
+      {next && Icon ? (
+        <div className={styles.nextRow}>
+          <Icon className={styles.nextIcon} aria-label={next.kind} />
+          <span className={styles.nextTitle}>
+            {lead ? (
+              lead.title
+            ) : (
+              <>
+                {next.title} · <code>/learn:build</code>
+              </>
+            )}
           </span>
-        ) : null}
-        {build ? (
-          <span className={styles.nudge}>
-            {build.title} · build it with <code>/learn:build</code>
-          </span>
-        ) : null}
-        {lead ? (
-          <div className={styles.band}>
-            <span className={styles.bandText}>
-              <span>
-                <span className={cn(styles.kind, styles[`kind${lead.kind}`])}>{lead.kind}</span>
-              </span>
-              <span className={styles.bandTitle}>{lead.title}</span>
-              <span className={styles.summary}>{lead.meta}</span>
-            </span>
+          {lead ? (
             <span className={styles.actions}>
-              {button(lead, action(lead), lead.kind === "Checkpoint" ? "outline" : "default", true)}
-              {lead.kind === "Lesson" && lead.due > 0 ? (
-                <StartButton course={lead.course} routine="review" label="Cards only" className={buttonClass("ghost", "sm")} />
-              ) : null}
-              {rest.map((i) => button(i, restLabel(i), i.kind === "Checkpoint" ? "outline" : "ghost"))}
+              <UpNextButton item={lead} label={action(lead)} variant={lead.kind === "Checkpoint" ? "outline" : "default"} resume />
             </span>
-          </div>
-        ) : null}
-      </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

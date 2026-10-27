@@ -1,6 +1,6 @@
 /*
  * --hue is the course colour, set inline from PALETTE. The title link stretches over the card
- * with ::after; the band's buttons sit above it.
+ * with ::after; .actions sits above it.
  */
 .card {
   position: relative;
@@ -25,22 +25,6 @@
 .card:has(.title:focus-visible) {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
-}
-
-.cover {
-  display: block;
-  flex: none;
-  height: 96px;
-  margin: 0 -18px 8px;
-  color: var(--hue);
-  background: color-mix(in srgb, var(--hue) 8%, var(--panel));
-  border-bottom: 1px solid var(--line);
-}
-
-.terrain {
-  display: block;
-  width: 100%;
-  height: 100%;
 }
 
 .chips {
@@ -76,13 +60,6 @@
   content: "";
   position: absolute;
   inset: 0;
-}
-
-.barRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-block: 2px;
 }
 
 .bar {
@@ -125,17 +102,11 @@
   color: var(--muted);
 }
 
-.nudge code {
-  font-family: var(--font-mono);
-  font-size: 0.875em;
-}
-
-.foot {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: auto;
-  padding-top: var(--space-2);
+.goal {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .pills {
@@ -165,22 +136,6 @@
 .pillOk {
   border-color: var(--ok);
   color: var(--ok);
-}
-
-.nudge {
-  font-size: var(--text-xs);
-  color: var(--muted);
-}
-
-.band {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 14px;
-  margin: 6px -18px -16px;
-  padding: 12px 18px 14px;
-  border-top: 1px solid var(--line);
-  background: color-mix(in srgb, var(--hue) 7%, var(--panel));
 }
 
 .bandText {
@@ -242,7 +197,7 @@
 }
 
 /*
- * Home: no cover. The terrain sits behind the head like PageHeader's art; .homeArtFade fades it downward and
+ * The terrain sits behind the head like PageHeader's art; .homeArtFade fades it downward and
  * .homeArt copies page-header.module.css's .art, so keep the two in sync. isolation keeps the art (z-index -1)
  * above the card's background and under the text.
  */

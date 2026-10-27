@@ -17,7 +17,7 @@ export default async function CoursesPage() {
         <ul className={styles.cards}>
           {cards.map((c) => (
             <li key={c.course.course}>
-              <CourseCard card={c} />
+              <CourseCard card={c} extras />
             </li>
           ))}
         </ul>
