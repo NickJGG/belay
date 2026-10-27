@@ -39,7 +39,7 @@
   font-size: var(--text-sm);
 }
 
-/* Home, from the mock's .mg-h1, .mg-meta and .mg-sectitle. The pulse wraps under the date on narrow screens. */
+/* Home, from the mock's .mg-h1 and .mg-meta. The pulse wraps under the date on narrow screens. */
 .homeHead {
   display: flex;
   flex-wrap: wrap;
@@ -75,13 +75,11 @@
   gap: var(--space-3);
 }
 
+/* As the course overview's .goalHeading, less its margin: .section's gap spaces it. */
 .sectionTitle {
   font-family: var(--font-display);
-  font-size: var(--text-sm);
+  font-size: var(--text-lg);
   font-weight: 600;
-  color: var(--muted);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .empty {

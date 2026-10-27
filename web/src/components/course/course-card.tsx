@@ -1,7 +1,10 @@
 import type * as React from "react";
 import Link from "next/link";
-import { BookOpen, Flag, Hammer, Layers, Play, type LucideIcon } from "lucide-react";
+import { BookOpen, Clock, Flag, Hammer, Layers, Play, type LucideIcon } from "lucide-react";
+import { workDay } from "../../../../src/workday.ts";
 import { buttonClass, type ButtonVariant } from "@/components/ui/button";
+import tips from "@/components/ui/tip.module.css";
+import { dayLabel } from "@/lib/belay-view";
 import { PALETTE } from "@/lib/course-art";
 import type { CardData, UpNextItem, UpNextKind } from "@/lib/course-home";
 import { courseHref } from "@/lib/hrefs";
@@ -45,6 +48,35 @@ function Chips({ traits }: { traits: string[] }) {
   );
 }
 
+function Pill({ icon: Icon, tip, className, children }: { icon: LucideIcon; tip: string; className?: string; children: React.ReactNode }) {
+  return (
+    <span className={cn(styles.pill, tips.tipped, className)} tabIndex={0}>
+      <Icon aria-hidden />
+      {children}
+      <span className={tips.tip}>{tip}</span>
+    </span>
+  );
+}
+
+/** Cards due and the last lesson's day, each left out when there's none. */
+function CardPills({ due, lastLesson }: { due: number; lastLesson: string | null }) {
+  if (!due && !lastLesson) return null;
+  return (
+    <span className={cn(styles.pills, styles.cardPills)}>
+      {due > 0 ? (
+        <Pill icon={Layers} tip="Due for review" className={styles.pillHue}>
+          {due} {due === 1 ? "card" : "cards"} due
+        </Pill>
+      ) : null}
+      {lastLesson ? (
+        <Pill icon={Clock} tip="Last lesson">
+          {dayLabel(lastLesson, workDay())}
+        </Pill>
+      ) : null}
+    </span>
+  );
+}
+
 export function UnitBar({ units, className }: { units: (number | null)[]; className?: string }) {
   return (
     <span className={cn(styles.bar, className)} aria-hidden>
@@ -59,8 +91,8 @@ export function UnitBar({ units, className }: { units: (number | null)[]; classN
 
 /**
  * A course card: faded terrain behind the head, trait chips, title, a course-colour bar, and one row with the lead's
- * kind icon, title and button, or the Build nudge when nothing is actionable. `extras` (/courses) adds the goal's
- * first clause under the bar, clamped to two lines.
+ * kind icon, title and button, or the Build nudge when nothing is actionable. Under the bar, pills for cards due and
+ * the last lesson; `extras` (/courses) adds the goal's first clause under them, clamped to two lines.
  */
 export function CourseCard({ card, extras = false }: { card: CardData; extras?: boolean }) {
   const { course: c, units, lead, build } = card;
@@ -78,6 +110,7 @@ export function CourseCard({ card, extras = false }: { card: CardData; extras?: 
         {c.title}
       </Link>
       <UnitBar units={units} className={styles.barHome} />
+      <CardPills due={c.cards.due} lastLesson={card.lastLesson} />
       {extras && c.goal ? <span className={cn(styles.summary, styles.goal)}>{goalLead(c.goal)}</span> : null}
       {next && Icon ? (
         <div className={styles.nextRow}>

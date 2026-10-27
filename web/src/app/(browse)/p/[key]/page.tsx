@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { CreateIssue } from "@/components/belay/create-issue";
 import { Group } from "@/components/belay/group";
 import { IssueRows, keyColumn } from "@/components/belay/issue-rows";
+import { MoreLink } from "@/components/belay/more-link";
 import { StatusIcon, statusName } from "@/components/belay/status-icon";
 import styles from "@/components/belay/belay.module.css";
 import { projectIssues } from "@/lib/data";
@@ -61,9 +62,7 @@ export default async function ProjectIssues({ params, searchParams }: Props) {
             {group("done", board.done, {
               foot:
                 board.olderDone > 0 ? (
-                  <Link className={styles.more} href={href({ older: older ? undefined : "1" })} scroll={false}>
-                    {older ? "Hide older" : `${board.olderDone} older`}
-                  </Link>
+                  <MoreLink href={href({ older: older ? undefined : "1" })}>{older ? "Hide older" : `${board.olderDone} older`}</MoreLink>
                 ) : null,
             })}
             {group("dropped", board.dropped, { defaultOpen: false })}

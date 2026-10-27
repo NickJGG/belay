@@ -437,7 +437,17 @@ export async function projectActivity(key: string, days: number): Promise<{ toda
   const c = belay();
   const today = workDay();
   const from = addDays(today, -(days - 1));
-  return { today, feed: activity(c.projects, c.issues, c.logs(from, today), from, today, key) };
+  return { today, feed: activity(c.projects, c.issues, c.logs(from, today), from, today, { project: key }) };
+}
+
+/** Home's Recent activity: issues moved to done across projects, `days` work days back, with each project's mark. */
+export async function homeActivity(days: number): Promise<{ today: string; feed: ActivityDay[]; marks: Record<string, Mark> }> {
+  await connection();
+  const c = belay();
+  const today = workDay();
+  const from = addDays(today, -(days - 1));
+  const marks = Object.fromEntries(projectsOf(c).map((p) => [p.key, mark(p)]));
+  return { today, feed: activity(c.projects, c.issues, [], from, today, { doneOnly: true }), marks };
 }
 
 const LOG_WINDOW_DAYS = 28;

@@ -4,6 +4,7 @@ import { firstLine, type DatedEntry } from "../../../../../../../src/logs.ts";
 import { logDays } from "../../../../../../../src/ops.ts";
 import { Group } from "@/components/belay/group";
 import { LogComposer } from "@/components/belay/log-composer";
+import { MoreLink } from "@/components/belay/more-link";
 import styles from "@/components/belay/belay.module.css";
 import { belay, projectLogs } from "@/lib/data";
 import { dayLabel, kindTotals } from "@/lib/belay-view";
@@ -69,9 +70,9 @@ export default async function ProjectLogs({ params, searchParams }: Props) {
         );
       })}
       {older > 0 ? (
-        <Link className={styles.more} href={projectHref(key, "/logs?all=1")}>
+        <MoreLink href={projectHref(key, "/logs?all=1")}>
           {older} older {older === 1 ? "entry" : "entries"}
-        </Link>
+        </MoreLink>
       ) : null}
     </>
   );

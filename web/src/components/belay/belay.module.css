@@ -237,14 +237,9 @@
 }
 
 .more {
-  display: inline-block;
-  margin: var(--space-2) var(--space-2) 0;
-  color: var(--muted);
-  font-size: var(--text-xs);
-}
-
-.more:hover {
-  color: var(--text);
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-2);
 }
 
 /* ---- section toolbar: filter pills and + ---- */

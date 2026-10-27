@@ -1,6 +1,6 @@
 import type { GridDay } from "../../../../src/home.ts";
 import { cn } from "@/lib/utils";
-import session from "../session/session.module.css";
+import tips from "@/components/ui/tip.module.css";
 import styles from "./home.module.css";
 
 const LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -33,12 +33,12 @@ export function ActivityGrid({ grid, today }: { grid: GridDay[]; today: string }
           ) : (
             <i
               key={d.day}
-              className={cn(LEVELS[d.level], d.day === today && styles.today, session.tipped)}
+              className={cn(LEVELS[d.level], d.day === today && styles.today, tips.tipped)}
               tabIndex={0}
               role="img"
               aria-label={`${shortDay(d.day)}: ${summary(d)}`}
             >
-              <span className={cn(session.tip, styles.tip)} aria-hidden>
+              <span className={cn(tips.tip, styles.tip)} aria-hidden>
                 <b>{shortDay(d.day)}</b>
                 {summary(d)}
               </span>

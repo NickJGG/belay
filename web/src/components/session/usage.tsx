@@ -4,6 +4,7 @@ import * as React from "react";
 import { subscribeLive } from "@/components/live/event-hub";
 import type { Limit, Usage } from "@/lib/usage";
 import { cn } from "@/lib/utils";
+import tips from "@/components/ui/tip.module.css";
 import styles from "./session.module.css";
 
 /*
@@ -60,13 +61,13 @@ function Pill({ label, pct, reset, tip }: { label: string; pct: number | null; r
   const tone = pct <= 50 ? null : pct <= 75 ? styles.pillWarn : styles.pillBad;
   return (
     <span
-      className={cn(styles.pill, tone, tip && styles.tipped)}
+      className={cn(styles.pill, tone, tip && tips.tipped)}
       style={{ "--pct": `${Math.min(pct, 100)}%` } as React.CSSProperties}
       tabIndex={tip ? 0 : undefined}
     >
       {label} <b>{Math.round(pct)}%</b>
       {reset ? <small>{reset}</small> : null}
-      {tip ? <span className={styles.tip}>{tip}</span> : null}
+      {tip ? <span className={tips.tip}>{tip}</span> : null}
     </span>
   );
 }
@@ -241,14 +242,14 @@ function Ring({
   children?: React.ReactNode;
 }) {
   return (
-    <span className={cn(styles.ringWrap, styles.tipped, wrapClassName)} tabIndex={tip ? 0 : undefined} role="img" aria-label={label}>
+    <span className={cn(styles.ringWrap, tips.tipped, wrapClassName)} tabIndex={tip ? 0 : undefined} role="img" aria-label={label}>
       <span
         className={cn(styles.ring, className)}
         style={(pct == null ? vars : { "--pct": `${pct}%`, ...vars }) as React.CSSProperties}
       />
       {children}
       {tip ? (
-        <span className={styles.tip} aria-hidden>
+        <span className={tips.tip} aria-hidden>
           {tip}
         </span>
       ) : null}

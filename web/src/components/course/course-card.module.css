@@ -133,6 +133,18 @@
   flex: none;
 }
 
+/* Above the title's stretched link, so each pill's tip shows on hover. */
+.cardPills {
+  position: relative;
+  z-index: 1;
+  margin-top: 6px;
+}
+
+.pillHue {
+  border-color: var(--hue);
+  color: var(--hue);
+}
+
 .pillOk {
   border-color: var(--ok);
   color: var(--ok);

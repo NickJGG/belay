@@ -33,6 +33,8 @@ export type CardData = {
   build: UpNextItem | null;
   /** The lead's index in ORDER; lower is more urgent. */
   urgency: number;
+  /** The newest lesson's date; null for a course never studied. */
+  lastLesson: string | null;
 };
 
 /** More due cards than a lesson's opening review takes. */
@@ -88,8 +90,8 @@ function upNext(c: CourseSummary): UpNextItem[] {
   return items;
 }
 
-/** `units` is the course's `unitFractions`, passed in so this stays free of file reads. */
-export function cardData(c: CourseSummary, units: (number | null)[] = unitFractions(c)): CardData {
+/** `units` is the course's `unitFractions` and `lastLesson` its newest lesson's date, passed in so this stays free of file reads. */
+export function cardData(c: CourseSummary, units: (number | null)[] = unitFractions(c), lastLesson: string | null = null): CardData {
   const items = upNext(c);
   const routines = items.filter((i) => i.kind !== "Build");
   const lead = routines[0] ?? null;
@@ -101,14 +103,15 @@ export function cardData(c: CourseSummary, units: (number | null)[] = unitFracti
     rest: routines.slice(1),
     build: items.find((i) => i.kind === "Build") ?? null,
     urgency: lead ? ORDER.indexOf(lead.kind) : ORDER.length,
+    lastLesson,
   };
 }
 
 /** Cards most urgent first, most recently studied first within the same urgency. */
-export function byUrgency(courses: CourseSummary[]): CardData[] {
+export function byUrgency(courses: CourseSummary[], lastLesson: (course: string) => string | null = () => null): CardData[] {
   return [...courses]
     .sort((a, b) => (b.last?.date ?? "").localeCompare(a.last?.date ?? ""))
-    .map((c) => cardData(c))
+    .map((c) => cardData(c, unitFractions(c), lastLesson(c.course)))
     .sort((a, b) => a.urgency - b.urgency);
 }
 

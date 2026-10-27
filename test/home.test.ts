@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import type { GrillSession } from '../src/grill.ts';
 import { activity, activityGrid, doingSince, IDLE_DAYS, inFlight, lastTouch } from '../src/home.ts';
 import type { DatedEntry } from '../src/logs.ts';
-import type { Issue, Project } from '../src/store.ts';
+import type { Issue, IssueStatus, Project } from '../src/store.ts';
 
 const project = (key: string, over: Partial<Project> = {}): Project => ({ key, name: key, paths: [], status: 'active', focus: false, body: '', ...over });
 
@@ -116,11 +116,29 @@ test('activity: scoped to one project, archived or not', () => {
   const moved = (id: string) => issue(id, { status: 'done', transitions: [{ at: '2026-10-05T10:00', from: 'doing', to: 'done', by: 'user' }] });
   const logs = [entry('2026-10-05'), entry('2026-10-06', { project: 'OLD' })];
   const events = (key: string) =>
-    activity(projects, [moved('BEL-1'), moved('OLD-1')], logs, '2026-10-05', TODAY, key)
+    activity(projects, [moved('BEL-1'), moved('OLD-1')], logs, '2026-10-05', TODAY, { project: key })
       .flatMap((d) => ('day' in d ? d.events : []))
       .map((e) => (e.type === 'log' ? `log ${e.entry.project}` : e.issue.id));
   assert.deepEqual(events('BEL'), ['log BEL', 'BEL-1']);
   assert.deepEqual(events('OLD'), ['log OLD', 'OLD-1']);
+});
+
+test('activity: doneOnly keeps moves to done, drops log entries, and merges the emptied days into gaps', () => {
+  const projects = [project('BEL'), project('OLD', { status: 'archived' })];
+  const moves = (id: string, ...steps: [string, IssueStatus, IssueStatus][]) =>
+    issue(id, { transitions: steps.map(([at, from, to]) => ({ at, from, to, by: 'user' as const })) });
+  const issues = [
+    moves('BEL-1', ['2026-10-02T10:00', 'todo', 'doing'], ['2026-10-03T10:00', 'doing', 'done'], ['2026-10-05T10:00', 'done', 'doing']),
+    moves('BEL-2', ['2026-10-04T10:00', 'todo', 'doing']),
+    moves('BEL-3', ['2026-10-06T09:00', 'doing', 'dropped']),
+    moves('OLD-1', ['2026-10-04T10:00', 'doing', 'done']),
+  ];
+  const logs = [entry('2026-10-04'), entry('2026-10-05')];
+  const days = activity(projects, issues, logs, '2026-10-01', TODAY, { doneOnly: true });
+  assert.deepEqual(
+    days.map((d) => ('gap' in d ? `${d.gap.from}..${d.gap.to}` : `${d.day} ${d.events.map((e) => (e.type === 'transition' ? `${e.issue.id} ${e.to}` : 'log')).join()}`)),
+    ['2026-10-04..2026-10-06', '2026-10-03 BEL-1 done', '2026-10-01..2026-10-02'],
+  );
 });
 
 const doneAt = (id: string, at: string, over: Partial<Issue> = {}) =>

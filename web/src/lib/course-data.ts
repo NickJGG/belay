@@ -58,14 +58,16 @@ export const courseProgress = cache(async (c: string, topic: string) => topicPro
 /** Cards falling due per day, overdue ones counted on today. */
 export const courseForecast = cache(async (c: string) => cardForecast(c));
 
+const lastLesson = (course: string) => listLessons(course)[0]?.date ?? null;
+
 /** The Courses page: every course's card, most urgent first. */
 export async function courseCards(): Promise<CardData[]> {
-  return byUrgency(await courseList());
+  return byUrgency(await courseList(), lastLesson);
 }
 
 /** Home's Your courses: the cards of courses still being learned. */
 export async function homeCourses(): Promise<CardData[]> {
-  return byUrgency((await courseList()).filter(inProgress));
+  return byUrgency((await courseList()).filter(inProgress), lastLesson);
 }
 
 export type CourseHit = { course: string; title: string; color: string };

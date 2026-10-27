@@ -69,9 +69,17 @@ const ACTIVITY_STATUSES: readonly IssueStatus[] = ['doing', 'done', 'dropped'];
  * Activity: work days `from`..`to`, newest first, each with its log entries and its issues' moves to
  * doing/done/dropped, newest first. An issue shows once, at its latest such move in the window. A run of
  * consecutive days with nothing collapses into one gap. Archived projects are left out, unless `project`
- * scopes it to one project, archived or not.
+ * scopes it to one project, archived or not. `doneOnly` keeps just each issue's latest move to done, without log
+ * entries (Home's Recent activity).
  */
-export function activity(projects: Project[], issues: Issue[], logs: DatedEntry[], from: string, to: string, project?: string): ActivityDay[] {
+export function activity(
+  projects: Project[],
+  issues: Issue[],
+  logs: DatedEntry[],
+  from: string,
+  to: string,
+  { project, doneOnly = false }: { project?: string; doneOnly?: boolean } = {},
+): ActivityDay[] {
   const archived = new Set(projects.filter((p) => p.status === 'archived').map((p) => p.key));
   const skip = (key: string) => (project ? key !== project : archived.has(key));
   const byDay = new Map<string, ActivityEvent[]>();
@@ -81,12 +89,13 @@ export function activity(projects: Project[], issues: Issue[], logs: DatedEntry[
     if (list) list.push(e);
     else byDay.set(day, [e]);
   };
+  const statuses: readonly IssueStatus[] = doneOnly ? ['done'] : ACTIVITY_STATUSES;
   for (const issue of issues) {
     if (skip(issue.project)) continue;
-    const t = issue.transitions?.findLast((x) => x.from && ACTIVITY_STATUSES.includes(x.to) && workDayOf(x.at) >= from && workDayOf(x.at) <= to);
+    const t = issue.transitions?.findLast((x) => x.from && statuses.includes(x.to) && workDayOf(x.at) >= from && workDayOf(x.at) <= to);
     if (t) add(workDayOf(t.at), { type: 'transition', at: t.at, issue, to: t.to });
   }
-  for (const entry of logs) {
+  for (const entry of doneOnly ? [] : logs) {
     if (!skip(entry.project)) add(entry.day, { type: 'log', at: entry.at, entry });
   }
 
