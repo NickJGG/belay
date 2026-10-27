@@ -115,6 +115,13 @@ export function byUrgency(courses: CourseSummary[], lastLesson: (course: string)
     .sort((a, b) => a.urgency - b.urgency);
 }
 
+export const HOME_COURSES = 3;
+
+/** Home's first `HOME_COURSES` cards; `more` when any were cut. */
+export function homeSlice(cards: CardData[]): { cards: CardData[]; more: boolean } {
+  return { cards: cards.slice(0, HOME_COURSES), more: cards.length > HOME_COURSES };
+}
+
 export type JourneyStep = {
   kind: "reading" | "topic" | "checkpoint";
   label: string;

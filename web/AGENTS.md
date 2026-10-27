@@ -34,7 +34,7 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   the project page's form through `belay/intents.ts`.
 - Home (`/`) is a header with the 5h/7d usage rings (seeded by `homePulse` in `data.ts`, then the hub's account-wide
   `limits` events) and the CLI's two-week `activityGrid`, then In flight, from the CLI's `inFlight` (`homeFlight`),
-  then Your courses (`homeCourses`), then Recent activity: the CLI's `activity` with `doneOnly`, across projects
+  then Your courses (`homeCourses`: the 3 most urgent, See all to /courses), then Recent activity: the CLI's `activity` with `doneOnly`, across projects
   (`homeActivity`, `?days=` as a project's Activity).
 - Course pages: `/courses` (course cards), `/courses/<c>` (Overview: Goal, the current unit's journey and next
   step, a calendar) and its tabs `{syllabus,map,lessons,notes,misconceptions,cards,work}` under one layout holding

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync }
 import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
-import { cardData, journeySteps } from "../course-home.ts";
+import { cardData, homeSlice, journeySteps } from "../course-home.ts";
 import { sectionOf } from "../course-nav.ts";
 import {
   citedBy,
@@ -266,6 +266,17 @@ describe("course cards", () => {
     assert.deepEqual([review.lead?.kind, ...review.rest.map((r) => r.kind)], ["Review", "Reading", "Lesson"]);
     const cp = cardData(summary({ next, checkpoint: { unit: 1, title: "Maths", result: "fail", left: [], due: false } }), []);
     assert.deepEqual([cp.lead?.kind, ...cp.rest.map((r) => r.kind)], ["Checkpoint", "Reading", "Lesson"]);
+  });
+
+  test("Home keeps the first 3 cards in order, with more only when some are cut", () => {
+    const cards = ["a", "b", "c", "d"].map((course) => cardData(summary({ course }), []));
+    const courses = (n: number) => {
+      const s = homeSlice(cards.slice(0, n));
+      return { courses: s.cards.map((c) => c.course.course), more: s.more };
+    };
+    assert.deepEqual(courses(2), { courses: ["a", "b"], more: false });
+    assert.deepEqual(courses(3), { courses: ["a", "b", "c"], more: false });
+    assert.deepEqual(courses(4), { courses: ["a", "b", "c"], more: true });
   });
 
   test("a read-after unit's reading comes after its topics, beside the checkpoint", () => {

@@ -1,7 +1,7 @@
 import "server-only";
 import { connection } from "next/server";
 import { cache } from "react";
-import { byUrgency, type CardData } from "./course-home";
+import { byUrgency, homeSlice, type CardData } from "./course-home";
 import {
   cardForecast,
   citedBy,
@@ -65,9 +65,9 @@ export async function courseCards(): Promise<CardData[]> {
   return byUrgency(await courseList(), lastLesson);
 }
 
-/** Home's Your courses: the cards of courses still being learned. */
-export async function homeCourses(): Promise<CardData[]> {
-  return byUrgency((await courseList()).filter(inProgress), lastLesson);
+/** Home's Your courses: the 3 most urgent cards of courses still being learned; `more` when others are hidden. */
+export async function homeCourses(): Promise<{ cards: CardData[]; more: boolean }> {
+  return homeSlice(byUrgency((await courseList()).filter(inProgress), lastLesson));
 }
 
 export type CourseHit = { course: string; title: string; color: string };

@@ -1,9 +1,12 @@
+import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { Activity } from "@/components/belay/activity";
 import { InFlight } from "@/components/belay/in-flight";
 import { CourseCard } from "@/components/course/course-card";
 import course from "@/components/course/course.module.css";
 import { ActivityGrid } from "@/components/home/activity-grid";
 import { UsageRings } from "@/components/session/usage";
+import { buttonClass } from "@/components/ui/button";
 import { homeCourses } from "@/lib/course-data";
 import { WEEK, windowDays } from "@/lib/belay-view";
 import { homeActivity, homeFlight, homePulse } from "@/lib/data";
@@ -19,8 +22,8 @@ function longDay(day: string) {
 
 /**
  * Home: one column. A header with the usage rings and activity grid beside the date, then In flight, Your courses
- * (each course's card with its Up next band), and Recent activity: issues done across projects, a week more per
- * Show earlier.
+ * (the 3 most urgent courses' cards with their Up next bands, See all to /courses when others are hidden), and Recent
+ * activity: issues done across projects, a week more per Show earlier.
  */
 export default async function HomePage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
   const days = windowDays((await searchParams).days);
@@ -41,11 +44,18 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <h2 className={styles.sectionTitle}>In flight</h2>
         <InFlight {...flight} />
       </section>
-      {courses.length ? (
+      {courses.cards.length ? (
         <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Your courses</h2>
+          <div className={styles.sectionHead}>
+            <h2 className={styles.sectionTitle}>Your courses</h2>
+            {courses.more ? (
+              <Link href="/courses" className={buttonClass("ghost", "sm")}>
+                See all <ChevronRight aria-hidden />
+              </Link>
+            ) : null}
+          </div>
           <ul className={course.cards}>
-            {courses.map((c) => (
+            {courses.cards.map((c) => (
               <li key={c.course.course}>
                 <CourseCard card={c} />
               </li>
