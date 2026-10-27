@@ -126,7 +126,7 @@ function repoDirs(path: string): string[] {
 }
 
 /** Commits under the project's paths, on any local branch, committed between `since` and `until`. */
-export function commitsBetween(project: Project, since: string, until: string): Commit[] {
+function commitsBetween(project: Project, since: string, until: string): Commit[] {
   const byHash = new Map<string, Commit>();
   for (const dir of project.paths.flatMap(repoDirs)) {
     const log = git(dir, ['log', '--branches', 'HEAD', `--since=${since}`, `--until=${until}`, '--format=%h%x09%cI%x09%s', '--', '.']);

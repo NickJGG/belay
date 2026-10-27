@@ -15,7 +15,7 @@ export const PROJECT_STATUSES = ['active', 'paused', 'archived'] as const;
 export const SOURCES = ['user', 'claude'] as const;
 
 export type IssueStatus = (typeof ISSUE_STATUSES)[number];
-export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
+type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 export type Source = (typeof SOURCES)[number];
 
 export interface Project {
@@ -62,7 +62,7 @@ export interface Issue {
   body: string;
 }
 
-export interface Transition {
+interface Transition {
   at: string;
   /** Absent on the creation record. */
   from?: IssueStatus;
@@ -75,7 +75,7 @@ export interface Transition {
 /** A project colour as stored: `#rgb` or `#rrggbb`. */
 export const COLOR_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 
-export const KEY_RE = /^[A-Z]{3,4}$/;
+const KEY_RE = /^[A-Z]{3,4}$/;
 /** Keys from before the 3–4 letter rule (`PZ-ELEVATORS`) still load and save, so `project rekey` can migrate them. */
 const STORED_KEY_RE = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$/;
 const ID_RE = /^([a-z][a-z0-9-]*)-(\d+)$/i;
@@ -144,7 +144,7 @@ function joinFrontmatter(data: Data, body: string): string {
 
 // --- validation ---
 
-export function text(d: Data, k: string, where: string): string {
+function text(d: Data, k: string, where: string): string {
   const v = d[k];
   if ((typeof v === 'string' && v.trim()) || typeof v === 'number') return String(v);
   throw new Error(`${where}: '${k}' must be a non-empty string`);
@@ -160,7 +160,7 @@ export function oneOf<T extends string>(d: Data, k: string, allowed: readonly T[
   throw new Error(`${where}: '${k}' must be one of ${allowed.join('|')} (got ${JSON.stringify(d[k])})`);
 }
 
-export function textList(d: Data, k: string, where: string): string[] {
+function textList(d: Data, k: string, where: string): string[] {
   const v = d[k] ?? [];
   if (Array.isArray(v) && v.every((x) => typeof x === 'string')) return v;
   throw new Error(`${where}: '${k}' must be a list of strings`);

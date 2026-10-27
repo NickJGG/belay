@@ -18,7 +18,7 @@ export type Opt = {
   patch?: Patch;
 };
 
-export type QuestionMock = {
+type QuestionMock = {
   controls?: string[];
   starts?: Record<string, unknown>;
   fixed?: Record<string, unknown>;
@@ -40,7 +40,7 @@ export type Question = {
   mock?: QuestionMock | null;
 };
 
-export type MockSettings = {
+type MockSettings = {
   page: "existing" | "new";
   floor: number;
   screen: "shell" | "page";
@@ -69,7 +69,7 @@ export type View = { kind: "today" } | { kind: "current" } | { kind: "q"; n: num
 /** The option shown for a question; `BEFORE` is the question's region without its own patch. */
 export const BEFORE = "before";
 
-export const picked = (q: Question) => q.status === "resolved" && q.pick != null;
+const picked = (q: Question) => q.status === "resolved" && q.pick != null;
 const patchOf = (q: Question | undefined, key: string) => q?.opts?.find((o) => o.key === key)?.patch ?? {};
 
 /** Decision values for a view; for a question, `opt` is the option shown (`BEFORE` for none). */
@@ -85,7 +85,7 @@ export function decisions(doc: SessionDoc, base: Patch, view: View, opt: string 
   return d;
 }
 
-export type Control = { label: string; items: [unknown, string][]; def: unknown };
+type Control = { label: string; items: [unknown, string][]; def: unknown };
 export type Controls = Record<string, Control>;
 
 /** Control values: defaults, the question's starts, the user's choices, then its fixed context. */
@@ -116,7 +116,7 @@ export function defaultOpt(q: Question): string {
 }
 
 /** The root a variant (an option with `from`) iterates on; an option without `from` is its own root. */
-export function rootOf(q: Question, key: string): string {
+function rootOf(q: Question, key: string): string {
   const byKey = new Map(q.opts?.map((o) => [o.key, o]));
   let r = key;
   for (let i = 0; i < 20; i++) {

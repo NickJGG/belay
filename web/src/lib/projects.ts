@@ -22,7 +22,7 @@ export type Project = {
 };
 
 /** Where a repo's own favicon usually lives, in the order they're tried. */
-export const ICON_CANDIDATES = [
+const ICON_CANDIDATES = [
   "src/app/icon.svg",
   "app/icon.svg",
   "public/favicon.svg",
@@ -71,7 +71,7 @@ export function projectTerms(p: Project): string[] {
 }
 
 /** True when the slug or topic has a word starting with `term`. */
-export function sessionMentions(s: SessionSummary, term: string): boolean {
+function sessionMentions(s: SessionSummary, term: string): boolean {
   return new RegExp(`(^|[^a-z0-9])${term}`).test(`${s.slug} ${s.topic}`.toLowerCase());
 }
 

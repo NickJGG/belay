@@ -11,7 +11,7 @@ export function clip(text: string, max: number): string {
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** The project's grill sessions that no issue links to yet. */
-export function unlinkedGrill(project: Project, issues: Issue[], grill: GrillSession[]) {
+function unlinkedGrill(project: Project, issues: Issue[], grill: GrillSession[]) {
   const linked = new Set(issues.map((t) => t.grill));
   return grillForProject(grill.filter((g) => !linked.has(g.slug)), project);
 }

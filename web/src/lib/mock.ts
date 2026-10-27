@@ -42,20 +42,11 @@ export function renderBody(spec: Spec, d: Patch, ctx: Record<string, unknown>): 
   }
 }
 
-export function routeLabel(spec: Spec, d: Patch, ctx: Record<string, unknown>): string {
-  if (!spec.route) return "";
-  try {
-    return String(spec.route(d, ctx));
-  } catch {
-    return "";
-  }
-}
-
 const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 const attr = (t: string) => esc(t).replace(/"/g, "&quot;");
 
 /* Injected before the app's CSS so the app can override it. .pv-undecided is drawn inside mocks, so the stage provides it. */
-export const FRAME_CSS = `html, body { margin: 0; } html { background: var(--paper, Canvas); color-scheme: light; } :root[data-theme="dark"] { color-scheme: dark; }
+const FRAME_CSS = `html, body { margin: 0; } html { background: var(--paper, Canvas); color-scheme: light; } :root[data-theme="dark"] { color-scheme: dark; }
 .pv-undecided { display: grid; place-items: center; min-height: 80px; border: 2px dashed var(--faint, #9a948a); border-radius: 10px; background: var(--wash, #f2f0ea); color: var(--muted, #6b665c); font: 600 13px system-ui, -apple-system, "Segoe UI", sans-serif; }
 html[data-belay-comment], html[data-belay-comment] * { cursor: crosshair !important; }
 [data-belay-hover] { outline: 2px dashed oklch(0.72 0.17 45) !important; outline-offset: 2px; }

@@ -39,12 +39,12 @@ export function hasHistory(dir: string): boolean {
 const pathspecs = (dir: string, paths: string[]) => paths.map((p) => (p.startsWith(':') ? p : relative(dir, p).replaceAll('\\', '/')));
 
 /** Whether git sees any change under `paths` (see `pathspecs`), untracked files included. */
-export function hasChanges(dir: string, paths: string[]): boolean {
+function hasChanges(dir: string, paths: string[]): boolean {
   return !!git(dir, ['status', '--porcelain', '--', ...pathspecs(dir, paths)])?.trim();
 }
 
 /** Commits `paths` alone, whatever else is staged or untracked. Throws with git's first line. */
-export function commitPathsOrThrow(dir: string, paths: string[], subject: string, body?: string): void {
+function commitPathsOrThrow(dir: string, paths: string[], subject: string, body?: string): void {
   const specs = pathspecs(dir, paths);
   gitOrThrow(dir, ['add', '-A', '--', ...specs]);
   gitOrThrow(dir, ['commit', '-q', '-m', subject, ...(body ? ['-m', body] : []), '--', ...specs]);

@@ -16,7 +16,7 @@ const SKIP = new Set(['node_modules', '.next', 'next-env.d.ts']);
 const skipped = (name: string) => SKIP.has(name) || name.endsWith('.tsbuildinfo') || name.endsWith('.stackdump');
 
 /** Newest file mtime under `dir`, in ms; 0 if there are no files. */
-export function newestMtime(dir: string): number {
+function newestMtime(dir: string): number {
   let newest = 0;
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     if (skipped(e.name)) continue;

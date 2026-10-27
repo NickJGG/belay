@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runDir } from './config.ts';
 
-export const CHANNEL = 'plugin:belay@belay';
+const CHANNEL = 'plugin:belay@belay';
 // Tools these sessions never use, kept out of every call's context. The flag is variadic, so the channel flag
 // after it ends the list before a user's prompt can be read as a tool name.
 // A bare `mcp__<server>` rule covers every tool on that server.

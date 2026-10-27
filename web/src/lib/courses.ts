@@ -21,12 +21,12 @@ const SCRIPTS = path.join(os.homedir(), ".claude", "skills", "learn", "scripts")
 const load = createRequire(path.join(SCRIPTS, "package.json"));
 
 export type TopicStatus = "todo" | "in-progress" | "done";
-export type Topic = { topic: string; status: TopicStatus };
-export type CheckpointResult = "pending" | "pass" | "partial" | "fail";
-export type Checkpoint = { result: CheckpointResult; date: string | null; score: number | null };
+type Topic = { topic: string; status: TopicStatus };
+type CheckpointResult = "pending" | "pass" | "partial" | "fail";
+type Checkpoint = { result: CheckpointResult; date: string | null; score: number | null };
 /** A unit's `read` line: one source's chapter and the sections to read in it. */
-export type Reading = { source: string; status: "todo" | "done"; label: string; sections: string[] };
-export type UnitItem = ({ kind: "read" } & Reading) | ({ kind: "topic" } & Topic) | ({ kind: "checkpoint" } & Checkpoint);
+type Reading = { source: string; status: "todo" | "done"; label: string; sections: string[] };
+type UnitItem = ({ kind: "read" } & Reading) | ({ kind: "topic" } & Topic) | ({ kind: "checkpoint" } & Checkpoint);
 export type Unit = {
   n: number;
   title: string;
@@ -38,7 +38,7 @@ export type Unit = {
 };
 
 /** A log.md entry; `kind` is full, quick, voice, review or checkpoint. */
-export type Session = {
+type Session = {
   date: string;
   time: string | null;
   kind: string;
@@ -50,7 +50,7 @@ export type Session = {
 };
 
 /** A topic's done criteria, as /learn's Close checks them. */
-export type TopicProgress = { applyAlone: boolean; lastQuiz: string | null; quizOk: boolean };
+type TopicProgress = { applyAlone: boolean; lastQuiz: string | null; quizOk: boolean };
 
 export type Overview = {
   course: string;
@@ -154,7 +154,7 @@ function listMarkdown(course: string, dir: string): string[] {
     .sort();
 }
 
-export function stripFrontmatter(text: string): string {
+function stripFrontmatter(text: string): string {
   return text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
 }
 
@@ -257,7 +257,7 @@ export function getCourse(course: string): Course | null {
   };
 }
 
-export function readSyllabus(course: string): Unit[] {
+function readSyllabus(course: string): Unit[] {
   return coursesJs.syllabus(readCourseFile(course, "syllabus.md") ?? "");
 }
 

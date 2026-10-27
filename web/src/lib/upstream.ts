@@ -22,7 +22,7 @@ export function readBridgeFile(sessionDir: string): BridgeFile | null {
   }
 }
 
-export function pidAlive(pid: number): boolean {
+function pidAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
@@ -114,7 +114,7 @@ export function connectUpstream(
       set({ up: false, working: false });
       settle();
       if (!closed) timer = setTimeout(connect, RETRY_MS);
-      timer?.unref?.();
+      timer?.unref();
     };
     let buffer = "";
     req = http.get(

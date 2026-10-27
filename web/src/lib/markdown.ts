@@ -140,7 +140,7 @@ function restoreObsidian(tokens: Token[], ctx: MarkdownContext) {
     // A block id on a list item's only paragraph belongs to the item, so the anchor spans it.
     visit(tree, "listItem", (item) => {
       const p = item.children[0];
-      const id = p?.type === "paragraph" ? (p.data?.hProperties?.id as string | undefined) : undefined;
+      const id = p?.type === "paragraph" ? (p.data?.hProperties?.id) : undefined;
       if (!id || item.children.length !== 1) return;
       delete p.data!.hProperties!.id;
       (item.data ??= {}).hProperties = { ...item.data.hProperties, id };

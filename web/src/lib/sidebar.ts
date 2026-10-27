@@ -5,7 +5,7 @@ import { courseHref, projectHref, UNFILED } from "./hrefs.ts";
 import type { PageKind } from "./shell.ts";
 
 /** A project's sections. Unfiled has only Grills. */
-export const PROJECT_SECTIONS = [
+const PROJECT_SECTIONS = [
   { label: "Issues", suffix: "" },
   { label: "Grills", suffix: "/grills" },
   { label: "Activity", suffix: "/activity" },

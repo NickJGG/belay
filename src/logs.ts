@@ -25,7 +25,7 @@ export interface LogEntry {
 /** An entry with the work day it belongs to and its 1-based position in that day's file. */
 export type DatedEntry = LogEntry & { day: string; n: number };
 
-export function logDir(dir: string): string {
+function logDir(dir: string): string {
   return join(dir, 'log');
 }
 

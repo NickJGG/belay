@@ -58,7 +58,7 @@ export function listWork(course: string): WorkEntry[] {
   return out;
 }
 
-export type WorkFile =
+type WorkFile =
   | { kind: "text"; text: string; mtime: number; abs: string }
   | { kind: "binary" | "large"; abs: string };
 

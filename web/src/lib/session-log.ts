@@ -22,7 +22,7 @@ import type { Routine } from "./routines.ts";
  * Unknown record and block types are skipped, never thrown.
  */
 
-export type Surface = "site" | "terminal";
+type Surface = "site" | "terminal";
 
 export type ChatItem =
   | {
@@ -39,9 +39,9 @@ export type ChatItem =
   | { kind: "board"; id: string; course: string; at: string }
   | { kind: "show"; id: string; at: string; course: string; target: FocusTarget; label: string; href: string };
 
-export type FocusTarget = "claim" | "whiteboard" | "work" | "source";
+type FocusTarget = "claim" | "whiteboard" | "work" | "source";
 /** What Claude is pointing at; `id` is the item that set it. */
-export type Focus = { id: string; target: FocusTarget; course: string; href: string; label: string };
+type Focus = { id: string; target: FocusTarget; course: string; href: string; label: string };
 
 export type SessionState = {
   sessionId: string;
@@ -411,8 +411,6 @@ function toolLabel(name: string, input: Record<string, unknown>, rel?: string): 
   return mcp ? `Used ${mcp[2]} (${mcp[1]})` : `Used ${name}`;
 }
 
-// --- files -------------------------------------------------------------------
-
 const PROJECTS = path.join(os.homedir(), ".claude", "projects");
 const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -420,7 +418,7 @@ const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const slugDir = (cwd: string) => path.join(PROJECTS, cwd.replace(/[^a-zA-Z0-9]/g, "-"));
 
 /** Where lesson sessions log: `belay learn` launches them from the Learning root. */
-export const liveLogDir = () => slugDir(root());
+const liveLogDir = () => slugDir(root());
 
 /**
  * Log folders whose sessions may be learn sessions: the Learning root's (every session), and the
@@ -437,86 +435,11 @@ const g = globalThis as typeof globalThis & {
   __lessonLogIndex?: Map<string, { size: number; mtime: number; summary: SessionState | null }>;
 };
 const cache = (g.__lessonLogs ??= new Map());
-const MAX_CACHED = 4;
-
-function findFile(sessionId: string): string | null {
-  if (!SESSION_ID.test(sessionId)) return null;
-  for (const { dir } of sources()) {
-    const file = path.join(dir, `${sessionId}.jsonl`);
-    if (fs.existsSync(file)) return file;
-  }
-  return null;
-}
-
-/** Parses `file` from where the last read stopped; a partial last line waits for the next read. */
-function load(file: string, sessionId: string): SessionParser | null {
-  let stat: fs.Stats;
-  try {
-    stat = fs.statSync(file);
-  } catch {
-    return null;
-  }
-  let hit = cache.get(file);
-  if (!hit || stat.size < hit.offset) {
-    hit = { size: 0, offset: 0, mtime: 0, parser: new SessionParser(sessionId), used: 0 };
-    cache.set(file, hit);
-  }
-  hit.used = Date.now();
-  if (stat.size > hit.offset) {
-    const fd = fs.openSync(file, "r");
-    try {
-      const buf = Buffer.alloc(stat.size - hit.offset);
-      fs.readSync(fd, buf, 0, buf.length, hit.offset);
-      const end = buf.lastIndexOf(0x0a);
-      if (end >= 0) {
-        for (const line of buf.subarray(0, end).toString("utf8").split("\n")) {
-          if (line.trim()) hit.parser.push(line);
-        }
-        hit.offset += end + 1;
-      }
-    } finally {
-      fs.closeSync(fd);
-    }
-  }
-  hit.size = stat.size;
-  hit.mtime = stat.mtimeMs;
-  if (cache.size > MAX_CACHED) {
-    const oldest = [...cache.entries()].sort((a, b) => a[1].used - b[1].used)[0];
-    if (oldest[0] !== file) cache.delete(oldest[0]);
-  }
-  return hit.parser;
-}
 
 export type SessionPage = { state: SessionState; items: ChatItem[]; total: number };
 
-/** Items of a session from index `from` on, plus its current state. */
-export function readSession(sessionId: string, from = 0): SessionPage | null {
-  const file = findFile(sessionId);
-  const parser = file && load(file, sessionId);
-  if (!parser) return null;
-  return {
-    state: { ...parser.state },
-    items: parser.items.slice(Math.max(0, from)),
-    total: parser.items.length,
-  };
-}
-
-/** The most recently written session in the live log folder (the last lesson session). */
-export function latestLiveSession(): string | null {
-  let best: { id: string; mtime: number } | null = null;
-  try {
-    for (const name of fs.readdirSync(liveLogDir())) {
-      const id = name.slice(0, -".jsonl".length);
-      if (!name.endsWith(".jsonl") || !SESSION_ID.test(id)) continue;
-      const mtime = fs.statSync(path.join(liveLogDir(), name)).mtimeMs;
-      if (!best || mtime > best.mtime) best = { id, mtime };
-    }
-  } catch {}
-  return best?.id ?? null;
-}
-
 /** Summaries of every learn session with at least one message, newest first. */
-export function listSessions(): SessionState[] {
+function listSessions(): SessionState[] {
   const index = (g.__lessonLogIndex ??= new Map());
   const out: SessionState[] = [];
   for (const { dir, all } of sources()) {

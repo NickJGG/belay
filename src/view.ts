@@ -11,12 +11,9 @@ export const BOARD_ORDER = ['doing', 'todo', 'idea', 'done', 'dropped'] as const
 export const VIEW_STATUSES = ['doing', 'todo', 'done', 'dropped'] as const satisfies readonly IssueStatus[];
 export type ViewStatus = (typeof VIEW_STATUSES)[number];
 
-export const DEFAULT_VIEW_STATUSES: readonly ViewStatus[] = ['doing', 'todo', 'done'];
+const DEFAULT_VIEW_STATUSES: readonly ViewStatus[] = ['doing', 'todo', 'done'];
 
-/** The query keys the view menu owns. */
-export const VIEW_PARAMS = ['status', 'priority', 'source', 'ready', 'sort', 'dir'] as const;
-
-export const isDefaultStatuses = (statuses: readonly ViewStatus[]) =>
+const isDefaultStatuses = (statuses: readonly ViewStatus[]) =>
   statuses.length === DEFAULT_VIEW_STATUSES.length && statuses.every((v) => DEFAULT_VIEW_STATUSES.includes(v));
 
 /** The `status` value for `statuses` with `s` flipped, in board order; undefined means the default set (or none). */

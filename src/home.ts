@@ -23,7 +23,7 @@ export function doingSince(issue: Issue): string {
   return t ? workDayOf(t.at) : updatedDay(issue);
 }
 
-export interface InFlightIssue {
+interface InFlightIssue {
   issue: Issue;
   /** Only when Idle. */
   idleDays?: number;

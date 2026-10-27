@@ -458,7 +458,7 @@ function declaredKind(p: Project, kind: string): string {
 }
 
 /** The nearest option by edit distance, if it's within about a third of the word. */
-export function closest(word: string, options: string[]): string | undefined {
+function closest(word: string, options: string[]): string | undefined {
   let best: string | undefined;
   let bestD = Math.max(2, Math.ceil(word.length / 3)) + 1;
   for (const o of options) {
@@ -611,7 +611,7 @@ export interface NewLog {
   day?: string;
 }
 
-export const LOG_BACKDATE_DAYS = 7;
+const LOG_BACKDATE_DAYS = 7;
 
 /** The work days a log entry may be filed under or moved to, `current` first. */
 export function logDays(current: string): string[] {

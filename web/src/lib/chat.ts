@@ -54,7 +54,7 @@ export function openPrompts(entries: ChatEntry[]): { choices: Set<string>; permi
 
 export const PLAN_READY = /^Plan ready\b/i;
 
-export type Tone = "bad" | "warn";
+type Tone = "bad" | "warn";
 
 /**
  * One tool step of Claude's turn, as the bridge labels it from the transcript: `verb`, a `target` chip, then

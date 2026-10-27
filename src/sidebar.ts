@@ -58,7 +58,7 @@ export function sidebarSections<P extends SidebarProject>(projects: P[]): Sectio
   return sections;
 }
 
-export function sectionOf(sections: Section[], key: string): Section | undefined {
+function sectionOf(sections: Section[], key: string): Section | undefined {
   return sections.find((s) => s.projects.some((p) => p.key === key));
 }
 
