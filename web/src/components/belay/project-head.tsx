@@ -6,7 +6,7 @@ import { MoreHorizontal, Star } from "lucide-react";
 import type { Project } from "../../../../src/store.ts";
 import { moveProjectBy, setProjectColor, setProjectFocus, setProjectGroup, setProjectKinds, setProjectName, setProjectStatus } from "@/app/actions";
 import { PageHeader } from "@/components/layout/page-header";
-import { projectColor, ProjectMark } from "@/components/project-mark";
+import { ProjectMark } from "@/components/project-mark";
 import type { Mark } from "@/lib/data";
 import { projectHref } from "@/lib/hrefs";
 import { sectionsOf } from "@/lib/sidebar";
@@ -60,8 +60,6 @@ export function ProjectHead({
         </span>
       }
       back={{ href: "/p", label: "Projects" }}
-      hue={mark ? projectColor(mark) : undefined}
-      seed={key}
       nav={<SectionChips projectKey={key} />}
     >
       {mark ? <ProjectActions project={project} mark={mark} prev={prev} next={next} /> : null}

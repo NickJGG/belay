@@ -10,7 +10,7 @@ export function hue(key: string) {
   return h;
 }
 
-/** A project's colour, for its header art, card cover and lettered tile: belay's `color:`, else its key's hue. */
+/** A project's colour, for its background glow, card cover and lettered tile: belay's `color:`, else its key's hue. */
 export const projectColor = (mark: Pick<Mark, "key" | "color">) => mark.color ?? `hsl(${hue(mark.key)} 60% 55%)`;
 
 /**

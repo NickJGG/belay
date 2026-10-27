@@ -15,9 +15,10 @@ export const DRAWER_KEY = "belay:drawer";
 export const TABS_KEY = "belay:tabs";
 export const SEEN_KEY = "belay:seen";
 export const OUTLINE_KEY = "belay:outline";
+export const GLOW_KEY = "belay:glow";
 
-/** Whether a grill's Outline is expanded: it is unless the last toggle collapsed it. */
-export function parseOutline(raw: string | null): boolean {
+/** A stored on/off toggle: on unless the last toggle stored `false`. */
+function parseToggle(raw: string | null): boolean {
   try {
     const v: unknown = JSON.parse(raw ?? "");
     return typeof v === "boolean" ? v : true;
@@ -25,6 +26,12 @@ export function parseOutline(raw: string | null): boolean {
     return true;
   }
 }
+
+/** Whether a grill's Outline is expanded: it is unless the last toggle collapsed it. */
+export const parseOutline = parseToggle;
+
+/** Whether the dark theme's ambient glow shows: it does unless the last toggle turned it off. */
+export const parseGlow = parseToggle;
 
 /** The grill a `/s/<slug>` page shows, else null. */
 export function sessionSlug(pathname: string): string | null {

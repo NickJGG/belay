@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { terrain } from "../course-art.ts";
-import { COLLAPSED_DEFAULTS, DRAWER_DEFAULTS, fresh, markSeen, missing, moveTab, orderTabs, pageKind, parseCollapsed, parseDrawer, parseOutline, parseSeen, parseTabOrder, selectTab, sessionSlug } from "../shell.ts";
+import { COLLAPSED_DEFAULTS, DRAWER_DEFAULTS, fresh, markSeen, missing, moveTab, orderTabs, pageKind, parseCollapsed, parseDrawer, parseGlow, parseOutline, parseSeen, parseTabOrder, selectTab, sessionSlug } from "../shell.ts";
 
 describe("page kinds", () => {
   test("a grill page is a workspace; everything else reads", () => {
@@ -29,6 +29,13 @@ describe("page kinds", () => {
     assert.equal(parseOutline('"false"'), true);
     assert.equal(parseOutline("false"), false);
     assert.equal(parseOutline("true"), true);
+  });
+
+  test("the glow is on unless a toggle stored false", () => {
+    assert.equal(parseGlow(null), true);
+    assert.equal(parseGlow("{}"), true);
+    assert.equal(parseGlow("false"), false);
+    assert.equal(parseGlow("true"), true);
   });
 });
 

@@ -4,6 +4,7 @@ import { IssueFacts } from "@/components/belay/issue-facts";
 import { IssueHead } from "@/components/belay/issue-head";
 import styles from "@/components/belay/belay.module.css";
 import { ShellSlot } from "@/components/layout/shell-slot";
+import { projectColor } from "@/components/project-mark";
 import { issueDetail } from "@/lib/data";
 
 type Props = { params: Promise<{ id: string }> };
@@ -21,7 +22,7 @@ export default async function IssuePage({ params }: Props) {
   const { issue } = d;
   return (
     <div className={styles.page}>
-      <ShellSlot project={{ key: issue.project, name: d.project?.name ?? issue.project }} section="Issues" />
+      <ShellSlot project={{ key: issue.project, name: d.project?.name ?? issue.project }} section="Issues" glow={d.project && projectColor(d.project)} />
       <IssueHead issue={issue} hasPlan={!!d.plan} blocks={d.blocks} />
       <IssueFacts issue={issue} plan={d.plan} blockers={d.blockers} blocks={d.blocks} candidates={d.candidates} />
       <BodyEditor id={issue.id} body={issue.body} hash={d.hash} />

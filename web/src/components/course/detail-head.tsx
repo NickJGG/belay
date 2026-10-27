@@ -25,15 +25,11 @@ async function resume(course: string, slug: string) {
 export function DetailHead({
   title,
   back,
-  color,
-  seed,
   file,
   lesson,
 }: {
   title: string;
   back: { href: string; label: string };
-  color: string;
-  seed: string;
   /** The note's absolute path, for Open file. */
   file: string | null;
   /** A lesson note with a known conversation: its course and slug. */
@@ -45,7 +41,7 @@ export function DetailHead({
   return (
     <>
       {commands.length ? <PageCommands heading={title} items={commands} /> : null}
-      <PageHeader title={title} back={back} hue={color} seed={seed}>
+      <PageHeader title={title} back={back}>
         {file || lesson ? (
           <MenuButton label="Note actions" trigger={<MoreHorizontal size={18} aria-hidden />}>
             {(close) => (

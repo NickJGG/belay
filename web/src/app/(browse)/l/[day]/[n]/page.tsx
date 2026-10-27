@@ -6,6 +6,7 @@ import { LogFacts, LogHead } from "@/components/belay/log-entry";
 import styles from "@/components/belay/belay.module.css";
 import { PageHeader } from "@/components/layout/page-header";
 import { ShellSlot } from "@/components/layout/shell-slot";
+import { projectColor } from "@/components/project-mark";
 import { dayLabel } from "@/lib/belay-view";
 import { logDetail } from "@/lib/data";
 import { projectHref } from "@/lib/hrefs";
@@ -44,7 +45,7 @@ export default async function LogPage(props: Props) {
   const title = firstLine(entry.text).line;
   return (
     <div className={styles.page}>
-      <ShellSlot project={{ key: entry.project, name: d.project?.name ?? entry.project }} section="Logs" />
+      <ShellSlot project={{ key: entry.project, name: d.project?.name ?? entry.project }} section="Logs" glow={d.project && projectColor(d.project)} />
       <LogHead title={title} address={address} day={day} at={entry.at} project={entry.project} />
       <LogFacts
         address={address}

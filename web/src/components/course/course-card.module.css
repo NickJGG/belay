@@ -209,9 +209,8 @@
 }
 
 /*
- * The terrain sits behind the head like PageHeader's art; .homeArtFade fades it downward and
- * .homeArt copies page-header.module.css's .art, so keep the two in sync. isolation keeps the art (z-index -1)
- * above the card's background and under the text.
+ * The terrain sits behind the head: .homeArtFade fades it downward and .homeArt fades it in from the left.
+ * isolation keeps the art (z-index -1) above the card's background and under the text.
  */
 .homeCard {
   isolation: isolate;

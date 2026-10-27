@@ -82,8 +82,6 @@ export function CourseHead({
       <PageHeader
         title={<CourseTitle title={title} color={color} />}
         back={{ href: "/courses", label: "Courses" }}
-        hue={color}
-        seed={course}
         nav={<CourseChips course={course} />}
       >
         <MenuButton label="Course files" trigger={<MoreHorizontal size={18} aria-hidden />}>

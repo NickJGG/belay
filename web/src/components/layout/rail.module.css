@@ -29,7 +29,6 @@
     width: var(--rail-w);
     padding: var(--space-3) 6px;
     border-right: 1px solid var(--line);
-    background: var(--bg);
     overflow: hidden;
   }
 
@@ -38,6 +37,8 @@
   .rail:has(:focus-visible) {
     width: var(--side-w);
     box-shadow: 14px 0 40px rgb(0 0 0 / 0.35);
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    backdrop-filter: blur(24px);
   }
 
   .railWrap:hover .railLabel,
@@ -50,6 +51,12 @@
   .railWrap.open .rail {
     width: var(--side-w);
     box-shadow: none;
+    background: none;
+    backdrop-filter: none;
+  }
+
+  .open .footLine .railLabel {
+    display: none;
   }
 
   /* Only pinned open: on the hovered rail it would push the rows below it down. */
@@ -159,3 +166,16 @@
   flex-direction: column;
 }
 
+/* Open: Theme and Glow as square icon buttons, Collapse at the far end. */
+.footLine {
+  flex-direction: row;
+  gap: 2px;
+}
+
+.footLine .railRow {
+  width: 40px;
+}
+
+.footLine .railRow:last-child {
+  margin-left: auto;
+}

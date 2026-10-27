@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   Activity,
+  Blend,
   BookOpen,
   CircleDot,
   FileCode,
@@ -27,6 +28,7 @@ import {
 import { pageKind } from "@/lib/shell";
 import { sidebarSections } from "@/lib/sidebar";
 import { cn } from "@/lib/utils";
+import { setGlow, useGlow } from "./ambient-glow";
 import { Mark } from "./logo";
 import { openPalette } from "./palette";
 import { useSlot } from "./shell-slot";
@@ -50,7 +52,8 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
 
 /**
  * The sidebar (>=768px; the phone keeps the dock), collapsed to icons or pinned `open` with labels: the mark and the
- * app nav on top, then a Reading page's project or course sections, and Theme and Collapse/Expand at the foot.
+ * app nav on top, then a Reading page's project or course sections, and Theme, Glow and Collapse/Expand at the foot:
+ * one line of icons when open, a stack of rows when collapsed.
  */
 export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   const pathname = usePathname() ?? "/";
@@ -96,8 +99,9 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
             })}
           </>
         ) : null}
-        <div className={styles.railFoot}>
+        <div className={cn(styles.railFoot, open && styles.footLine)}>
           <ThemeRow />
+          <GlowRow />
           {open ? (
             <RailRow onClick={onToggle} icon={<PanelLeftClose size={16} aria-hidden />} label="Collapse sidebar" title="Collapse sidebar" />
           ) : (
@@ -159,14 +163,21 @@ export function RailRule() {
 
 const noopSubscribe = () => () => {};
 
-function ThemeRow() {
-  const { resolvedTheme, setTheme } = useTheme();
+/** The resolved theme once mounted; undefined while the server render's markup hydrates. */
+function useMountedTheme() {
+  const { resolvedTheme } = useTheme();
   const mounted = React.useSyncExternalStore(
     noopSubscribe,
     () => true,
     () => false,
   );
-  const ready = mounted && resolvedTheme !== undefined;
+  return mounted ? resolvedTheme : undefined;
+}
+
+function ThemeRow() {
+  const { setTheme } = useTheme();
+  const resolvedTheme = useMountedTheme();
+  const ready = resolvedTheme !== undefined;
   const next = resolvedTheme === "dark" ? "light" : "dark";
   return (
     <RailRow
@@ -176,4 +187,12 @@ function ThemeRow() {
       title={ready ? `Switch to ${next} theme` : "Toggle theme"}
     />
   );
+}
+
+/** Dark theme only: the glow never shows in light. */
+function GlowRow() {
+  const glow = useGlow();
+  if (useMountedTheme() !== "dark") return null;
+  const title = glow ? "Turn off background glow" : "Turn on background glow";
+  return <RailRow onClick={() => setGlow(!glow)} icon={<Blend size={16} aria-hidden />} label="Glow" title={title} />;
 }

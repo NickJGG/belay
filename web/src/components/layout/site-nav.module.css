@@ -8,7 +8,8 @@
   align-items: center;
   height: calc(var(--dock-h) + env(safe-area-inset-bottom));
   padding: var(--space-1) var(--space-2) calc(var(--space-2) + env(safe-area-inset-bottom));
-  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  backdrop-filter: blur(24px);
   border-top: 1px solid var(--line);
 }
 

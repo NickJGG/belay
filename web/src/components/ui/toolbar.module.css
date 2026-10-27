@@ -9,24 +9,7 @@
   margin: calc(-1 * var(--main-pad-top)) calc(-1 * var(--main-pad-x))
     var(--space-8);
   padding: var(--space-4) var(--main-pad-x);
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
-}
-
-.hasBackdrop {
-  overflow: hidden;
-}
-
-.hasBackdrop > :not(.backdrop) {
-  position: relative;
-}
-
-.backdrop {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
 }
 
 .back {

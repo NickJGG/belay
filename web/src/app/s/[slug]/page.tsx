@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Prose } from "@/components/content/prose";
 import { ShellSlot } from "@/components/layout/shell-slot";
+import { projectColor } from "@/components/project-mark";
 import { SessionWorkspace, type SessionNav } from "@/components/session/workspace";
 import { navData, sessionDetail, UNFILED } from "@/lib/data";
 import { shortDate, statusLabel } from "@/lib/format";
@@ -32,7 +33,7 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
   if (detail.legacy) {
     return (
       <div className={cn(styles.page, styles.legacy)}>
-        <ShellSlot project={{ key: detail.mark?.key ?? UNFILED, name: detail.mark?.name ?? "Unfiled" }} section="Grills" />
+        <ShellSlot project={{ key: detail.mark?.key ?? UNFILED, name: detail.mark?.name ?? "Unfiled" }} section="Grills" glow={detail.mark ? projectColor(detail.mark) : undefined} />
         <header className={styles.header}>
           <h1 className={styles.title}>{s.topic}</h1>
           <p className={styles.meta}>

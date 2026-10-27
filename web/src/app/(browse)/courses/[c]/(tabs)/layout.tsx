@@ -14,7 +14,7 @@ export default async function CourseLayout({ children, params }: { children: Rea
   if (!course) notFound();
   return (
     <div className={cn(belay.page, styles.coursePage)}>
-      <ShellSlot course={{ slug: c, title: course.title }} />
+      <ShellSlot course={{ slug: c, title: course.title }} glow={courseColor(course)} />
       <CourseHead
         course={c}
         title={course.title}

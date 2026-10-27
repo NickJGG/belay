@@ -12,6 +12,8 @@ export type Slot = {
   section?: string;
   /** A Workspace's own sidebar, drawn in place of the rail (a grill's Outline). */
   pane?: React.ReactNode;
+  /** The ambient glow's colour: the owning project's or course's; Dusk when unset. */
+  glow?: string;
 };
 
 const SlotContext = React.createContext<{ slot: Slot; setSlot: (s: Slot | null) => void }>({ slot: {}, setSlot: () => {} });
@@ -27,10 +29,10 @@ export const useSlot = () => React.useContext(SlotContext).slot;
 /** Rendered by a page to fill the shell's slot while it's open. */
 export function ShellSlot(props: Slot) {
   const { setSlot } = React.useContext(SlotContext);
-  const { project, course, section, pane } = props;
+  const { project, course, section, pane, glow } = props;
   React.useEffect(() => {
-    setSlot({ project, course, section, pane });
+    setSlot({ project, course, section, pane, glow });
     return () => setSlot(null);
-  }, [setSlot, project, course, section, pane]);
+  }, [setSlot, project, course, section, pane, glow]);
   return null;
 }

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import styles from "@/components/belay/belay.module.css";
 import { ProjectHead } from "@/components/belay/project-head";
 import { ShellSlot } from "@/components/layout/shell-slot";
+import { projectColor } from "@/components/project-mark";
 import { projectHead } from "@/lib/data";
 import { UNFILED } from "@/lib/hrefs";
 
@@ -22,7 +23,7 @@ export default async function ProjectLayout({ children, params }: { children: Re
   const { project } = head;
   return (
     <div className={styles.page}>
-      <ShellSlot project={{ key: project.key, name: project.name }} />
+      <ShellSlot project={{ key: project.key, name: project.name }} glow={projectColor(project)} />
       <ProjectHead project={project} mark={head.mark} prev={head.prev} next={head.next} />
       {children}
     </div>

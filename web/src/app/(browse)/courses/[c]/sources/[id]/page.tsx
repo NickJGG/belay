@@ -34,8 +34,8 @@ export default async function SourcePage({ params }: Props) {
   const { claims, topics } = d.citedBy;
   return (
     <div className={belay.page}>
-      <ShellSlot course={{ slug: c, title: course.title }} section="Notes" />
-      <DetailHead title={d.title} back={{ href: courseHref(c, "/notes"), label: "Notes" }} color={courseColor(course)} seed={c} file={d.abs} />
+      <ShellSlot course={{ slug: c, title: course.title }} glow={courseColor(course)} section="Notes" />
+      <DetailHead title={d.title} back={{ href: courseHref(c, "/notes"), label: "Notes" }} file={d.abs} />
       <Facts
         facts={[
           ["Role", role || <None />],

@@ -2,6 +2,7 @@
 .shell {
   --dock-stack-h: var(--dock-h);
   position: relative;
+  isolation: isolate;
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;

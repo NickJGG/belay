@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import { Command } from "cmdk";
-import { ArrowRight, BookOpen, CircleAlert, FilePlus, FileText, GraduationCap, NotebookPen, Search, SquareTerminal } from "lucide-react";
+import { ArrowRight, Blend, BookOpen, CircleAlert, FilePlus, FileText, GraduationCap, NotebookPen, Search, SquareTerminal } from "lucide-react";
 import { requestIntent, type Intent } from "@/components/belay/intents";
 import { StatusIcon } from "@/components/belay/status-icon";
 import { useLive } from "@/components/live/live-provider";
@@ -11,6 +12,7 @@ import { ProjectMark } from "@/components/project-mark";
 import type { SearchIndex } from "@/lib/data";
 import { shortDate } from "@/lib/format";
 import { courseHref, grillHref, issueHref, projectHref, UNFILED } from "@/lib/hrefs";
+import { setGlow, useGlow } from "./ambient-glow";
 import { tabTitle } from "./live-tabs";
 import { Mark } from "./logo";
 import { useSlot } from "./shell-slot";
@@ -76,6 +78,8 @@ function Palette({ commands }: { commands: PageCommandGroup | null }) {
   const pathname = usePathname();
   const slot = useSlot();
   const { selected, focusTerminal } = useLive();
+  const { resolvedTheme } = useTheme();
+  const glow = useGlow();
   const [open, setOpen] = React.useState(false);
   const [index, setIndex] = React.useState<SearchIndex | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -236,6 +240,12 @@ function Palette({ commands }: { commands: PageCommandGroup | null }) {
                     <SquareTerminal size={14} aria-hidden />
                     <b>Go to the terminal tab</b>
                     <em>{tabTitle(selected)}</em>
+                  </Command.Item>
+                ) : null}
+                {resolvedTheme === "dark" ? (
+                  <Command.Item value="action Toggle background glow" className={styles.hit} onSelect={run(() => setGlow(!glow))}>
+                    <Blend size={14} aria-hidden />
+                    <b>{glow ? "Turn off background glow" : "Turn on background glow"}</b>
                   </Command.Item>
                 ) : null}
               </Command.Group>

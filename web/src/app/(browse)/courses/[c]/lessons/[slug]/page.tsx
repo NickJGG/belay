@@ -37,12 +37,10 @@ export default async function LessonPage({ params }: Props) {
   const { exercises, alone, claims, questions } = d.stats;
   return (
     <div className={belay.page}>
-      <ShellSlot course={{ slug: c, title: course.title }} section="Lessons" />
+      <ShellSlot course={{ slug: c, title: course.title }} glow={courseColor(course)} section="Lessons" />
       <DetailHead
         title={d.title}
         back={{ href: `${base}/lessons`, label: "Lessons" }}
-        color={courseColor(course)}
-        seed={c}
         file={d.abs}
         lesson={d.session ? { course: c, slug } : undefined}
       />

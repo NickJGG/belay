@@ -8,6 +8,7 @@ import { PageCommands, type PageCommand } from "@/components/layout/palette";
 import { ShellSlot } from "@/components/layout/shell-slot";
 import { subscribeLive } from "@/components/live/event-hub";
 import { sendTo, useLive } from "@/components/live/live-provider";
+import { projectColor } from "@/components/project-mark";
 import {
   followAction,
   optForKey,
@@ -585,5 +586,5 @@ const UNFILED_KEY = "unfiled";
 /** Tells the shell where the grill sits, and hands it the Outline. */
 function SessionSlot({ nav, pane }: { nav: SessionNav; pane: React.ReactNode }) {
   const project = React.useMemo(() => ({ key: nav.mark?.key ?? UNFILED_KEY, name: nav.mark?.name ?? "Unfiled" }), [nav.mark]);
-  return <ShellSlot project={project} section="Grills" pane={pane} />;
+  return <ShellSlot project={project} section="Grills" pane={pane} glow={nav.mark ? projectColor(nav.mark) : undefined} />;
 }
