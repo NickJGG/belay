@@ -12,11 +12,13 @@ import type { Root as HastRoot } from "hast";
 import type { Root, Parent, PhrasingContent, Text } from "mdast";
 import { MarkdownLink } from "@/components/content/markdown-link";
 import { Mermaid } from "@/components/content/mermaid";
+import { CodeBlock } from "@/components/content/code-block";
+import { codeBlockNode } from "./code-fence";
 import type { TopicStatus } from "./courses";
 import { resolveWikiTarget } from "./wiki-target";
 
 /*
- * Markdown → React: GFM, KaTeX math, and ```mermaid blocks drawn client-side. Raw HTML is dropped, as remark-rehype
+ * Markdown → React: GFM, KaTeX math, and ```mermaid blocks and highlighted code blocks drawn client-side. Raw HTML is dropped, as remark-rehype
  * does by default. Runs on both sides: course and legacy pages on the server, the drawer in the browser.
  *
  * Given a course, its Obsidian syntax is lifted out of the raw text before parsing (so `$`, `\(` and `*` inside
@@ -161,6 +163,15 @@ function mermaidBlocks(topics?: MarkdownContext["topics"]) {
   };
 }
 
+function codeBlocks() {
+  return (tree: Root) => {
+    visit(tree, "code", (node, index, parent) => {
+      if (!parent || index === undefined) return;
+      parent.children[index] = codeBlockNode(node) as unknown as (typeof parent.children)[number];
+    });
+  };
+}
+
 /** Tags topic nodes in a flowchart with status classes (styled by the Mermaid component). */
 function withStatuses(chart: string, topics: MarkdownContext["topics"]): string {
   if (!topics || !/^\s*(graph|flowchart)\b/.test(chart)) return chart;
@@ -178,7 +189,7 @@ function withStatuses(chart: string, topics: MarkdownContext["topics"]): string 
   return lines.length ? `${chart.replace(/\s+$/, "")}\n${lines.join("\n")}\n` : chart;
 }
 
-const components = { a: MarkdownLink, "mermaid-diagram": Mermaid } as unknown as Components;
+const components = { a: MarkdownLink, "mermaid-diagram": Mermaid, "code-block": CodeBlock } as unknown as Components;
 
 export function renderMarkdown(md: string, ctx?: MarkdownContext): ReactNode {
   const tokens: Token[] = [];
@@ -186,6 +197,7 @@ export function renderMarkdown(md: string, ctx?: MarkdownContext): ReactNode {
   if (ctx) processor.use(() => restoreObsidian(tokens, ctx));
   processor
     .use(() => mermaidBlocks(ctx?.topics))
+    .use(codeBlocks)
     .use(remarkRehype)
     .use(rehypeKatex, { strict: "ignore" });
   // Plugins added conditionally leave the processor's types at remark's; the tree it returns is rehype's.
