@@ -99,16 +99,23 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
             })}
           </>
         ) : null}
-        <div className={cn(styles.railFoot, open && styles.footLine)}>
-          <ThemeRow />
-          <GlowRow />
-          {open ? (
-            <RailRow onClick={onToggle} icon={<PanelLeftClose size={16} aria-hidden />} label="Collapse sidebar" title="Collapse sidebar" />
-          ) : (
-            <RailRow onClick={onToggle} icon={<PanelLeftOpen size={16} aria-hidden />} label="Expand sidebar" title="Expand sidebar" />
-          )}
-        </div>
+        <RailFoot open={open} onToggle={onToggle} label="sidebar" />
       </nav>
+    </div>
+  );
+}
+
+/** Theme, Glow and Collapse/Expand `label` (the toggle's noun), for the sidebar and a grill's Outline alike. */
+export function RailFoot({ open, onToggle, label }: { open: boolean; onToggle: () => void; label: string }) {
+  return (
+    <div className={cn(styles.railFoot, open && styles.footLine)}>
+      <ThemeRow />
+      <GlowRow />
+      {open ? (
+        <RailRow onClick={onToggle} icon={<PanelLeftClose size={16} aria-hidden />} label={`Collapse ${label}`} title={`Collapse ${label}`} />
+      ) : (
+        <RailRow onClick={onToggle} icon={<PanelLeftOpen size={16} aria-hidden />} label={`Expand ${label}`} title={`Expand ${label}`} />
+      )}
     </div>
   );
 }

@@ -3,10 +3,10 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { ChevronsLeft, ChevronsRight, History, LayoutTemplate } from "lucide-react";
+import { History, LayoutTemplate } from "lucide-react";
 import { Mark } from "@/components/layout/logo";
+import { RailFoot } from "@/components/layout/rail";
 import { NAV } from "@/components/layout/site-nav";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { families, statusChip, type Opt, type Question, type SessionDoc } from "@/lib/session-doc";
 import { cn } from "@/lib/utils";
 import styles from "./session.module.css";
@@ -94,7 +94,7 @@ export function Outline({ doc, here, opt, onOpt, pulse, open, onToggle }: Props)
               const Icon = item.icon;
               return (
                 <Link key={item.href} href={item.href} className={cn(styles.olRow, styles.olKey)} aria-label={item.label} data-tip={item.label} data-tip-below="">
-                  <Icon size={15} aria-hidden />
+                  <Icon size={16} aria-hidden />
                 </Link>
               );
             })
@@ -110,19 +110,7 @@ export function Outline({ doc, here, opt, onOpt, pulse, open, onToggle }: Props)
       <div className={styles.olScroll}>
         <Rows doc={doc} here={here} opt={opt} onOpt={onOpt} pulse={pulse} open={open} />
       </div>
-      <div className={styles.olFoot}>
-        <button
-          type="button"
-          className={styles.olRow}
-          onClick={onToggle}
-          {...tip(open, open ? "Collapse the outline ( | )" : "Expand the outline ( | )")}
-          aria-label={open ? undefined : "Expand the outline"}
-        >
-          <span className={styles.olKey}>{open ? <ChevronsLeft size={15} aria-hidden /> : <ChevronsRight size={15} aria-hidden />}</span>
-          {open ? <span className={styles.olText}>Collapse</span> : null}
-        </button>
-        {open ? <ThemeToggle /> : null}
-      </div>
+      <RailFoot open={open} onToggle={onToggle} label="the outline ( | )" />
       {tipNode}
     </aside>
   );
@@ -142,8 +130,8 @@ function Rows({ doc, here, opt, onOpt, pulse, open }: RowsProps) {
     <>
       {doc.mock ? (
         <>
-          {view("#current", <LayoutTemplate size={14} aria-hidden />, "Current design")}
-          {doc.mock.page === "existing" ? view("#today", <History size={14} aria-hidden />, "Today") : null}
+          {view("#current", <LayoutTemplate size={16} aria-hidden />, "Current design")}
+          {doc.mock.page === "existing" ? view("#today", <History size={16} aria-hidden />, "Today") : null}
           <span className={styles.olRule} />
         </>
       ) : null}

@@ -34,7 +34,7 @@
 
 /* ---------- outline ---------- */
 
-/* The shell draws it in the rail's place, full height. Collapsed it's just the key column: 10 + 32 + 10 = --rail-w. */
+/* The shell draws it in the rail's place, full height. Collapsed it's just the key column: 6 + 40 + 6 = --rail-w. */
 .outline {
   display: none;
 }
@@ -50,7 +50,7 @@
     width: 270px;
     height: 100vh;
     height: 100dvh;
-    padding: var(--space-3) 10px;
+    padding: var(--space-3) 6px;
     border-right: 1px solid var(--line);
     font-size: var(--text-sm);
     overflow: hidden;
@@ -59,7 +59,7 @@
 
   /* Content keeps its final width while the pane animates, so right-aligned bits are uncovered rather than riding the edge. */
   .outline > * {
-    width: calc(270px - 20px);
+    width: calc(270px - 12px);
   }
 
   .outlineShut {
@@ -67,18 +67,18 @@
   }
 
   .outlineShut > * {
-    width: 32px;
+    width: 40px;
   }
 }
 
-/* Every row starts with its 32px key, flush left, so collapsing never moves one. */
+/* Every row starts with its 40px key, flush left, so collapsing never moves one. */
 .olRow {
   flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 32px;
-  min-width: 32px;
+  height: 40px;
+  min-width: 40px;
   border-radius: var(--radius-md);
   color: var(--muted);
   text-align: left;
@@ -86,7 +86,7 @@
 }
 
 .outlineShut .olRow {
-  width: 32px;
+  width: 40px;
 }
 
 .olRow:hover {
@@ -103,8 +103,8 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
@@ -133,8 +133,8 @@
 }
 
 .olMark {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
 }
 
 .olHead:hover {
@@ -203,11 +203,9 @@
 .olQn {
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
-  background: var(--panel);
-  font-size: 11px;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
 }
 
 /* The selected question's options: roots flush in the key column; variants indented, hanging off a line from their
@@ -232,7 +230,7 @@
   position: absolute;
   top: 0;
   bottom: 8px;
-  left: 16px;
+  left: 20px;
   width: 1px;
   background: var(--line-strong);
 }
@@ -244,7 +242,7 @@
 }
 
 .outlineShut .olNest .olRow {
-  width: 24px;
+  width: 32px;
   min-width: 0;
   margin-inline: auto;
 }
@@ -253,16 +251,16 @@
   width: 100%;
 }
 
-/* 26px tall inside the 32px row, which keeps its height so collapsing shifts nothing. */
+/* 32px tall inside the 40px row, which keeps its height so collapsing shifts nothing. */
 .outlineShut .olOpt.olOn::after {
-  inset: 3px 0;
+  inset: 4px 0;
   border-radius: 4px;
   box-shadow: none;
   background: color-mix(in srgb, var(--brand) 22%, transparent);
 }
 
 .outlineShut .olOpt:hover::after {
-  inset: 3px 0;
+  inset: 4px 0;
   border-radius: 4px;
 }
 
@@ -277,7 +275,7 @@
 .olOpt {
   position: relative;
   isolation: isolate;
-  height: 32px;
+  height: 40px;
   color: var(--text);
 }
 
@@ -317,9 +315,9 @@
 }
 
 .olOpt .olKey {
-  height: 32px;
+  height: 40px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
 }
 
@@ -346,18 +344,6 @@
   height: 1px;
   margin: 6px 0;
   background: var(--line);
-}
-
-.olFoot {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding-top: var(--space-2);
-}
-
-.olFoot > .olRow {
-  flex: 1;
 }
 
 .olTip {
