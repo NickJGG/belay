@@ -33,8 +33,9 @@ allowed-tools:
 Interview the user relentlessly about a plan or design until shared understanding is reached. Walk down each branch of the decision tree, resolving dependencies between decisions one at a time. For each question, **recommend an answer**. If a question can be answered by exploring the codebase, explore the codebase instead of asking.
 
 - Plugin root `P`: `${CLAUDE_PLUGIN_ROOT}` (if that appears unexpanded, it is `C:\Users\Nick\Projects\Tools\belay\plugin`).
-- Sessions dir `S`: `C:\Users\Nick\Belay\grills`. Each session is a folder `S\<slug>\`; its files are described in [`references/session-format.md`](./references/session-format.md). Read that once per conversation, before the first save.
-- The site (Belay, run by `belay serve`): `http://127.0.0.1:4747`, a session at `/s/<slug>`.
+- Data dir and site port: run `echo "$BELAY_DATA|$BELAY_SITE_PORT"` once. Tests set them; when empty, they are `C:\Users\Nick\Belay` and `4747`.
+- Sessions dir `S`: `<data dir>\grills`. Each session is a folder `S\<slug>\`; its files are described in [`references/session-format.md`](./references/session-format.md). Read that once per conversation, before the first save.
+- The site `U` (Belay, run by `belay serve`): `http://127.0.0.1:<site port>`, a session at `U/s/<slug>`.
 
 Sessions persist as `session.json`, the source of truth, so a grilling can be resumed across conversations. `<slug>.md` is rendered from it for belay and is never edited by hand. When the session touches domain vocabulary, terms are also captured to the project's `CONTEXT.md` — see [Glossary writes](#glossary-writes). When questions propose visible frontend changes, they get a mock the Belay site draws — see [Mocks](#mocks).
 
@@ -55,7 +56,7 @@ Sessions persist as `session.json`, the source of truth, so a grilling can be re
    - Glob `S/*/session.json`, read each, filter to `"status": "in-progress"`, sort by `updated` desc.
    - If `resume <slug>` matches, load it directly. A `S/<slug>` with no `session.json` (only `<slug>.md`) is a legacy grill: say it's read-only and can't be resumed, and stop. Otherwise ask via `AskUserQuestion` (nothing is attached yet) — up to 3 sessions (slug + topic preview) plus a 4th "Start fresh instead" option.
    - On load: replay the resolved questions and their `answer` digests into working memory, read `open` to know where to pick up, then jump to Phase 1 at the next unresolved branch.
-   - If the session has mocks, print `http://127.0.0.1:4747/s/<slug>` once. Don't open it: a resumed session reopens nothing. Never copy the templates or the app CSS again.
+   - If the session has mocks, print `U/s/<slug>` once. Don't open it: a resumed session reopens nothing. Never copy the templates or the app CSS again.
 4. **Fresh path**: ask for the topic if it wasn't passed, derive a kebab-case slug (≤6 words; append `-2`, `-3` when `S/<slug>` exists), and proceed to Phase 1. Defer writing `session.json` until the first Q&A is resolved.
    - **Project tag**: run `belay project which 2>/dev/null` once. If it prints a key, set `"project": "<key>"` in the new session. If it prints nothing or `belay` isn't installed, leave the field out. Never ask about it.
 5. **Attach** (attached sessions, both paths, as soon as the slug is known): call `mcp__plugin_belay_belay__attach` with the slug and `sessionId: "${CLAUDE_SESSION_ID}"`. The session now shows under Live on the Belay site. If the tool is missing or fails, say so in one line and carry on terminal-only.
@@ -149,7 +150,7 @@ A mockup of the frontend changes being proposed, so the user can look at a desig
 - **Keep edits cheap.** Every separate step re-reads the whole conversation, and everything printed stays in it. One message holds, in this order: the edits, then one Bash call running `node "P/preview/check-preview.js" "S/<slug>"` and the render/log commands. Never a step of their own. The check validates `session.json`, runs the spec and renders every view; it prints `ok`, or the errors and unknown class names to fix. Never Read the script. Use the shortest `old_string` that's unique. To find a spot, `grep -n` for its marker, then view only a narrow window (Read with offset/limit, ≤30 lines). Never dump wide ranges of the spec.
 - **No screenshots.** Don't render, screenshot or headlessly open the mock. The user checks it visually.
 
-**Opening the site.** The first time a session gets a mock, ask the site how many pages are open: `curl -s http://127.0.0.1:4747/api/viewers`. No answer: say **"Run `belay serve` to see the mock"** and describe the design in prose until the user says it's up. `"pages":0`: open `start "" "http://127.0.0.1:4747/s/<slug>"` (Git Bash; `open` on macOS, `xdg-open` on Linux) and print that URL once. Otherwise print the URL once and open nothing: the open page already shows the grill's Tab. Never open it again: the site follows along on its own.
+**Opening the site.** The first time a session gets a mock, ask the site how many pages are open: `curl -s U/api/viewers`. No answer: say **"Run `belay serve` to see the mock"** and describe the design in prose until the user says it's up. `"pages":0`: open `start "" "U/s/<slug>"` (Git Bash; `open` on macOS, `xdg-open` on Linux) and print that URL once. Otherwise print the URL once and open nothing: the open page already shows the grill's Tab. Never open it again: the site follows along on its own.
 
 **Telling the user.** On updates, don't print the URL. Just say which question changed and which option it opens on ("Added Q5, showing c, my recommendation"). In an attached session, call `mcp__plugin_belay_belay__show` with the question number (and option) whenever you ask a mocked question or add options to one, so the page follows.
 
@@ -206,7 +207,7 @@ While still in plan mode, if the session has a `project` and `belay` is installe
 ````markdown
 ## Bookkeeping (do first, once)
 From grill `<slug>`. Skip this section if that grill's `session.json` already says `"status": "planned"`.
-1. In `C:\Users\Nick\Belay\grills\<slug>\session.json`, set `"status": "planned"` and `"updated": "<today>"`, then run `node "<P>\scripts\render-md.js" "C:\Users\Nick\Belay\grills\<slug>"` (it prints `ok`), then `belay grill commit <slug>`.
+1. In `<S>\<slug>\session.json`, set `"status": "planned"` and `"updated": "<today>"`, then run `node "<P>\scripts\render-md.js" "<S>\<slug>"` (it prints `ok`), then `belay grill commit <slug>`.
 2. Create the belay issues in order, passing the IDs that earlier commands print (`added <id> …`) to `--blocked-by`:
    - `belay add "<title 1>" --project <key> --status todo --grill <slug> --plan "<plan file path>"`
    - `belay add "<title 2>" --project <key> --status todo --grill <slug> --plan "<plan file path>" --blocked-by <id of 1>`
