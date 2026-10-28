@@ -240,7 +240,9 @@
   display: inline-flex;
 }
 
+/* The reset's max-width: 100% lets a shrink-to-fit tip size the icon to 0. */
 .mark svg {
+  max-width: none;
   color: inherit;
 }
 
