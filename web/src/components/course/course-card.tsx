@@ -93,7 +93,7 @@ export function UnitBar({ units, current, className }: { units: (number | null)[
 /**
  * A course card: faded terrain behind the head, trait chips, title, a course-colour bar, and one row with the lead's
  * kind icon, title and button, or the Build nudge when nothing is actionable. Under the bar, pills for cards due and
- * the last lesson; `extras` (/courses) adds the goal's first clause under them, clamped to two lines.
+ * the last lesson; `extras` (/learn) adds the goal's first clause under them, clamped to two lines.
  */
 export function CourseCard({ card, extras = false }: { card: CardData; extras?: boolean }) {
   const { course: c, units, lead, build } = card;

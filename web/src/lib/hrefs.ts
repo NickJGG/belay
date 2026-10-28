@@ -13,7 +13,7 @@ export const grillHref = (slug: string) => `/s/${encodeURIComponent(slug)}`;
 export const UNFILED = "unfiled";
 
 /** A course page; `suffix` is a section (`/map`) or a detail (`/knowledge/<topic>`). */
-export const courseHref = (course: string, suffix = "") => `/courses/${encodeURIComponent(course)}${suffix}`;
+export const courseHref = (course: string, suffix = "") => `/learn/${encodeURIComponent(course)}${suffix}`;
 
 /** Opens a file or folder on this machine in VS Code. */
 export const vscodeHref = (abs: string) => `vscode://file/${abs.replace(/\\/g, "/")}`;

@@ -70,7 +70,7 @@ function Frame({ children }: { children: React.ReactNode }) {
       <AmbientGlow />
       <LiveRefresh />
       {/* Only course pages anchor claims: a grill keeps its view (`#q-3`) in the hash. */}
-      {pathname.startsWith("/courses/") ? <FocusHighlight /> : null}
+      {pathname.startsWith("/learn/") ? <FocusHighlight /> : null}
       <SiteNav />
       {pane ?? <Rail open={!collapsed[kind]} onToggle={toggle} />}
       <div className={styles.col}>

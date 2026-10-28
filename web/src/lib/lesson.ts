@@ -74,6 +74,6 @@ export const showKey = (s: LessonShow) => [s.course, s.target, s.topic, s.id, s.
 
 /** The course page a pathname is on, or null: a live lesson on that course is the page's Tab. */
 export function coursePage(pathname: string): string | null {
-  const m = /^\/courses\/([^/?#]+)/.exec(pathname);
+  const m = /^\/learn\/([^/?#]+)/.exec(pathname);
   return m ? decodeURIComponent(m[1]) : null;
 }

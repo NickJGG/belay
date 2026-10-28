@@ -279,7 +279,7 @@ export function topicIndex(course: Course): Record<string, { status: TopicStatus
     for (const t of u.topics) {
       out[t.topic] = {
         status: t.status,
-        href: course.knowledge.has(t.topic) ? `/courses/${course.course}/knowledge/${t.topic}` : undefined,
+        href: course.knowledge.has(t.topic) ? `/learn/${course.course}/knowledge/${t.topic}` : undefined,
       };
     }
   }

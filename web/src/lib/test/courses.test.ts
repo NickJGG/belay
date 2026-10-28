@@ -160,22 +160,22 @@ describe("course text", () => {
 
 describe("course links", () => {
   test("wiki links resolve to course pages, block refs to anchors", () => {
-    assert.equal(resolveWikiTarget("llm", "matmul-flops"), "/courses/llm/knowledge/matmul-flops");
-    assert.equal(resolveWikiTarget("llm", "matmul-flops#^c3"), "/courses/llm/knowledge/matmul-flops#c3");
-    assert.equal(resolveWikiTarget("llm", "sources/cs336"), "/courses/llm/sources/cs336");
-    assert.equal(resolveWikiTarget("llm", "lessons/2026-10-24-x"), "/courses/llm/lessons/2026-10-24-x");
-    assert.equal(resolveWikiTarget("llm", "syllabus"), "/courses/llm");
-    assert.equal(resolveWikiTarget("llm", "map.md"), "/courses/llm/map");
+    assert.equal(resolveWikiTarget("llm", "matmul-flops"), "/learn/llm/knowledge/matmul-flops");
+    assert.equal(resolveWikiTarget("llm", "matmul-flops#^c3"), "/learn/llm/knowledge/matmul-flops#c3");
+    assert.equal(resolveWikiTarget("llm", "sources/cs336"), "/learn/llm/sources/cs336");
+    assert.equal(resolveWikiTarget("llm", "lessons/2026-10-24-x"), "/learn/llm/lessons/2026-10-24-x");
+    assert.equal(resolveWikiTarget("llm", "syllabus"), "/learn/llm");
+    assert.equal(resolveWikiTarget("llm", "map.md"), "/learn/llm/map");
   });
 
   test("sectionOf lights the tab a page belongs to", () => {
-    assert.deepEqual(sectionOf("/courses/llm"), { course: "llm", section: "Overview", detail: false });
-    assert.deepEqual(sectionOf("/courses/llm/syllabus"), { course: "llm", section: "Syllabus", detail: false });
-    assert.deepEqual(sectionOf("/courses/llm/cards"), { course: "llm", section: "Cards", detail: false });
-    assert.deepEqual(sectionOf("/courses/llm/knowledge/x"), { course: "llm", section: "Notes", detail: true });
-    assert.deepEqual(sectionOf("/courses/llm/sources/x"), { course: "llm", section: "Notes", detail: true });
-    assert.deepEqual(sectionOf("/courses/llm/lessons/x"), { course: "llm", section: "Lessons", detail: true });
-    assert.deepEqual(sectionOf("/courses/llm/work/a/b.py"), { course: "llm", section: "Work", detail: false });
+    assert.deepEqual(sectionOf("/learn/llm"), { course: "llm", section: "Overview", detail: false });
+    assert.deepEqual(sectionOf("/learn/llm/syllabus"), { course: "llm", section: "Syllabus", detail: false });
+    assert.deepEqual(sectionOf("/learn/llm/cards"), { course: "llm", section: "Cards", detail: false });
+    assert.deepEqual(sectionOf("/learn/llm/knowledge/x"), { course: "llm", section: "Notes", detail: true });
+    assert.deepEqual(sectionOf("/learn/llm/sources/x"), { course: "llm", section: "Notes", detail: true });
+    assert.deepEqual(sectionOf("/learn/llm/lessons/x"), { course: "llm", section: "Lessons", detail: true });
+    assert.deepEqual(sectionOf("/learn/llm/work/a/b.py"), { course: "llm", section: "Work", detail: false });
     assert.equal(sectionOf("/p/KILN"), null);
   });
 

@@ -22,7 +22,7 @@ function longDay(day: string) {
 
 /**
  * Home: one column. A header with the usage rings and activity grid beside the date, then In flight, Your courses
- * (the 3 most urgent courses' cards with their Up next bands, See all to /courses when others are hidden), and Recent
+ * (the 3 most urgent courses' cards with their Up next bands, See all to /learn when others are hidden), and Recent
  * activity: issues done across projects, a week more per Show earlier.
  */
 export default async function HomePage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
@@ -49,7 +49,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <div className={styles.sectionHead}>
             <h2 className={styles.sectionTitle}>Your courses</h2>
             {courses.more ? (
-              <Link href="/courses" className={buttonClass("ghost", "sm")}>
+              <Link href="/learn" className={buttonClass("ghost", "sm")}>
                 See all <ChevronRight aria-hidden />
               </Link>
             ) : null}

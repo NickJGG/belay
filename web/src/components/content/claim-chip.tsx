@@ -14,7 +14,7 @@ export function ClaimChip({ href, claim, children }: { href: string; claim: stri
   const asked = React.useRef(false);
 
   const load = () => {
-    const course = href.match(/^\/courses\/([^/]+)\//)?.[1];
+    const course = href.match(/^\/learn\/([^/]+)\//)?.[1];
     const [topic, id] = claim.split("^");
     if (asked.current || !course) return;
     asked.current = true;

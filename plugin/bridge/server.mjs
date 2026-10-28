@@ -316,7 +316,7 @@ async function attach(target, sessionId) {
     await lockSession(l, sessionId);
     await mcp.sendToolListChanged();
     log(`attached ${slug} on port ${l.http.port}, session ${l.sessionId ?? "(not found yet)"}`);
-    const page = lesson ? `/courses/${lesson.course}/now` : `/s/${slug}`;
+    const page = lesson ? `/learn/${lesson.course}/now` : `/s/${slug}`;
     return `attached ${slug}: bridge on 127.0.0.1:${l.http.port}; the site page is http://127.0.0.1:${protocol.SITE_PORT}${page}`;
 }
 let relayRegistered = false;

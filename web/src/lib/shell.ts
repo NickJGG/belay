@@ -41,14 +41,14 @@ export function sessionSlug(pathname: string): string | null {
 
 /** Grills, a lesson's Now page and a course's Work tab are Workspaces; every other page is a Reading page. */
 export function pageKind(pathname: string): PageKind {
-  return sessionSlug(pathname) || /^\/courses\/[^/]+\/(work(\/|$)|now\/?$)/.test(pathname) ? "workspace" : "reading";
+  return sessionSlug(pathname) || /^\/learn\/[^/]+\/(work(\/|$)|now\/?$)/.test(pathname) ? "workspace" : "reading";
 }
 
 /** The live Tab a page belongs to: its grill on `/s/<slug>`, or a live lesson on any page of that lesson's course. */
 export function pageTab(pathname: string, live: { slug: string; course?: string }[]): string | null {
   const grill = sessionSlug(pathname);
   if (grill) return grill;
-  const course = /^\/courses\/([^/?#]+)/.exec(pathname)?.[1];
+  const course = /^\/learn\/([^/?#]+)/.exec(pathname)?.[1];
   if (!course) return null;
   return live.find((l) => l.course === decodeURIComponent(course))?.slug ?? null;
 }
@@ -144,12 +144,12 @@ export function missing(pathname: string): { what: string; back: { href: string;
     const back = key ? { href: `/p/${key}`, label: `Back to ${key}'s issues` } : { href: "/p", label: "Back to Projects" };
     return { what: `No issue ${id}.`, back };
   }
-  const course = /^\/courses\/([^/?#]+)(?:\/([^/?#]+)(?:\/([^?#]+?))?)?\/?$/.exec(pathname);
+  const course = /^\/learn\/([^/?#]+)(?:\/([^/?#]+)(?:\/([^?#]+?))?)?\/?$/.exec(pathname);
   if (course) {
     const [c, kind, rest] = course.slice(1).map((p) => p && decodeURIComponent(p));
-    const base = `/courses/${encodeURIComponent(c)}`;
+    const base = `/learn/${encodeURIComponent(c)}`;
     // A tab 404s only when its course is missing.
-    if (!kind || (!rest && COURSE_TABS.has(kind))) return { what: `No course ${c}.`, back: { href: "/courses", label: "Back to Courses" } };
+    if (!kind || (!rest && COURSE_TABS.has(kind))) return { what: `No course ${c}.`, back: { href: "/learn", label: "Back to Learn" } };
     const notes = { href: `${base}/notes`, label: "Back to Notes" };
     if (kind === "knowledge") return { what: `No note ${rest}.`, back: notes };
     if (kind === "sources") return { what: `No source ${rest}.`, back: notes };

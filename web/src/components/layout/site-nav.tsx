@@ -17,7 +17,7 @@ const under = (base: string) => (p: string) => p === base || p.startsWith(`${bas
 export const NAV: NavItem[] = [
   { href: "/", label: "Home", icon: House, on: (p) => p === "/" },
   { href: "/p", label: "Projects", icon: FolderOpen, on: under("/p") },
-  { href: "/courses", label: "Courses", icon: LibraryBig, on: under("/courses") },
+  { href: "/learn", label: "Learn", icon: LibraryBig, on: under("/learn") },
 ];
 
 /** The phone's nav (below 768px, where the rail is hidden): the bottom dock, and the mark and Theme above the page. */

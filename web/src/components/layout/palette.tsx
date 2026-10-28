@@ -59,7 +59,7 @@ const CourseMark = ({ color }: { color: string }) => (
 const GO_TO = [
   { label: "Home", href: "/" },
   { label: "Projects", href: "/p" },
-  { label: "Courses", href: "/courses" },
+  { label: "Learn", href: "/learn" },
 ];
 
 const ACTIONS: { intent: Intent; label: string; icon: React.ReactNode; section: string }[] = [

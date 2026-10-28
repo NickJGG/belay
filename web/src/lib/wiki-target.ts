@@ -11,7 +11,7 @@ export function resolveWikiTarget(course: string, target: string): string {
   const [file, anchor] = target.split("#");
   const block = anchor?.match(/^\^(c\d+)$/)?.[1];
   const hash = block ? `#${block}` : "";
-  const base = `/courses/${course}`;
+  const base = `/learn/${course}`;
   const name = file.replace(/\.md$/, "");
   if (!name) return hash;
   const [dir, ...rest] = name.split("/");

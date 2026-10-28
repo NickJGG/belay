@@ -34,17 +34,17 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   the project page's form through `belay/intents.ts`.
 - Home (`/`) is a header with the 5h/7d usage rings (seeded by `homePulse` in `data.ts`, then the hub's account-wide
   `limits` events) and the CLI's two-week `activityGrid`, then In flight, from the CLI's `inFlight` (`homeFlight`),
-  then Your courses (`homeCourses`: the 3 most urgent, See all to /courses), then Recent activity: the CLI's `activity` with `doneOnly`, across projects
+  then Your courses (`homeCourses`: the 3 most urgent, See all to /learn), then Recent activity: the CLI's `activity` with `doneOnly`, across projects
   (`homeActivity`, `?days=` as a project's Activity).
-- Course pages: `/courses` (course cards), `/courses/<c>` (Overview: a hero with the current unit, the step its
+- Course pages: `/learn` (course cards), `/learn/<c>` (Overview: a hero with the current unit, the step its
   journey lights and the journey, a calendar, the goal) and its tabs `{syllabus,map,lessons,notes,misconceptions,cards,work}` under one layout holding
-  the course header, and the detail pages `/courses/<c>/{knowledge,lessons,sources}/<x>`. Their pieces are in
+  the course header, and the detail pages `/learn/<c>/{knowledge,lessons,sources}/<x>`. Their pieces are in
   `src/components/course/`; their data is `lib/course-data.ts` over `lib/courses.ts`, which loads the learn skill's
   `scripts/courses.js` and `cards.js` (formats.md is the contract). The site never edits course Markdown: it writes
   `work/` (`/api/work`) and otherwise only runs the learn skill's own write ops (Mark read, `/api/courses/<c>/read`
   → `courses.js read`). A lesson note's Resume conversation (`app/course-actions.ts`) opens `claude --resume` in
   Windows Terminal.
-- Lessons: a live lesson's Tab opens `/courses/<c>/now`, its Workspace. Start buttons
+- Lessons: a live lesson's Tab opens `/learn/<c>/now`, its Workspace. Start buttons
   (`course/start-buttons.tsx`) POST `/api/lesson/start`, which queues the routine (`lib/start-queue.ts`) and asks a
   live lesson to restart into it; Follow along (`live/follow.tsx`) follows the lesson's `show`s (`lib/lesson.ts`).
 - Belay's pages: `/p` (project cards), `/p/<key>` (Issues; `?view=ideas`), `/p/<key>/{grills,activity,logs}` under

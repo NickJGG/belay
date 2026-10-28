@@ -280,7 +280,7 @@ test("a lesson: a queued start runs in the Learning root, attach by course, show
     const r = await lc.callTool({ name: "attach", arguments: { course: "demo-course", topic: "Quick review" } });
     const slug = /^attached (lesson-demo-course-\d{8}-\d{4}):/.exec(textOf(r))?.[1];
     assert.ok(slug, textOf(r));
-    assert.match(textOf(r), /\/courses\/demo-course\/now$/);
+    assert.match(textOf(r), /\/learn\/demo-course\/now$/);
     const doc = JSON.parse(readFileSync(path.join(lessons, slug, "session.json"), "utf8"));
     assert.deepEqual([doc.kind, doc.course, doc.topic, doc.status], ["lesson", "demo-course", "Quick review", "in-progress"]);
     assert.deepEqual((await lc.listTools()).tools.map((t) => t.name).sort(), ["attach", "choice", "detach", "reply", "restart", "show"]);

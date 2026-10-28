@@ -29,7 +29,7 @@ const BY_SEGMENT: Record<string, Section> = {
 export function sectionOf(
   pathname: string,
 ): { course: string; section: Section | null; detail: boolean } | null {
-  const m = /^\/courses\/([^/]+)(?:\/([^/]+)(\/.+)?)?\/?$/.exec(pathname);
+  const m = /^\/learn\/([^/]+)(?:\/([^/]+)(\/.+)?)?\/?$/.exec(pathname);
   if (!m) return null;
   const course = decodeURIComponent(m[1]);
   const [, , first, rest] = m;

@@ -38,13 +38,13 @@ describe("lesson sessions", () => {
 describe("Follow along targets", () => {
   test("each show names its page and label", () => {
     assert.deepEqual(showPage({ course: "llm", target: "claim", topic: "chain-rule", id: "c4" }), {
-      href: "/courses/llm/knowledge/chain-rule#c4",
+      href: "/learn/llm/knowledge/chain-rule#c4",
       label: "chain-rule · c4",
     });
-    assert.deepEqual(showPage({ course: "llm", target: "source", id: "karpathy" }), { href: "/courses/llm/sources/karpathy", label: "karpathy" });
-    assert.deepEqual(showPage({ course: "llm", target: "whiteboard" }), { href: "/courses/llm/now", label: "the whiteboard" });
+    assert.deepEqual(showPage({ course: "llm", target: "source", id: "karpathy" }), { href: "/learn/llm/sources/karpathy", label: "karpathy" });
+    assert.deepEqual(showPage({ course: "llm", target: "whiteboard" }), { href: "/learn/llm/now", label: "the whiteboard" });
     assert.deepEqual(showPage({ course: "llm", target: "work", path: "work/a b/flops.py" }), {
-      href: "/courses/llm/work/a%20b/flops.py",
+      href: "/learn/llm/work/a%20b/flops.py",
       label: "work/a b/flops.py",
     });
     assert.equal(showPage({ course: "llm", target: "work", path: "work/../course.md" }), null);
@@ -78,30 +78,30 @@ describe("Follow along targets", () => {
   });
 
   test("a lesson's Tab lands on its Now page", () => {
-    assert.equal(lessonHref("llm"), "/courses/llm/now");
-    assert.equal(coursePage("/courses/llm/knowledge/x"), "llm");
+    assert.equal(lessonHref("llm"), "/learn/llm/now");
+    assert.equal(coursePage("/learn/llm/knowledge/x"), "llm");
     assert.equal(coursePage("/p/KILN"), null);
   });
 });
 
 describe("the shell and lessons", () => {
   test("the Now page and Work tab are Workspaces; other course pages read", () => {
-    assert.equal(pageKind("/courses/llm/now"), "workspace");
-    assert.equal(pageKind("/courses/llm/work/flops.py"), "workspace");
-    assert.equal(pageKind("/courses/llm/notes"), "reading");
-    assert.equal(pageKind("/courses/llm/now/x"), "reading");
+    assert.equal(pageKind("/learn/llm/now"), "workspace");
+    assert.equal(pageKind("/learn/llm/work/flops.py"), "workspace");
+    assert.equal(pageKind("/learn/llm/notes"), "reading");
+    assert.equal(pageKind("/learn/llm/now/x"), "reading");
   });
 
   test("a page's Tab: its grill, or the live lesson on its course", () => {
     const live = [{ slug: "g" }, { slug: "lesson-llm-1", course: "llm" }];
     assert.equal(pageTab("/s/g", live), "g");
-    assert.equal(pageTab("/courses/llm/knowledge/x", live), "lesson-llm-1");
-    assert.equal(pageTab("/courses/other", live), null);
+    assert.equal(pageTab("/learn/llm/knowledge/x", live), "lesson-llm-1");
+    assert.equal(pageTab("/learn/other", live), null);
     assert.equal(pageTab("/p/KILN", live), null);
   });
 
   test("a missing course's Now page says so", () => {
-    assert.equal(missing("/courses/nope/now").what, "No course nope.");
+    assert.equal(missing("/learn/nope/now").what, "No course nope.");
   });
 });
 

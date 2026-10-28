@@ -9,7 +9,7 @@ const lit = (s: ReturnType<typeof sidebarSections>) => s?.rows.filter((r) => r.o
 describe("sidebar sections", () => {
   test("a Workspace and a page outside a project or course have none", () => {
     assert.equal(sidebarSections({ kind: "workspace", project: bel, section: "Grills" }, "/s/x"), null);
-    assert.equal(sidebarSections({ kind: "workspace", course }, "/courses/llm/work"), null);
+    assert.equal(sidebarSections({ kind: "workspace", course }, "/learn/llm/work"), null);
     assert.equal(sidebarSections({ kind: "reading" }, "/p"), null);
   });
 
@@ -27,10 +27,10 @@ describe("sidebar sections", () => {
   });
 
   test("a course detail page lights its section", () => {
-    assert.deepEqual(lit(sidebarSections({ kind: "reading", course }, "/courses/llm/knowledge/attention")), ["Notes"]);
-    assert.deepEqual(lit(sidebarSections({ kind: "reading", course }, "/courses/llm/lessons/one")), ["Lessons"]);
-    assert.deepEqual(lit(sidebarSections({ kind: "reading", course }, "/courses/llm")), ["Overview"]);
-    assert.deepEqual(lit(sidebarSections({ kind: "reading", course }, "/courses/llm/syllabus")), ["Syllabus"]);
-    assert.deepEqual(lit(sidebarSections({ kind: "reading", course, section: "Cards" }, "/courses/llm/x")), ["Cards"]);
+    assert.deepEqual(lit(sidebarSections({ kind: "reading", course }, "/learn/llm/knowledge/attention")), ["Notes"]);
+    assert.deepEqual(lit(sidebarSections({ kind: "reading", course }, "/learn/llm/lessons/one")), ["Lessons"]);
+    assert.deepEqual(lit(sidebarSections({ kind: "reading", course }, "/learn/llm")), ["Overview"]);
+    assert.deepEqual(lit(sidebarSections({ kind: "reading", course }, "/learn/llm/syllabus")), ["Syllabus"]);
+    assert.deepEqual(lit(sidebarSections({ kind: "reading", course, section: "Cards" }, "/learn/llm/x")), ["Cards"]);
   });
 });

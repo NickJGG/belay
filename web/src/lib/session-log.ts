@@ -314,7 +314,7 @@ export class SessionParser {
         const rel = abs ? (abs.course === course ? abs.rel : "") : p.replace(/\\/g, "/").replace(/^\.\//, "");
         const parts = rel.split("/");
         if (parts[0] !== "work" || parts.length < 2 || parts.some((s) => !s || s === "." || s === "..")) return null;
-        const href = `/courses/${course}/work/${parts.slice(1).map(encodeURIComponent).join("/")}`;
+        const href = `/learn/${course}/work/${parts.slice(1).map(encodeURIComponent).join("/")}`;
         return { ...base, target: "work", label: rel, href };
       }
     }

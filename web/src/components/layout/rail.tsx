@@ -62,7 +62,7 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
   const sectionLit = !!sections?.rows.some((r) => r.on);
   const navRow = (item: (typeof NAV)[number]) => {
     const Icon = item.icon;
-    const parent = item.href === "/p" ? !!slot.project : item.href === "/courses" && !!slot.course;
+    const parent = item.href === "/p" ? !!slot.project : item.href === "/learn" && !!slot.course;
     return <RailRow key={item.href} href={item.href} icon={<Icon size={16} aria-hidden />} label={item.label} title={item.label} on={item.on(pathname) && !(parent && sectionLit)} />;
   };
   const [home, ...rest] = NAV;
