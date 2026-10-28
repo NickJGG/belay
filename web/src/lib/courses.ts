@@ -38,7 +38,7 @@ export type Unit = {
 };
 
 /** A log.md entry; `kind` is full, quick, voice, review or checkpoint. */
-type Session = {
+export type Session = {
   date: string;
   time: string | null;
   kind: string;

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { dayLabel, forecast, monthGrid, monthOf, monthTitle, shiftMonth } from "../calendar.ts";
+import { calendarSessions, mergeDue } from "../course-home.ts";
 
 describe("course calendar", () => {
   test("the grid starts on Sunday with blanks before the 1st", () => {
@@ -32,5 +33,37 @@ describe("course calendar", () => {
       "2026-10-26": 2,
       "2026-10-27": 2,
     });
+  });
+});
+
+describe("calendar entries", () => {
+  const sd = { slug: "system-design", title: "System design", hue: "teal" };
+  const ci = { slug: "coding-interviews", title: "Coding interviews", hue: "amber" };
+  const session = { date: "2026-10-27", time: null, topics: [], quiz: null, cardsReviewed: null, cardsAdded: null, ended: "complete" as const };
+
+  test("sessions map to calendar entries, titled by topic, tagged with their course when given", () => {
+    const sessions = [
+      { ...session, kind: "full", topics: ["caching", "queues"], quiz: "4/5", cardsAdded: 3 },
+      { ...session, kind: "review", ended: "early" as const },
+      { ...session, kind: "checkpoint" },
+    ];
+    const titles = { caching: "Caching" };
+    assert.deepEqual(calendarSessions({ titles }, sessions), [
+      { date: "2026-10-27", kind: "Lesson", title: "Caching, queues", quiz: "4/5", cardsAdded: 3, early: false },
+      { date: "2026-10-27", kind: "Review", title: "Review", quiz: null, cardsAdded: null, early: true },
+      { date: "2026-10-27", kind: "Checkpoint", title: "Checkpoint", quiz: null, cardsAdded: null, early: false },
+    ]);
+    assert.deepEqual(calendarSessions({ titles }, sessions.slice(0, 1), sd)[0].course, sd);
+  });
+
+  test("forecasts merge by day, one entry per course in the order given", () => {
+    assert.deepEqual(
+      mergeDue([
+        { course: sd, forecast: { "2026-10-27": 6, "2026-10-28": 2 } },
+        { course: ci, forecast: { "2026-10-27": 4 } },
+      ]),
+      { "2026-10-27": [{ course: sd, n: 6 }, { course: ci, n: 4 }], "2026-10-28": [{ course: sd, n: 2 }] },
+    );
+    assert.deepEqual(mergeDue([{ forecast: { "2026-10-27": 3 } }]), { "2026-10-27": [{ n: 3 }] });
   });
 });

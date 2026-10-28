@@ -7,6 +7,7 @@ import {
   type ExerciseOutcome,
   type Overview,
   type Reading,
+  type Session,
   type TopicProgress,
   type TopicStatus,
   type Unit,
@@ -132,6 +133,50 @@ export const HOME_COURSES = 3;
 /** Home's first `HOME_COURSES` cards; `more` when any were cut. */
 export function homeSlice(cards: CardData[]): { cards: CardData[]; more: boolean } {
   return { cards: cards.slice(0, HOME_COURSES), more: cards.length > HOME_COURSES };
+}
+
+/** The course a calendar entry belongs to, on Learn's calendar across courses. */
+export type CourseTag = { slug: string; title: string; hue: string };
+
+export type CalendarSession = {
+  date: string;
+  kind: UpNextKind;
+  /** The session's topics by title. */
+  title: string;
+  quiz: string | null;
+  cardsAdded: number | null;
+  early: boolean;
+  course?: CourseTag;
+};
+
+/** Cards due per day, one entry per course. */
+export type CalendarDue = Record<string, { course?: CourseTag; n: number }[]>;
+
+const SESSION_KIND: Record<string, UpNextKind> = { review: "Review", checkpoint: "Checkpoint" };
+
+/** A course's log.md sessions as calendar entries, stamped with `course` when given. */
+export function calendarSessions(c: Pick<Overview, "titles">, sessions: Session[], course?: CourseTag): CalendarSession[] {
+  return sessions.map((s) => {
+    const kind = SESSION_KIND[s.kind] ?? "Lesson";
+    return {
+      date: s.date,
+      kind,
+      title: s.topics.map((t) => topicTitle(c, t)).join(", ") || kind,
+      quiz: s.quiz,
+      cardsAdded: s.cardsAdded,
+      early: s.ended === "early",
+      ...(course ? { course } : {}),
+    };
+  });
+}
+
+/** Per-course forecasts merged by day, in the order given. */
+export function mergeDue(forecasts: { course?: CourseTag; forecast: Record<string, number> }[]): CalendarDue {
+  const out: CalendarDue = {};
+  for (const { course, forecast } of forecasts) {
+    for (const [day, n] of Object.entries(forecast)) (out[day] ??= []).push(course ? { course, n } : { n });
+  }
+  return out;
 }
 
 export type JourneyStep = {

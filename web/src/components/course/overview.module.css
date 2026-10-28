@@ -441,6 +441,31 @@
   height: 11px;
 }
 
+/* A day-list row's course, on Learn's calendar across courses. */
+.courseTag {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.courseTag::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--hue);
+  vertical-align: 1px;
+}
+
+.courseTag:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
 .detail {
   flex: 1;
   min-width: 0;

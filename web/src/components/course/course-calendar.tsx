@@ -1,43 +1,37 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight, Layers, Play } from "lucide-react";
 import belay from "@/components/belay/belay.module.css";
 import { Button } from "@/components/ui/button";
 import { dayLabel, monthGrid, monthOf, monthTitle, shiftMonth } from "@/lib/calendar";
-import type { UpNextKind } from "@/lib/course-home";
+import type { CalendarDue, CalendarSession, CourseTag } from "@/lib/course-home";
+import { courseHref } from "@/lib/hrefs";
 import { cn } from "@/lib/utils";
 import card from "./course-card.module.css";
 import course from "./course.module.css";
 import styles from "./overview.module.css";
 
-export type CalendarSession = {
-  date: string;
-  kind: UpNextKind;
-  /** The session's topics by title. */
-  title: string;
-  quiz: string | null;
-  cardsAdded: number | null;
-  early: boolean;
-};
-
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
 
 const Kind = ({ kind }: { kind: string }) => <span className={cn(card.kind, card[`kind${kind}`])}>{kind}</span>;
 
+const hue = (c?: CourseTag) => (c ? ({ "--hue": c.hue } as React.CSSProperties) : undefined);
+
+const Tag = ({ course }: { course?: CourseTag }) =>
+  course ? (
+    <Link href={courseHref(course.slug)} className={styles.courseTag} style={hue(course)}>
+      {course.title}
+    </Link>
+  ) : null;
+
 /**
- * A Sunday-first month of the course in square days: a dot per logged session, a cards count on days cards fall due,
- * today outlined. It opens on today; clicking a day lists its sessions and cards beside the grid (under it on phones).
+ * A Sunday-first month in square days: a dot per logged session, a cards count on days cards fall due, today
+ * outlined. It opens on today; clicking a day lists its sessions and cards beside the grid (under it on phones).
+ * Entries tagged with a course (Learn's calendar across courses) take its hue and link to it.
  */
-export function CourseCalendar({
-  sessions,
-  forecast,
-  today,
-}: {
-  sessions: CalendarSession[];
-  forecast: Record<string, number>;
-  today: string;
-}) {
+export function CourseCalendar({ sessions, due, today }: { sessions: CalendarSession[]; due: CalendarDue; today: string }) {
   const [month, setMonth] = React.useState(() => monthOf(today));
   const [picked, setPicked] = React.useState(today);
   const byDay = React.useMemo(() => {
@@ -46,7 +40,7 @@ export function CourseCalendar({
     return m;
   }, [sessions]);
   const daySessions = byDay.get(picked) ?? [];
-  const due = forecast[picked] ?? 0;
+  const dayDue = due[picked] ?? [];
 
   return (
     <section>
@@ -68,8 +62,8 @@ export function CourseCalendar({
           ))}
           {monthGrid(month).map((day, i) => {
             if (!day) return <span key={i} />;
-            const n = byDay.get(day)?.length ?? 0;
-            const cards = forecast[day];
+            const ds = byDay.get(day) ?? [];
+            const cards = (due[day] ?? []).reduce((sum, d) => sum + d.n, 0);
             return (
               <button
                 key={day}
@@ -80,10 +74,10 @@ export function CourseCalendar({
                 onClick={() => setPicked(day)}
               >
                 <span>{+day.slice(8)}</span>
-                {n ? (
+                {ds.length ? (
                   <span className={styles.dots}>
-                    {Array.from({ length: n }, (_, j) => (
-                      <i key={j} className={styles.sessionDot} />
+                    {ds.map((s, j) => (
+                      <i key={j} className={styles.sessionDot} style={hue(s.course)} />
                     ))}
                   </span>
                 ) : null}
@@ -99,7 +93,7 @@ export function CourseCalendar({
         </div>
         <div className={styles.detail}>
           <h3 className={styles.detailHeading}>{dayLabel(picked, today)}</h3>
-          {daySessions.length || due ? (
+          {daySessions.length || dayDue.length ? (
             <ul className={belay.rows}>
               {daySessions.map((s, i) => (
                 <li key={i} className={belay.row}>
@@ -120,16 +114,18 @@ export function CourseCalendar({
                     ) : null}
                     {s.early ? <span className={card.pill}>Ended early</span> : null}
                   </span>
+                  <Tag course={s.course} />
                 </li>
               ))}
-              {due ? (
-                <li className={belay.row}>
+              {dayDue.map((d, i) => (
+                <li key={`due-${i}`} className={belay.row}>
                   <Kind kind="Review" />
                   <span className={belay.grow}>
-                    {due} card{due === 1 ? "" : "s"} due
+                    {d.n} card{d.n === 1 ? "" : "s"} due
                   </span>
+                  <Tag course={d.course} />
                 </li>
-              ) : null}
+              ))}
             </ul>
           ) : (
             <p className={belay.empty}>No sessions.</p>

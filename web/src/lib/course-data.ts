@@ -1,7 +1,7 @@
 import "server-only";
 import { connection } from "next/server";
 import { cache } from "react";
-import { byUrgency, homeSlice, type CardData } from "./course-home";
+import { byUrgency, calendarSessions, homeSlice, mergeDue, type CalendarDue, type CalendarSession, type CardData } from "./course-home";
 import {
   cardForecast,
   citedBy,
@@ -60,7 +60,7 @@ export const courseForecast = cache(async (c: string) => cardForecast(c));
 
 const lastLesson = (course: string) => listLessons(course)[0]?.date ?? null;
 
-/** The Courses page: every course's card, most urgent first. */
+/** The Learn page: every course's card, most urgent first. */
 export async function courseCards(): Promise<CardData[]> {
   return byUrgency(await courseList(), lastLesson);
 }
@@ -68,6 +68,18 @@ export async function courseCards(): Promise<CardData[]> {
 /** Home's Your courses: the 3 most urgent cards of courses still being learned; `more` when others are hidden. */
 export async function homeCourses(): Promise<{ cards: CardData[]; more: boolean }> {
   return homeSlice(byUrgency((await courseList()).filter(inProgress), lastLesson));
+}
+
+/** Learn's calendar: every course's sessions, tagged with their course, and its cards due per day. */
+export async function learnCalendar(): Promise<{ sessions: CalendarSession[]; due: CalendarDue }> {
+  const per = await Promise.all(
+    (await courseList()).map(async (c) => {
+      const course = { slug: c.course, title: c.title, hue: courseColor(c) };
+      const [sessions, forecast] = await Promise.all([courseSessions(c.course), courseForecast(c.course)]);
+      return { sessions: calendarSessions(c, sessions, course), due: { course, forecast } };
+    }),
+  );
+  return { sessions: per.flatMap((p) => p.sessions), due: mergeDue(per.map((p) => p.due)) };
 }
 
 export type CourseHit = { course: string; title: string; color: string };
