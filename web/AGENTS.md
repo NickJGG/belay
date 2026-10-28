@@ -36,8 +36,8 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   `limits` events) and the CLI's two-week `activityGrid`, then In flight, from the CLI's `inFlight` (`homeFlight`),
   then Your courses (`homeCourses`: the 3 most urgent, See all to /courses), then Recent activity: the CLI's `activity` with `doneOnly`, across projects
   (`homeActivity`, `?days=` as a project's Activity).
-- Course pages: `/courses` (course cards), `/courses/<c>` (Overview: Goal, the current unit's journey and next
-  step, a calendar) and its tabs `{syllabus,map,lessons,notes,misconceptions,cards,work}` under one layout holding
+- Course pages: `/courses` (course cards), `/courses/<c>` (Overview: a hero with the current unit, the step its
+  journey lights and the journey, a calendar, the goal) and its tabs `{syllabus,map,lessons,notes,misconceptions,cards,work}` under one layout holding
   the course header, and the detail pages `/courses/<c>/{knowledge,lessons,sources}/<x>`. Their pieces are in
   `src/components/course/`; their data is `lib/course-data.ts` over `lib/courses.ts`, which loads the learn skill's
   `scripts/courses.js` and `cards.js` (formats.md is the contract). The site never edits course Markdown: it writes

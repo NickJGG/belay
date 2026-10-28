@@ -27,7 +27,7 @@ export function action(i: UpNextItem): string {
   return "Start";
 }
 
-export const KIND_ICON: Record<UpNextKind, LucideIcon> = { Lesson: Play, Reading: BookOpen, Review: Layers, Checkpoint: Flag, Build: Hammer };
+const KIND_ICON: Record<UpNextKind, LucideIcon> = { Lesson: Play, Reading: BookOpen, Review: Layers, Checkpoint: Flag, Build: Hammer };
 
 /** An Up next item's button: Mark read for reading, otherwise its routine's start. */
 export function UpNextButton({ item, label, variant, resume = false }: { item: UpNextItem; label: string; variant: ButtonVariant; resume?: boolean }) {
@@ -77,11 +77,12 @@ function CardPills({ due, lastLesson }: { due: number; lastLesson: string | null
   );
 }
 
-export function UnitBar({ units, className }: { units: (number | null)[]; className?: string }) {
+/** `current` is the index of the unit to outline. */
+export function UnitBar({ units, current, className }: { units: (number | null)[]; current?: number; className?: string }) {
   return (
     <span className={cn(styles.bar, className)} aria-hidden>
       {units.map((done, i) => (
-        <i key={i} className={cn(styles.seg, done === null && styles.segOff)}>
+        <i key={i} className={cn(styles.seg, done === null && styles.segOff, i === current && styles.segCur)}>
           {done ? <b style={{ width: `${done * 100}%` }} /> : null}
         </i>
       ))}

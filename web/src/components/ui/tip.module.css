@@ -1,4 +1,7 @@
-/* A hover/focus tip above its .tipped element: the Drawer's usage pills and rings, Home's grid, course card pills. */
+/*
+ * A hover/focus tip above its .tipped element (below it with .tipDown): the Drawer's usage pills and rings, Home's
+ * grid, course card pills, the Overview hero's chips.
+ */
 .tipped {
   position: relative;
 }
@@ -26,6 +29,11 @@
   translate: -50% 0;
   opacity: 0;
   transition: opacity var(--t-fast) var(--ease);
+}
+
+.tipDown {
+  top: calc(100% + 8px);
+  bottom: auto;
 }
 
 .tipped:is(:hover, :focus-visible) .tip {
