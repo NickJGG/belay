@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync }
 import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
-import { cardData, homeSlice, journeySteps } from "../course-home.ts";
+import { cardData, currentUnit, exerciseRows, heroStep, homeSlice, journeySteps, readingBooks } from "../course-home.ts";
 import { sectionOf } from "../course-nav.ts";
 import {
   citedBy,
@@ -310,6 +310,123 @@ describe("course cards", () => {
     ]);
     const due = { unit: 1, title: "Designs", result: "pending" as const, left: [], due: true };
     assert.deepEqual(journeySteps({ next: null, checkpoint: due, titles: {} }, unit).map((s) => s.state), ["part", "todo", "todo", "now"]);
+    const next = { topic: "chat", status: "todo" as const, unit: 1, reading: { source: "b", status: "todo" as const, label: "b", sections: [] } };
+    assert.deepEqual(journeySteps({ next, checkpoint: null, titles: {} }, unit).map((s) => s.state), ["now", "todo", "todo", "todo"]);
+  });
+
+  const unit: Unit = {
+    n: 2,
+    title: "Data models",
+    topics: [
+      { topic: "relational", status: "done" },
+      { topic: "documents", status: "in-progress" },
+    ],
+    checkpoint: { result: "pending", date: null, score: null },
+    reading: [],
+    items: [
+      { kind: "read", source: "ddia-ch2", status: "done", label: "Designing Data-Intensive Applications ch. 2", sections: ["Relational"] },
+      { kind: "read", source: "ddia-ch3", status: "todo", label: "Designing Data-Intensive Applications ch. 3", sections: ["Indexes", "OLAP"] },
+      { kind: "read", source: "paper", status: "todo", label: "The Dynamo paper", sections: [] },
+      { kind: "topic", topic: "relational", status: "done" },
+      { kind: "topic", topic: "documents", status: "in-progress" },
+      { kind: "checkpoint", result: "pending", date: null, score: null },
+    ],
+  };
+  const progress = (outcomes: (string | null)[]) => ({
+    applyAlone: outcomes.includes("alone"),
+    lastQuiz: "4/5",
+    quizOk: true,
+    exercises: outcomes.map((outcome, i) => ({ n: i + 3, kind: "apply" as const, outcome: outcome as "alone" | null })),
+  });
+
+  test("reading lines group by book, chapters split at the last ' ch. '", () => {
+    const reads = unit.items.flatMap((i) => (i.kind === "read" ? [i] : []));
+    assert.deepEqual(readingBooks(reads), [
+      {
+        book: "Designing Data-Intensive Applications",
+        chapters: [
+          { label: "Ch. 2", source: "ddia-ch2", status: "done", sections: ["Relational"] },
+          { label: "Ch. 3", source: "ddia-ch3", status: "todo", sections: ["Indexes", "OLAP"] },
+        ],
+      },
+      { book: null, chapters: [{ label: "The Dynamo paper", source: "paper", status: "todo", sections: [] }] },
+    ]);
+  });
+
+  test("exercise rows run apply, analyse, transfer, dropping empty kinds", () => {
+    const rows = exerciseRows([
+      { n: 7, kind: "transfer", outcome: null },
+      { n: 3, kind: "apply", outcome: "with hints" },
+      { n: 6, kind: "apply", outcome: "not solved" },
+    ]);
+    assert.deepEqual(rows, [
+      { kind: "apply", items: [{ n: 3, outcome: "with hints" }, { n: 6, outcome: "not solved" }] },
+      { kind: "transfer", items: [{ n: 7, outcome: null }] },
+    ]);
+  });
+
+  test("the hero shows the topic with its finish chips, past a review", () => {
+    const c = summary({
+      next: { topic: "documents", status: "in-progress", unit: 2 },
+      titles: { documents: "Document models" },
+      cards: { total: 30, due: 25, overdue: 0, new: 0, nextDue: null },
+    });
+    const card = cardData(c, []);
+    const items = [card.lead!, ...card.rest];
+    assert.equal(card.lead?.kind, "Review");
+    assert.equal(currentUnit(c, items), 2);
+    const hero = heroStep(c, unit, items, progress(["with hints", null, "with hints"]));
+    assert.deepEqual(hero, {
+      kind: "topic",
+      title: "Document models",
+      line: "Starts with your 25 due cards",
+      chips: [
+        { label: "Quiz 4/5 or better", detail: "4/5", met: true },
+        { label: "Solve an exercise alone", detail: "2 tried with hints", met: false, tip: "exercises" },
+      ],
+    });
+    assert.equal(heroStep(c, unit, items, progress([null]))?.chips[1].detail, "None tried yet");
+    const met = heroStep(c, unit, items, progress(["alone", "with hints"]))!.chips[1];
+    assert.deepEqual([met.met, met.detail], [true, "1 solved alone"]);
+    const quiet = summary({ next: { topic: "documents", status: "todo", unit: 2 } });
+    assert.equal(heroStep(quiet, unit, cardData(quiet, []).rest, null)?.line, null);
+  });
+
+  test("the hero shows the unit's reading run when reading leads", () => {
+    const reading = { source: "ddia-ch3", status: "todo" as const, label: "Designing Data-Intensive Applications ch. 3", sections: [] };
+    const c = summary({ next: { topic: "documents", status: "todo", unit: 2, reading } });
+    const card = cardData(c, []);
+    const hero = heroStep(c, unit, [card.lead!, ...card.rest], null)!;
+    assert.equal(card.lead?.kind, "Reading");
+    assert.deepEqual([hero.kind, hero.title, hero.line], ["reading", "Reading for unit 2", "3 chapters, on your own"]);
+    assert.deepEqual(hero.books?.map((b) => [b.book, b.chapters.map((ch) => ch.label)]), [
+      ["Designing Data-Intensive Applications", ["Ch. 2", "Ch. 3"]],
+      [null, ["The Dynamo paper"]],
+    ]);
+  });
+
+  test("the hero shows a leading checkpoint, in the checkpoint's unit", () => {
+    const due = summary({ next: null, checkpoint: { unit: 2, title: "Data models", result: "pending", left: [], due: true } });
+    const items = [cardData(due, []).lead!];
+    assert.equal(currentUnit(due, items), 2);
+    assert.deepEqual(heroStep(due, unit, items, null), {
+      kind: "checkpoint",
+      title: "Checkpoint 2",
+      line: "An unseen task set from the unit's rubric, done without help",
+      chips: [
+        { label: "All 2 topics done", detail: null, met: true },
+        { label: "Pass the checkpoint", detail: "80% of the rubric", met: false },
+      ],
+    });
+    const failed = summary({
+      next: { topic: "x", status: "todo", unit: 3 },
+      checkpoint: { unit: 2, title: "Data models", result: "fail", left: [], due: false },
+    });
+    const fitems = cardData(failed, []).rest;
+    const lead = cardData(failed, []).lead!;
+    assert.equal(currentUnit(failed, [lead, ...fitems]), 2);
+    assert.equal(heroStep(failed, unit, [lead, ...fitems], null)?.chips[1].detail, "Last try: fail");
+    assert.equal(heroStep(summary({ next: null, checkpoint: null }), unit, [], null), null);
   });
 
   test("routines run their /learn command", () => {

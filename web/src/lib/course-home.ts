@@ -1,4 +1,16 @@
-import { checkpointLabel, topicTitle, unitFractions, type CourseSummary, type Overview, type TopicStatus, type Unit } from "./courses.ts";
+import {
+  checkpointLabel,
+  topicTitle,
+  unitFractions,
+  type CourseSummary,
+  type ExerciseKind,
+  type ExerciseOutcome,
+  type Overview,
+  type Reading,
+  type TopicProgress,
+  type TopicStatus,
+  type Unit,
+} from "./courses.ts";
 import type { Routine } from "./routines.ts";
 
 /*
@@ -129,24 +141,59 @@ export type JourneyStep = {
   state: "todo" | "part" | "done" | "now";
 };
 
-/** The unit's journey strip: each run of reading lines as one step, then topics and the checkpoint, in syllabus order. */
-export function journeySteps(c: Pick<Overview, "next" | "checkpoint" | "titles">, unit: Unit): JourneyStep[] {
-  const current = c.next?.unit === unit.n ? c.next.topic : c.checkpoint?.unit === unit.n && c.checkpoint.due ? "checkpoint" : null;
-  const steps: JourneyStep[] = [];
-  let run: { done: number; of: number } | null = null;
+/** The step the Overview's hero shows: the first routine but Review, since a lesson opens with its cards anyway. */
+const heroItem = (items: UpNextItem[]) => items.find((i) => i.kind !== "Review");
+
+/** The unit the Overview is about: a leading checkpoint's, else the next topic's, else the open checkpoint's. */
+export function currentUnit(c: Pick<Overview, "next" | "checkpoint">, items: UpNextItem[]): number | null {
+  if (heroItem(items)?.kind === "Checkpoint" && c.checkpoint) return c.checkpoint.unit;
+  return c.next?.unit ?? c.checkpoint?.unit ?? null;
+}
+
+/** The unit's runs of consecutive reading lines, in syllabus order. */
+function readingRuns(unit: Unit): Reading[][] {
+  const runs: Reading[][] = [];
+  let run: Reading[] | null = null;
   for (const item of unit.items) {
     if (item.kind !== "read") run = null;
+    else {
+      if (!run) runs.push((run = []));
+      run.push(item);
+    }
+  }
+  return runs;
+}
+
+/** The unit's journey strip: each run of reading lines as one step, then topics and the checkpoint, in syllabus order. */
+export function journeySteps(c: Pick<Overview, "next" | "checkpoint" | "titles">, unit: Unit): JourneyStep[] {
+  const reading = c.next?.unit === unit.n ? c.next.reading?.source : undefined;
+  const current = reading
+    ? null
+    : c.next?.unit === unit.n
+      ? c.next.topic
+      : c.checkpoint?.unit === unit.n && c.checkpoint.due
+        ? "checkpoint"
+        : null;
+  const runs = readingRuns(unit);
+  const steps: JourneyStep[] = [];
+  let r = -1;
+  let inRun = false;
+  for (const item of unit.items) {
     if (item.kind === "read") {
-      if (!run) {
-        run = { done: 0, of: 0 };
-        steps.push({ kind: "reading", label: "Reading", sub: "", state: "todo" });
-      }
-      run.of++;
-      if (item.status === "done") run.done++;
-      const step = steps[steps.length - 1];
-      step.sub = `${run.done} of ${run.of} read`;
-      step.state = run.done === run.of ? "done" : run.done ? "part" : "todo";
-    } else if (item.kind === "topic") {
+      if (inRun) continue;
+      inRun = true;
+      const run = runs[++r];
+      const done = run.filter((r) => r.status === "done").length;
+      steps.push({
+        kind: "reading",
+        label: "Reading",
+        sub: `${done} of ${run.length} read`,
+        state: run.some((r) => r.source === reading) ? "now" : done === run.length ? "done" : done ? "part" : "todo",
+      });
+      continue;
+    }
+    inRun = false;
+    if (item.kind === "topic") {
       steps.push({
         kind: "topic",
         label: c.titles[item.topic] ?? item.topic,
@@ -163,4 +210,105 @@ export function journeySteps(c: Pick<Overview, "next" | "checkpoint" | "titles">
     }
   }
   return steps;
+}
+
+export type HeroChip = {
+  label: string;
+  detail: string | null;
+  met: boolean;
+  /** The chip's hover tip: the topic's exercises that count. */
+  tip?: "exercises";
+};
+
+export type ReadingChapter = { label: string; source: string; status: Reading["status"]; sections: string[] };
+/** `book` is null for reading lines whose label names no chapter. */
+export type ReadingBook = { book: string | null; chapters: ReadingChapter[] };
+
+export type HeroStep = {
+  kind: "topic" | "reading" | "checkpoint";
+  title: string;
+  line: string | null;
+  chips: HeroChip[];
+  books?: ReadingBook[];
+};
+
+/** Reading lines grouped by book, split from the label at its last ` ch. ` (`DDIA ch. 2` → `DDIA`, `Ch. 2`). */
+export function readingBooks(items: Reading[]): ReadingBook[] {
+  const books: ReadingBook[] = [];
+  for (const r of items) {
+    const at = r.label.lastIndexOf(" ch. ");
+    const book = at < 0 ? null : r.label.slice(0, at);
+    const label = at < 0 ? r.label : `Ch. ${r.label.slice(at + 5)}`;
+    let group = books.find((b) => b.book === book);
+    if (!group) books.push((group = { book, chapters: [] }));
+    group.chapters.push({ label, source: r.source, status: r.status, sections: r.sections });
+  }
+  return books;
+}
+
+const KINDS: ExerciseKind[] = ["apply", "analyse", "transfer"];
+
+/** The exercise tip's rows: one per kind, hardest last, kinds without exercises dropped. */
+export function exerciseRows(exercises: TopicProgress["exercises"]): { kind: ExerciseKind; items: { n: number; outcome: ExerciseOutcome | null }[] }[] {
+  return KINDS.map((kind) => ({
+    kind,
+    items: exercises.filter((e) => e.kind === kind).map(({ n, outcome }) => ({ n, outcome })),
+  })).filter((row) => row.items.length);
+}
+
+function exerciseDetail(exercises: TopicProgress["exercises"]): string {
+  const count = (o: ExerciseOutcome) => exercises.filter((e) => e.outcome === o).length;
+  if (count("alone")) return `${count("alone")} solved alone`;
+  if (count("with hints")) return `${count("with hints")} tried with hints`;
+  if (count("not solved")) return `${count("not solved")} not solved`;
+  return "None tried yet";
+}
+
+/**
+ * The Overview hero for `unit` (from `currentUnit`): the reading, checkpoint or topic its journey lights. `items` are
+ * the card's routines, lead first. Null when nothing in the unit is next.
+ */
+export function heroStep(
+  c: Pick<Overview, "next" | "checkpoint" | "titles" | "cards">,
+  unit: Unit,
+  items: UpNextItem[],
+  progress: TopicProgress | null,
+): HeroStep | null {
+  const step = heroItem(items);
+  if (step?.kind === "Reading") {
+    const run = readingRuns(unit).find((rs) => rs.some((r) => r.source === step.source)) ?? [];
+    return {
+      kind: "reading",
+      title: `Reading for unit ${unit.n}`,
+      line: `${plural(run.length, "chapter")}, on your own`,
+      chips: [],
+      books: readingBooks(run),
+    };
+  }
+  const cp = c.checkpoint;
+  if (step?.kind === "Checkpoint" && cp) {
+    const retry = cp.result === "partial" || cp.result === "fail";
+    return {
+      kind: "checkpoint",
+      title: `Checkpoint ${cp.unit}`,
+      line: "An unseen task set from the unit's rubric, done without help",
+      chips: [
+        { label: `All ${plural(unit.topics.length, "topic")} done`, detail: null, met: cp.left.length === 0 },
+        { label: "Pass the checkpoint", detail: retry ? `Last try: ${cp.result}` : "80% of the rubric", met: false },
+      ],
+    };
+  }
+  if (!c.next || c.next.unit !== unit.n) return null;
+  const due = c.cards.due;
+  return {
+    kind: "topic",
+    title: topicTitle(c, c.next.topic),
+    line: due > 0 ? `Starts with your ${plural(due, "due card")}` : null,
+    chips: progress
+      ? [
+          { label: "Quiz 4/5 or better", detail: progress.lastQuiz, met: progress.quizOk },
+          { label: "Solve an exercise alone", detail: exerciseDetail(progress.exercises), met: progress.applyAlone, tip: "exercises" },
+        ]
+      : [],
+  };
 }

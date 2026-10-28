@@ -25,7 +25,7 @@ type Topic = { topic: string; status: TopicStatus };
 type CheckpointResult = "pending" | "pass" | "partial" | "fail";
 type Checkpoint = { result: CheckpointResult; date: string | null; score: number | null };
 /** A unit's `read` line: one source's chapter and the sections to read in it. */
-type Reading = { source: string; status: "todo" | "done"; label: string; sections: string[] };
+export type Reading = { source: string; status: "todo" | "done"; label: string; sections: string[] };
 type UnitItem = ({ kind: "read" } & Reading) | ({ kind: "topic" } & Topic) | ({ kind: "checkpoint" } & Checkpoint);
 export type Unit = {
   n: number;
@@ -49,8 +49,16 @@ type Session = {
   ended: "complete" | "early";
 };
 
-/** A topic's done criteria, as /learn's Close checks them. */
-type TopicProgress = { applyAlone: boolean; lastQuiz: string | null; quizOk: boolean };
+export type ExerciseKind = "apply" | "analyse" | "transfer";
+export type ExerciseOutcome = "alone" | "with hints" | "not solved";
+
+/** A topic's done criteria, as /learn's Close checks them; `exercises` are the ones that count, by number. */
+export type TopicProgress = {
+  applyAlone: boolean;
+  lastQuiz: string | null;
+  quizOk: boolean;
+  exercises: { n: number; kind: ExerciseKind; outcome: ExerciseOutcome | null }[];
+};
 
 export type Overview = {
   course: string;
