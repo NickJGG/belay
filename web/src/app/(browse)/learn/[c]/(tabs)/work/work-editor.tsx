@@ -3,14 +3,17 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Play, Square } from "lucide-react";
 import { Prose } from "@/components/content/prose";
 import { subscribeLive } from "@/components/live/event-hub";
 import { Button } from "@/components/ui/button";
 import { courseHref, vscodeHref } from "@/lib/hrefs";
 import type { MarkdownContext } from "@/lib/markdown";
+import { runCommand } from "@/lib/run";
 import type { WorkEntry } from "@/lib/work";
 import { cn } from "@/lib/utils";
 import { CodeEditor, type CodeEditorHandle } from "./code-editor";
+import { RunSplit, useInput, useRun } from "./run-panel";
 import styles from "./work.module.css";
 
 /*
@@ -327,12 +330,30 @@ function Editor({
 
   const sendAttempt = () => void submit(`Attempt: ${rel}`, { kind: "attempt", path: rel });
 
+  const runnable = runCommand(rel) !== null;
+  const input = useInput(course, rel, runnable);
+  const saveInput = input.save;
+  const prepare = React.useCallback(async () => (await save()) && (await saveInput()), [save, saveInput]);
+  const run = useRun(course, rel, prepare);
+
   const isMd = rel.endsWith(".md");
   const isCode = !isMd && !rel.endsWith(".txt");
   const checkpoint = CHECKPOINT.test(rel);
   const offline = !send;
   const deferred = React.useDeferredValue(text);
   const rendered = isMd && preview;
+
+  const editorView = (
+    <CodeEditor
+      ref={editor}
+      path={rel}
+      initial={file.text}
+      onChange={onChange}
+      onBlur={() => void save()}
+      onSubmit={offline ? undefined : sendAttempt}
+      onRun={runnable ? run.toggle : undefined}
+    />
+  );
 
   const statusLabel =
     status === "saving" ? "Saving…" : status === "unsaved" ? "Unsaved" : status === "error" ? "Not saved" : "Saved";
@@ -351,6 +372,17 @@ function Editor({
           </Button>
         ) : null}
         {isCode ? <VsCode abs={file.abs} /> : null}
+        {runnable ? (
+          <Button
+            variant="outline"
+            size="sm"
+            title={run.running ? "Stop the run" : "Run this file (Ctrl+Shift+Enter)"}
+            onClick={run.toggle}
+          >
+            {run.running ? <Square size={12} aria-hidden /> : <Play size={12} aria-hidden />}
+            {run.running ? "Stop" : "Run"}
+          </Button>
+        ) : null}
         <Button
           variant={checkpoint ? "outline" : "default"}
           size="sm"
@@ -394,21 +426,20 @@ function Editor({
         </div>
       ) : null}
       <div className={styles.body}>
-        <div className={cn(styles.code, rendered && styles.hidden)}>
-          <CodeEditor
-            ref={editor}
-            path={rel}
-            initial={file.text}
-            onChange={onChange}
-            onBlur={() => void save()}
-            onSubmit={offline ? undefined : sendAttempt}
-          />
-        </div>
-        {rendered ? (
-          <div className={styles.preview} data-quote-source>
-            <Prose markdown={deferred} course={{ course, topics }} />
-          </div>
-        ) : null}
+        {runnable ? (
+          <RunSplit rel={rel} run={run} input={input}>
+            {editorView}
+          </RunSplit>
+        ) : (
+          <>
+            <div className={cn(styles.code, rendered && styles.hidden)}>{editorView}</div>
+            {rendered ? (
+              <div className={styles.preview} data-quote-source>
+                <Prose markdown={deferred} course={{ course, topics }} />
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   );

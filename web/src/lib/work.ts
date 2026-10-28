@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { courseDir, visibleParts } from "./courses.ts";
+import { isInputSidecar } from "./run.ts";
 
 /*
  * The learner's `work/` folder: the only place the site writes. Every path is relative to the
@@ -38,15 +39,17 @@ export function workPath(course: string, rel: string): string | null {
   return real === realWork || real.startsWith(realWork + path.sep) ? abs : null;
 }
 
-/** work/ as a flat, depth-first list: folders before files, each sorted by name. */
+/** work/ as a flat, depth-first list: folders before files, each sorted by name, without run input sidecars. */
 export function listWork(course: string): WorkEntry[] {
   const base = workRoot(course);
   const out: WorkEntry[] = [];
   if (!base || !fs.existsSync(base)) return out;
   const walk = (dir: string, rel: string, depth: number) => {
-    const entries = fs
-      .readdirSync(dir, { withFileTypes: true })
+    const all = fs.readdirSync(dir, { withFileTypes: true });
+    const files = all.filter((e) => e.isFile()).map((e) => e.name);
+    const entries = all
       .filter((e) => !e.name.startsWith(".") && (e.isFile() || (e.isDirectory() && !SKIP_DIRS.has(e.name))))
+      .filter((e) => !e.isFile() || !isInputSidecar(e.name, files))
       .sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name));
     for (const e of entries) {
       const p = `${rel}/${e.name}`;

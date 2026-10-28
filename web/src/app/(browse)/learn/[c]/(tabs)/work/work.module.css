@@ -169,6 +169,135 @@
   padding: var(--space-4) var(--space-6);
 }
 
+.split {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.splitTop {
+  flex: 1;
+  min-height: 0;
+}
+
+.handle {
+  position: relative;
+  flex: none;
+  height: 1px;
+  background: var(--line);
+  cursor: row-resize;
+  touch-action: none;
+}
+
+/* A wider grab area than the 1px line. */
+.handle::after {
+  position: absolute;
+  inset: -4px 0;
+  content: "";
+}
+
+.handle:hover {
+  background: var(--line-strong);
+}
+
+.run {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.runHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: 2px var(--space-2) 2px var(--space-3);
+  border-bottom: 1px solid var(--line);
+  font-size: var(--text-xs);
+}
+
+.runTitle {
+  font-weight: 600;
+}
+
+.runState {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.runBad {
+  color: var(--bad);
+}
+
+.runCommand {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--faint);
+  font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runBody {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(140px, 28%) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.input {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+}
+
+.inputHead {
+  padding: var(--space-1) var(--space-3) 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
+.inputNote {
+  color: var(--faint);
+}
+
+.inputText {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-1) var(--space-3) var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  resize: none;
+}
+
+.inputText:focus {
+  outline: none;
+}
+
+.inputText::placeholder {
+  color: var(--faint);
+}
+
+.output {
+  min-height: 0;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.stderr {
+  color: var(--bad);
+}
+
 @media (max-width: 767px) {
   .workspace {
     grid-template-columns: minmax(0, 1fr);

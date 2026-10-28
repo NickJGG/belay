@@ -24,13 +24,21 @@ function fileSetup(path: string): Extension {
 
 export const CodeEditor = React.forwardRef<
   CodeEditorHandle,
-  { path: string; initial: string; onChange: (text: string) => void; onBlur?: () => void; onSubmit?: () => void }
->(function CodeEditor({ path, initial, onChange, onBlur, onSubmit }, ref) {
+  {
+    path: string;
+    initial: string;
+    onChange: (text: string) => void;
+    onBlur?: () => void;
+    onSubmit?: () => void;
+    onRun?: () => void;
+  }
+>(function CodeEditor({ path, initial, onChange, onBlur, onSubmit, onRun }, ref) {
   const host = React.useRef<HTMLDivElement>(null);
   const view = React.useRef<EditorView | null>(null);
   const onChangeRef = React.useRef(onChange);
   const onBlurRef = React.useRef(onBlur);
   const onSubmitRef = React.useRef(onSubmit);
+  const onRunRef = React.useRef(onRun);
   // Programmatic replacements aren't edits.
   const silent = React.useRef(false);
 
@@ -38,6 +46,7 @@ export const CodeEditor = React.forwardRef<
     onChangeRef.current = onChange;
     onBlurRef.current = onBlur;
     onSubmitRef.current = onSubmit;
+    onRunRef.current = onRun;
   });
 
   React.useImperativeHandle(ref, () => ({
@@ -68,6 +77,14 @@ export const CodeEditor = React.forwardRef<
                 run: () => {
                   if (!onSubmitRef.current) return false;
                   onSubmitRef.current();
+                  return true;
+                },
+              },
+              {
+                key: "Mod-Shift-Enter",
+                run: () => {
+                  if (!onRunRef.current) return false;
+                  onRunRef.current();
                   return true;
                 },
               },
