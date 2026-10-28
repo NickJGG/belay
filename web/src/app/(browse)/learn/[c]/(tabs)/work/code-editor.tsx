@@ -9,6 +9,7 @@ import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { indentWithTab } from "@codemirror/commands";
 import { editorTheme, highlightStyle, loadFileLanguage } from "@/components/content/syntax";
+import { tsChecked } from "@/lib/ts-env";
 
 export type CodeEditorHandle = {
   /** Replaces the whole document, e.g. after reloading from disk. */
@@ -62,6 +63,7 @@ export const CodeEditor = React.forwardRef<
   // `initial` seeds the document once; later updates come through `setDoc`.
   React.useEffect(() => {
     const lang = new Compartment();
+    const tsHelp = new Compartment();
     const v = new EditorView({
       parent: host.current!,
       state: EditorState.create({
@@ -92,6 +94,7 @@ export const CodeEditor = React.forwardRef<
           ),
           fileSetup(path),
           lang.of([]),
+          tsHelp.of([]),
           editorTheme,
           syntaxHighlighting(highlightStyle),
           EditorView.updateListener.of((u) => {
@@ -107,6 +110,13 @@ export const CodeEditor = React.forwardRef<
       void loadFileLanguage(path).then((support) => {
         if (live && support) v.dispatch({ effects: lang.reconfigure(support) });
       });
+    }
+    if (tsChecked(path)) {
+      void import("./ts-editor")
+        .then((m) => m.tsExtensions(path))
+        .then((ext) => {
+          if (live) v.dispatch({ effects: tsHelp.reconfigure(ext) });
+        });
     }
     return () => {
       live = false;
