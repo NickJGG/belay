@@ -5,8 +5,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { grillsDir } from './config.ts';
-import { grillStatus, isGrillSlug } from './grill.ts';
 
 /** stdout, or `undefined` when git fails or isn't installed. */
 export function git(dir: string, args: string[]): string | undefined {
@@ -39,12 +37,12 @@ export function hasHistory(dir: string): boolean {
 const pathspecs = (dir: string, paths: string[]) => paths.map((p) => (p.startsWith(':') ? p : relative(dir, p).replaceAll('\\', '/')));
 
 /** Whether git sees any change under `paths` (see `pathspecs`), untracked files included. */
-function hasChanges(dir: string, paths: string[]): boolean {
+export function hasChanges(dir: string, paths: string[]): boolean {
   return !!git(dir, ['status', '--porcelain', '--', ...pathspecs(dir, paths)])?.trim();
 }
 
 /** Commits `paths` alone, whatever else is staged or untracked. Throws with git's first line. */
-function commitPathsOrThrow(dir: string, paths: string[], subject: string, body?: string): void {
+export function commitPathsOrThrow(dir: string, paths: string[], subject: string, body?: string): void {
   const specs = pathspecs(dir, paths);
   gitOrThrow(dir, ['add', '-A', '--', ...specs]);
   gitOrThrow(dir, ['commit', '-q', '-m', subject, ...(body ? ['-m', body] : []), '--', ...specs]);
@@ -58,25 +56,6 @@ export function commitPaths(dir: string, paths: string[], subject: string, body?
   } catch (e) {
     console.error(`belay: history not committed: ${(e as Error).message}`);
   }
-}
-
-/**
- * Commits a finished grill's folder, `grill <slug> - <by>`. Only a `planned` grill: one still in progress or
- * abandoned stays out of history. Checks the grill even when the data dir has no history, then does nothing.
- */
-export function commitGrill(dir: string, slug: string, author: { by: string; session?: string }): 'committed' | 'unchanged' | 'no history' {
-  if (!isGrillSlug(slug)) throw new Error(`'${slug}' is not a grill slug`);
-  const folder = join(grillsDir(dir), slug);
-  if (!existsSync(folder)) throw new Error(`no grill '${slug}' in ${grillsDir(dir)}`);
-  const status = grillStatus(grillsDir(dir), slug);
-  if (status !== 'planned') throw new Error(`grill '${slug}' is ${status ?? 'without a status'}; only a planned grill is committed`);
-  if (!hasHistory(dir)) return 'no history';
-  // A bridge's token stays out even in a data dir whose .gitignore predates grills/. The wildcard matters: git refuses
-  // a pathspec that literally names an ignored file, exclude or not.
-  const paths = [folder, `:(exclude)grills/${slug}/bridge.*`];
-  if (!hasChanges(dir, paths)) return 'unchanged';
-  commitPathsOrThrow(dir, paths, `grill ${slug} - ${author.by}`, author.session && `Session: ${author.session}`);
-  return 'committed';
 }
 
 export const GITIGNORE = 'cache/\n.run/\nlessons/\ngrills/*/bridge.json\n';

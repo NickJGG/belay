@@ -1,5 +1,7 @@
-/** The SessionStart digest: a few lines of re-entry context when a session opens inside a registered project. */
-import { grillForProject, projectTerms, type GrillSession } from './grill.ts';
+/**
+ * The SessionStart digest: a few lines of re-entry context when a session opens inside a registered project. Active
+ * extensions' sections follow these lines.
+ */
 import { localStamp, type Session } from './history.ts';
 import { highFirst, indexIssues, isReady, oldestFirst } from './query.ts';
 import type { BadFile, Project, Issue } from './store.ts';
@@ -9,12 +11,6 @@ export function clip(text: string, max: number): string {
 }
 
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-
-/** The project's grill sessions that no issue links to yet. */
-function unlinkedGrill(project: Project, issues: Issue[], grill: GrillSession[]) {
-  const linked = new Set(issues.map((t) => t.grill));
-  return grillForProject(grill.filter((g) => !linked.has(g.slug)), project);
-}
 
 export interface DigestOptions {
   /** Files the load skipped. */
@@ -27,7 +23,6 @@ export function digestLines(
   project: Project,
   issues: Issue[],
   sessions: Session[],
-  grill: GrillSession[],
   { bad = [], compact = false }: DigestOptions = {},
 ): string[] {
   const byId = indexIssues(issues);
@@ -55,16 +50,5 @@ export function digestLines(
     });
     out.push(`recent: ${recent.join(' · ')}`);
   }
-  const { tagged, matched } = unlinkedGrill(project, issues, grill);
-  const parts: string[] = [];
-  if (tagged.length) {
-    const open = tagged.filter((g) => g.status === 'in-progress').sort((a, b) => (b.updated ?? '').localeCompare(a.updated ?? ''));
-    const slugs = open.slice(0, 2).map((g) => g.slug).join(', ') + (open.length > 2 ? ', …' : '');
-    parts.push(`${plural(tagged.length, 'session')} tagged${open.length ? ` (in progress: ${slugs})` : ''}`);
-  }
-  if (matched.length) {
-    parts.push(`${plural(matched.length, 'old session')} ${matched.length === 1 ? 'matches' : 'match'} ${projectTerms(project).join('/')}`);
-  }
-  if (parts.length) out.push(`grill: ${parts.join(' · ')} (belay search <word>)`);
   return out;
 }

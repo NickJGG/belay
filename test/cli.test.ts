@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, test } from 'node:test';
 
 let dir: string;
@@ -112,6 +113,38 @@ test('a corrupt issue: read commands carry on and say so, writes refuse', () => 
   const set = belay('set', 'pix-1', 'todo');
   assert.equal(set.code, 1);
   assert.match(set.err, /^belay: issues\/pix-2\.md: line 3: /);
+});
+
+test('core commands resolve before any settings read: statusline runs while reading settings.yaml throws', () => {
+  belay('project', 'add', 'PIX', '--name', 'Pixel', '--path', dir);
+  belay('add', 'Draw the map', '--project', 'pix');
+  const preload = join(dir, 'no-settings.mjs');
+  writeFileSync(
+    preload,
+    `import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
+for (const name of ['statSync', 'readFileSync', 'existsSync']) {
+  const real = fs[name];
+  fs[name] = (p, ...rest) => {
+    if (String(p).endsWith('settings.yaml')) throw new Error('settings read');
+    return real(p, ...rest);
+  };
+}
+syncBuiltinESMExports();
+`,
+  );
+  const run = (input: string | undefined, ...args: string[]) =>
+    spawnSync(process.execPath, ['--import', pathToFileURL(preload).href, 'src/cli.ts', ...args], {
+      env: { ...process.env, BELAY_DATA: dir, CLAUDECODE: '' },
+      encoding: 'utf8',
+      input,
+    });
+  const status = run(JSON.stringify({ cwd: dir }), 'statusline');
+  assert.equal(status.status, 0, status.stderr);
+  assert.equal(status.stderr, '');
+  assert.match(status.stdout, /PIX-1/);
+  // The preload does throw on a read: switching an extension reads the file.
+  assert.match(run(undefined, 'extension', 'on', 'learn').stderr, /settings read/);
 });
 
 test('digest after compaction prints only the trimmed lines', () => {
