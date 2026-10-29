@@ -5,8 +5,9 @@ import { ChevronRight, ImageIcon, MessageSquare, Paperclip, SendHorizontal, Squa
 import { Prose } from "@/components/content/prose";
 import { Mark } from "@/components/layout/logo";
 import { IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_IMAGES } from "@/lib/images";
-import { openPrompts, permissionLine, permView, placeSteps, PLAN_READY, toolLabel, toStep, type ChatEntry, type OpenTurn, type Step } from "@/lib/chat";
+import { openPrompts, permissionLine, permView, placeSteps, toolLabel, toStep, type ChatEntry, type OpenTurn, type Step } from "@/lib/chat";
 import type { MarkdownContext } from "@/lib/markdown";
+import type { ClientKind, Composer } from "@/lib/session-kind";
 import type { Usage } from "@/lib/usage";
 import { cn } from "@/lib/utils";
 import styles from "./session.module.css";
@@ -17,12 +18,9 @@ export type Send = (msg: Record<string, unknown>) => Promise<string | null>;
 /** Where the drawer stands: answerable, or why it isn't. */
 export type LinkState = { state: "connected"; working: boolean } | { state: "disconnected" } | { state: "offline" };
 
-/** A mock element pinned in comment mode, waiting for its note in the composer. */
-export type PendingComment = { q: number; opt: string; selector: string; text: string };
+export const str = (v: unknown) => (typeof v === "string" ? v : "");
 
-const str = (v: unknown) => (typeof v === "string" ? v : "");
-
-const imagesOf = (e: ChatEntry) => (Array.isArray(e.images) ? e.images.filter((n): n is string => typeof n === "string") : []);
+export const imagesOf = (e: ChatEntry) => (Array.isArray(e.images) ? e.images.filter((n): n is string => typeof n === "string") : []);
 
 /** A picture in the composer's tray: uploading, stored as `name`, or failed. `url` is its object URL. */
 type Pic = { id: number; name?: string; url: string; state: "busy" | "done" | "fail" };
@@ -30,7 +28,7 @@ type Pic = { id: number; name?: string; url: string; state: "busy" | "done" | "f
 const imageUrl = (slug: string, name: string) => `/api/s/${slug}/images/${encodeURIComponent(name)}`;
 
 /** A sent message's pictures, above its bubble; each opens full size. */
-function SentPics({ slug, names }: { slug: string; names: string[] }) {
+export function SentPics({ slug, names }: { slug: string; names: string[] }) {
   if (!names.length) return null;
   return (
     <div className={cn(styles.sentPics, names.length === 1 && styles.sentOne)}>
@@ -140,7 +138,7 @@ function LiveGroup({ turn }: { turn: OpenTurn | null }) {
 }
 
 /** The tag row: your avatar or Claude's mark, a bold name, and a faint suffix. */
-function Speaker({ me, name, extra, className }: { me?: boolean; name: React.ReactNode; extra?: string; className?: string }) {
+export function Speaker({ me, name, extra, className }: { me?: boolean; name: React.ReactNode; extra?: string; className?: string }) {
   return (
     <span className={cn(styles.tag, className)}>
       {me ? (
@@ -166,6 +164,7 @@ function Entry({
   link,
   send,
   md,
+  kinds,
 }: {
   slug: string;
   e: ChatEntry;
@@ -175,6 +174,8 @@ function Entry({
   send: Send;
   /** A lesson's course, so Claude's citations render as claim chips. */
   md?: MarkdownContext;
+  /** Every active kind draws its own entries, whichever kind the session is. */
+  kinds: ClientKind[];
 }) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -187,22 +188,16 @@ function Entry({
   };
   const live = link.state === "connected";
 
+  for (const k of kinds) {
+    const own = k.entry?.(e, { slug, md });
+    if (own !== undefined) return own;
+  }
   if (e.from === "claude" && e.kind === "steps") {
     const steps = Array.isArray(e.steps) ? e.steps.map(toStep) : [];
     return <StepGroup steps={steps} ms={Number(e.ms) || 0} interrupted={e.interrupted === true} />;
   }
   if (e.from === "claude" && (e.kind === "reply" || e.kind === "terminal")) {
     const text = str(e.text);
-    if (PLAN_READY.test(text)) {
-      return (
-        <div className={cn(styles.msg, styles.claude)}>
-          <Speaker name="Plan ready" className={styles.tagPlan} />
-          <div className={cn(styles.bubble, styles.bubblePlan)}>
-            <Prose markdown={text} compact />
-          </div>
-        </div>
-      );
-    }
     return (
       <div className={cn(styles.msg, styles.claude)}>
         <Speaker name="Claude" extra={e.kind === "terminal" ? "terminal" : undefined} />
@@ -293,47 +288,6 @@ function Entry({
       </div>
     );
   }
-  if (e.from === "site" && e.kind === "answer") {
-    return (
-      <div className={styles.event}>
-        You picked <b>{str(e.opt)}</b> for Q{String(e.q)}
-        {str(e.note) ? <Prose markdown={str(e.note)} compact /> : null}
-      </div>
-    );
-  }
-  if (e.from === "site" && e.kind === "comment") {
-    return (
-      <div className={cn(styles.msg, styles.me)}>
-        <Speaker
-          me
-          name={
-            <>
-              Comment · Q{String(e.q)} {str(e.opt)} · <code>{str(e.selector)}</code>
-            </>
-          }
-        />
-        <SentPics slug={slug} names={imagesOf(e)} />
-        <div className={styles.bubble}>
-          <Prose markdown={str(e.note)} compact />
-        </div>
-      </div>
-    );
-  }
-  if (e.from === "site" && e.kind === "attempt") {
-    return (
-      <div className={styles.event}>
-        You handed in <code>{str(e.path)}</code>
-      </div>
-    );
-  }
-  if (e.from === "site" && e.kind === "restart") {
-    return (
-      <div className={styles.event}>
-        You started {str(e.label)}
-        {e.wrap === true ? ", wrapping this one up first" : ""}
-      </div>
-    );
-  }
   if (e.from === "site" && e.kind === "choice") {
     const names = imagesOf(e);
     return (
@@ -406,6 +360,8 @@ function PermInput({ name, raw }: { name: string; raw: string }) {
 export function Drawer({
   slug,
   course,
+  kind,
+  kinds,
   chat,
   liveTurn,
   usage,
@@ -415,8 +371,7 @@ export function Drawer({
   onOpen,
   width,
   onWidth,
-  comment,
-  onComment,
+  composer,
   onFocusTerminal,
   sheet,
   onSheet,
@@ -424,6 +379,9 @@ export function Drawer({
   slug: string;
   /** Set for a lesson. */
   course?: string;
+  /** The session's kind, and every active one. */
+  kind: ClientKind;
+  kinds: ClientKind[];
   chat: ChatEntry[];
   liveTurn: OpenTurn | null;
   usage: Usage | null;
@@ -433,8 +391,7 @@ export function Drawer({
   onOpen: (open: boolean) => void;
   width: number;
   onWidth: (w: number) => void;
-  comment: PendingComment | null;
-  onComment: (c: PendingComment | null) => void;
+  composer: Composer | null;
   /** Raises the session's terminal tab; unset hides the button. */
   onFocusTerminal?: () => void;
   /** The narrow layout's full-screen sheet, opened from the Strip. */
@@ -463,8 +420,8 @@ export function Drawer({
   React.useEffect(() => () => picsNow.current.forEach((p) => URL.revokeObjectURL(p.url)), []);
 
   React.useEffect(() => {
-    if (comment) input.current?.focus();
-  }, [comment]);
+    if (composer) input.current?.focus();
+  }, [composer]);
   const stuck = React.useRef(true);
 
   // Unread: Claude's messages that arrived while the drawer was shut.
@@ -528,8 +485,8 @@ export function Drawer({
 
   const uploading = pics.some((p) => p.state === "busy");
   const names = pics.flatMap((p) => (p.name ? [p.name] : []));
-  // Q5: only a plain chat may be pictures alone; a comment or a typed answer still needs its text.
-  const canSend = !!text.trim() || (!comment && !pendingChoice && names.length > 0);
+  // Q5: only a plain chat may be pictures alone; a kind's message (a comment) or a typed answer still needs its text.
+  const canSend = !!text.trim() || (!composer && !pendingChoice && names.length > 0);
 
   const submit = async () => {
     const t = text.trim();
@@ -540,8 +497,8 @@ export function Drawer({
     const images = names.length ? { images: names } : {};
     // Q14: while a choice is up, typed text answers it.
     const err = await send(
-      comment
-        ? { kind: "comment", ...comment, note: t, ...images }
+      composer
+        ? { ...composer.message(t), ...images }
         : pendingChoice
           ? { kind: "choice", id: pendingChoice, text: t, ...images }
           : { kind: "chat", text: t, ...images },
@@ -552,7 +509,7 @@ export function Drawer({
       setText("");
       pics.forEach((p) => URL.revokeObjectURL(p.url));
       setPics([]);
-      if (comment) onComment(null);
+      composer?.cancel();
     }
   };
 
@@ -625,17 +582,7 @@ export function Drawer({
           <X size={18} aria-hidden />
         </button>
       </header>
-      {link.state === "disconnected" && course ? (
-        <p className={styles.banner}>Disconnected: the lesson&apos;s terminal cleared. Start the routine again to reattach.</p>
-      ) : link.state === "disconnected" ? (
-        <p className={styles.banner}>
-          Disconnected: run <code>/grill resume {slug}</code> in the terminal.
-        </p>
-      ) : link.state === "offline" ? (
-        <p className={styles.banner}>
-          No terminal attached. Run <code>/grill resume {slug}</code> in a session started with <code>belay claude</code> to answer from here.
-        </p>
-      ) : null}
+      {link.state !== "connected" ? <p className={styles.banner}>{kind.banner(link, slug)}</p> : null}
       <div
         ref={scroller}
         className={styles.msgs}
@@ -646,21 +593,11 @@ export function Drawer({
       >
         {chat.length === 0 && !working ? <p className={styles.dim}>No messages yet.</p> : null}
         {shown.map((e, i) => (
-          <Entry key={`${e.kind}-${e.at}-${i}`} slug={slug} e={e} all={chat} open={prompts} link={link} send={send} md={md} />
+          <Entry key={`${e.kind}-${e.at}-${i}`} slug={slug} e={e} all={chat} open={prompts} link={link} send={send} md={md} kinds={kinds} />
         ))}
         {working ? <LiveGroup turn={liveTurn} /> : null}
       </div>
-      {comment ? (
-        <div className={styles.commentChip}>
-          <span>
-            Comment on <b>Q{comment.q}</b> · <b>{comment.opt === "before" ? "Before" : comment.opt}</b> · <code>{comment.selector}</code>
-            {comment.text ? <q>{comment.text}</q> : null}
-          </span>
-          <button type="button" className={styles.iconBtn} onClick={() => onComment(null)} aria-label="Cancel the comment">
-            <X size={14} aria-hidden />
-          </button>
-        </div>
-      ) : null}
+      {composer?.chip}
       <form
         className={cn(styles.composer, pics.length > 0 && styles.composerWrap)}
         onSubmit={(e) => {
@@ -686,7 +623,7 @@ export function Drawer({
           rows={2}
           disabled={!live}
           placeholder={
-            !live ? "Not connected" : comment ? "What about this element?" : pendingChoice ? "Pick above, or type your own answer…" : "Reply, or Comment to point at the mock…"
+            !live ? "Not connected" : composer ? composer.placeholder : pendingChoice ? "Pick above, or type your own answer…" : "Reply, or Comment to point at the mock…"
           }
           onChange={(e) => setText(e.target.value)}
           onPaste={(e) => {
@@ -699,9 +636,9 @@ export function Drawer({
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               void submit();
-            } else if (e.key === "Escape" && comment) {
+            } else if (e.key === "Escape" && composer) {
               e.preventDefault();
-              onComment(null);
+              composer.cancel();
             }
           }}
         />

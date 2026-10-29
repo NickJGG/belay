@@ -145,6 +145,11 @@ open. The core message kinds live in `bridge/protocol.mts`, event types in `brid
   lazily loaded runtime: its session reader, list rows, live Tabs and extra watchers (`lib/extensions.server.ts`).
   Only active kinds count: `sessionRoots()`, `sessionDir`, `data.ts`'s lists and the hub's watchers, which the hub
   starts and stops on the `settings` event. A live session is the first kind's that reads its folder, else grill's.
+  In the browser, its `_components/manifest.client.tsx` (`lib/extensions.client.ts`) draws its Tabs' title, place and
+  mark, its Drawer messages, banners and composer (grill's comment mode), and adds its shell mounts, refresh events
+  and provider state (grill's pending comment, a lesson's focus and the start queue), read through its own hooks. The
+  root layout passes the active ids; every built-in kind's provider stays mounted, and each active kind's entry
+  renderers are tried for every session, as before kinds.
 - `sessions.ts` reads a session folder in its kind's format: session.json, else a bare `bridge.json` (in progress),
   else, for a grill, `<slug>.md` frontmatter (`legacy`). A legacy grill is read-only and renders its `.md`, with its old preview at
   `/legacy/sessions/<slug>/preview.html`; the shared shell it loads is served from `web/legacy/`. Lessons come from

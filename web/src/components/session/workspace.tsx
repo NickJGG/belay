@@ -34,6 +34,7 @@ import {
   type SessionDoc,
   type View,
 } from "@/lib/session-doc";
+import { usePendingComment } from "@/app/(browse)/(grill)/_components/pending-comment";
 import type { QuestionSummary } from "@/app/(browse)/(grill)/_lib/sessions";
 import { OUTLINE_KEY, parseOutline } from "@/lib/shell";
 import { cn } from "@/lib/utils";
@@ -204,8 +205,9 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
   const shell = useLive();
   // The Drawer shows this grill only while it's the selected Tab, so only then can a comment be pinned for it.
   const mine = shell.selected?.slug === doc.slug;
-  const pending = mine ? shell.comment : null;
-  const { setComment: setPending, setDrawer, setSheet } = shell;
+  const { comment: pinned, setComment: setPending } = usePendingComment();
+  const pending = mine ? pinned : null;
+  const { setDrawer, setSheet } = shell;
   const setSplit = (r: number) => remember("split", r);
 
   const st = states[key] ?? { ctl: {} };

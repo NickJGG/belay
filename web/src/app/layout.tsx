@@ -4,6 +4,7 @@ import { Toaster } from "@/components/belay/toaster";
 import { AppShell } from "@/components/layout/shell";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { navData } from "@/lib/data";
+import { activeKinds } from "@/lib/extensions.server";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
@@ -43,7 +44,7 @@ export default async function RootLayout({
     >
       <body>
         <ThemeProvider>
-          <AppShell live={nav.live} seeds={nav.seeds}>
+          <AppShell live={nav.live} seeds={nav.seeds} active={activeKinds().map((k) => k.id)}>
             {children}
           </AppShell>
           <Toaster />

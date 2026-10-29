@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
+import { useLesson } from "@/app/(browse)/(learn)/_components/lesson-state";
 import { toast, toastError } from "@/components/belay/toaster";
 import { useLive } from "@/components/live/live-provider";
 import { Button } from "@/components/ui/button";
@@ -65,7 +66,8 @@ export function StartButton({
   className: string;
   resume?: boolean;
 }) {
-  const { live, start } = useLive();
+  const { live } = useLive();
+  const { start } = useLesson();
   const [asking, setAsking] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   const close = React.useCallback(() => setAsking(false), []);

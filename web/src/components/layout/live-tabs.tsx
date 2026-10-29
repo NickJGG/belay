@@ -4,9 +4,9 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLive } from "@/components/live/live-provider";
-import { CourseBook, ProjectMark } from "@/components/project-mark";
 import { TurnDot } from "@/components/turn-dot";
 import type { LiveItem } from "@/lib/data";
+import { clientKind } from "@/lib/extensions.client";
 import { pageTab } from "@/lib/shell";
 import { cn } from "@/lib/utils";
 import styles from "./live-tabs.module.css";
@@ -14,14 +14,14 @@ import styles from "./live-tabs.module.css";
 /** Where a live session stands, for its Tab's hover title (the TurnDot shows it). */
 export const turnState = (s: Pick<LiveItem, "working">) => (s.working ? "working" : "your turn");
 
-/** A Tab's name: a grill's slug, a lesson's topic. */
-export const tabTitle = (s: Pick<LiveItem, "kind" | "slug" | "topic">) => (s.kind === "lesson" ? s.topic : s.slug);
+/** A Tab's name, from its kind: a grill's slug, a lesson's topic. */
+export const tabTitle = (s: LiveItem) => clientKind(s).title(s);
 
-/** A Tab's hover title: its project or course, topic and state. */
-export const tabHover = (s: LiveItem) => `${s.kind === "lesson" ? s.course : (s.mark?.name ?? "Unfiled")} · ${s.topic} · ${turnState(s)}`;
+/** A Tab's hover title: its kind's place (project or course), topic and state. */
+export const tabHover = (s: LiveItem) => `${clientKind(s).place(s)} · ${s.topic} · ${turnState(s)}`;
 
-/** A Tab's marker: a lesson's course book, a grill's project mark. */
-export const TabMark = ({ s }: { s: LiveItem }) => (s.kind === "lesson" ? <CourseBook color={s.color} /> : <ProjectMark mark={s.mark} />);
+/** A Tab's marker, from its kind: a lesson's course book, a grill's project mark. */
+export const TabMark = ({ s }: { s: LiveItem }) => clientKind(s).mark(s);
 
 /** A Tab being dragged. Kept in a ref and drawn with inline transforms, so dragging doesn't re-render. */
 type Drag = { slug: string; el: HTMLElement; x: number; moved: boolean; from: number; at: number; tabs: HTMLElement[]; mids: number[]; step: number };

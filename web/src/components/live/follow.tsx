@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useLesson } from "@/app/(browse)/(learn)/_components/lesson-state";
 import { focusHash } from "@/components/content/focus-highlight";
 import { showKey, showPage } from "@/lib/lesson";
 import { useLive } from "./live-provider";
@@ -28,7 +29,8 @@ function writing(): boolean {
 }
 
 export function FollowAlong() {
-  const { focus, sheet, selected } = useLive();
+  const { sheet, selected } = useLive();
+  const { focus } = useLesson();
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const [following, setFollowing] = React.useState(true);
