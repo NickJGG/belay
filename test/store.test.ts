@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
 import {
+  ISSUE_FIELDS,
   createIssue,
   entityForPath,
   issueCacheFile,
@@ -17,6 +18,7 @@ import {
   serializeProject,
   serializeIssue,
   sortByOrder,
+  unknownKeys,
   validateKey,
   type BadFile,
   type Project,
@@ -120,6 +122,123 @@ test('a stray goal key is ignored and dropped on save', () => {
   const p = parseProject('---\nkey: JOB\nname: Job\ngoal: {habit: 5}\n---\n', 'f');
   assert.equal('goal' in p, false);
   assert.doesNotMatch(serializeProject(p), /goal/);
+});
+
+test('projects drop unknown keys on save, plain ones included', () => {
+  const p = parseProject('---\nkey: JOB\nname: Job\nestimate: 3\ntags: [a]\n---\n', 'f');
+  assert.equal(serializeProject(p), '---\nkey: JOB\nname: Job\npaths: []\nstatus: active\nfocus: false\n---\n');
+});
+
+/** An issue file in canonical form, with `pre` before `id` and `post` after `updated`. */
+const fixture = (pre = '', post = '', mid = '') =>
+  `---\n${pre}id: FXT-1\ntitle: Fixture\nproject: FXT\nstatus: idea\nblocked_by: []\n${mid}source: claude\ncreated: 2026-01-01\nupdated: 2026-01-01T09:00\n${post}---\n`;
+
+const PLAIN: Record<string, [string, string]> = {
+  scalars: ['', 'estimate: 3\nnote: hello\n'],
+  nested: ['', 'meta:\n  a: 1\n  b:\n    - x\n    - y\n'],
+  list: ['', 'tags:\n  - a\n  - b\n'],
+  'integer-named key': ['', '2: two\n'],
+  'key before id': ['first: true\n', ''],
+};
+
+const NON_PLAIN: Record<string, [string, RegExp]> = {
+  '.inf': ['x: .inf\n', /"x" wouldn't survive a save exactly: quote it/],
+  alias: ['a: &x foo\nb: *x\n', /"b" is an alias/],
+  '20-digit integer': ['big: 12345678901234567890\n', /"big" wouldn't survive a save exactly/],
+  '-0': ['z: -0\n', /"z" wouldn't survive a save exactly/],
+  '!!set': ['s: !!set {a: null}\n', /"s" has the tag !!set/],
+  '!!omap': ['o: !!omap [ {a: 1} ]\n', /"o" has the tag !!omap/],
+  '!!binary': ['bin: !!binary aGVsbG8=\n', /"bin" has the tag !!binary/],
+  '!!timestamp': ['ts: !!timestamp 2026-01-01\n', /"ts" has the tag !!timestamp/],
+  'custom tag': ['c: !custom foo\n', /"c" has the tag !custom/],
+  __proto__: ['__proto__:\n  polluted: true\n', /"__proto__" is reserved: rename it/],
+  'nested number key': ['m:\n  1: a\n', /"m" wouldn't survive a save exactly/],
+  'nested tag': ['m:\n  - !!binary aGVsbG8=\n', /"m" has the tag !!binary/],
+};
+
+test('plain unknown keys survive a save byte for byte, keeping their place and scalar types', () => {
+  for (const [name, [pre, post]] of Object.entries(PLAIN)) {
+    const src = fixture(pre, post);
+    assert.equal(serializeIssue(parseIssue(src, 'f')), src, name);
+  }
+  assert.deepEqual(parseIssue(fixture('', '2: two\n'), 'f').extra, [{ key: 2, value: 'two', after: 'updated' }]);
+  assert.deepEqual(parseIssue(fixture('first: true\n'), 'f').extra, [{ key: 'first', value: true, after: null }]);
+  assert.match(serializeIssue(parseIssue(fixture('', '"2": two\n'), 'f')), /^"2": two$/m);
+});
+
+test('unknown values that a save would change make the file bad, saying what to quote', () => {
+  for (const [name, [post, error]] of Object.entries(NON_PLAIN)) {
+    assert.throws(() => parseIssue(fixture('', post), 'issues/fxt-1.md'), (e: Error) => error.test(e.message) && e.message.startsWith('issues/fxt-1.md: '), name);
+  }
+  assert.throws(() => parseIssue(fixture('', '? [a]\n: b\n'), 'f'), /unknown key "\[\\"a\\"\]" is not text or a number: quote the key/);
+  const bad: BadFile[] = [];
+  writeFileSync(join(dir, 'issues', 'fxt-1.md'), fixture('', 'z: -0\n'));
+  assert.deepEqual(loadIssues(dir, { bad }), []);
+  assert.match(bad[0].error, /^the value of unknown key "z"/);
+});
+
+test('extra keys follow their anchor; with it gone, the nearest set field before it; runs keep their order', () => {
+  const src = fixture('', 'tail: 1\n', 'after_blocked: a\npriority: high\nafter_priority: b\nrun: c\n');
+  const t = parseIssue(src, 'f');
+  assert.deepEqual(t.extra?.map((e) => [e.key, e.after]), [['after_blocked', 'blocked_by'], ['after_priority', 'priority'], ['run', 'priority'], ['tail', 'updated']]);
+  assert.equal(serializeIssue(t), src);
+  const dropped = serializeIssue({ ...t, priority: undefined });
+  assert.match(dropped, /^blocked_by: \[\]\nafter_blocked: a\nafter_priority: b\nrun: c\nsource: claude$/m);
+  assert.match(serializeIssue({ ...t, comments: [{ at: '2026-01-02T09:00', by: 'user', text: 'hi' }] }), /^updated: 2026-01-01T09:00\ntail: 1\ncomments:$/m);
+});
+
+test('a non-canonical file with unknown keys becomes canonical on its first save, then stays put', () => {
+  const src = '---\ntitle: Fixture\nodd: 1\nid: fxt-1\nstatus: idea\nproject: FXT\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n';
+  const once = serializeIssue(parseIssue(src, 'f'));
+  assert.equal(once, '---\nid: FXT-1\ntitle: Fixture\nodd: 1\nproject: FXT\nstatus: idea\nblocked_by: []\nsource: user\ncreated: 2026-01-01\nupdated: 2026-01-01\n---\n');
+  assert.equal(serializeIssue(parseIssue(once, 'f')), once);
+});
+
+test('unknownKeys lists the extra keys outside the known set', () => {
+  const t = parseIssue(fixture('first: true\n', '2: two\nnote: x\n'), 'f');
+  assert.deepEqual(unknownKeys(t, ISSUE_FIELDS), ['first', '2', 'note']);
+  assert.deepEqual(unknownKeys(t, [...ISSUE_FIELDS, 'note']), ['first', '2']);
+  assert.deepEqual(unknownKeys(parseIssue(fixture(), 'f'), ISSUE_FIELDS), []);
+});
+
+test('unknown keys survive cold and warm loads', () => {
+  const file = join(dir, 'issues', 'fxt-1.md');
+  for (const [name, [pre, post]] of Object.entries(PLAIN)) {
+    const src = fixture(pre, post);
+    writeFileSync(file, src);
+    rmSync(join(dir, 'cache'), { recursive: true, force: true });
+    const cold = loadIssues(dir);
+    const warm = loadIssues(dir);
+    assert.equal(serializeIssue(cold[0]), src, `${name}: cold`);
+    assert.equal(serializeIssue(warm[0]), src, `${name}: warm`);
+    assert.ok(cacheFiles()['issues/fxt-1.md'], `${name}: cached`);
+  }
+});
+
+test('issue cache: entries from before extra keys (integer version) are ignored', () => {
+  writeFileSync(join(dir, 'issues', 'fxt-1.md'), fixture('', 'note: kept\n'));
+  loadIssues(dir);
+  const cache = JSON.parse(readFileSync(issueCacheFile(dir), 'utf8'));
+  assert.equal(typeof cache.version, 'string');
+  delete cache.files['issues/fxt-1.md'].issue.extra;
+  writeFileSync(issueCacheFile(dir), JSON.stringify({ ...cache, version: 1 }));
+  assert.match(serializeIssue(loadIssues(dir)[0]), /^note: kept$/m);
+});
+
+/** Read-only, over a copy of the data dir: never point this at the real `~/Belay` (see AGENTS.md). */
+test('every issue in $BELAY_DATA re-serializes byte-identically', { skip: !process.env.BELAY_DATA && 'set BELAY_DATA to a copy of the data dir' }, () => {
+  const issues = join(process.env.BELAY_DATA!, 'issues');
+  const files = readdirSync(issues).filter((f) => f.endsWith('.md'));
+  const differ: string[] = [];
+  for (const f of files) {
+    const src = readFileSync(join(issues, f), 'utf8');
+    try {
+      if (serializeIssue(parseIssue(src, f)) !== src) differ.push(f);
+    } catch {
+      // bad files are reported by `belay check`, not here
+    }
+  }
+  assert.deepEqual(differ, []);
 });
 
 test('issue transitions round-trip and are validated', () => {

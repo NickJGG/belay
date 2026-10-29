@@ -34,7 +34,7 @@ import { launchSpec, realDeps, runLauncher } from './launch.ts';
 import { parseLogAddress, type DatedEntry } from './logs.ts';
 import { filterIssues, issueComparator, isReady, naturalDesc, next, openBlockers, projectCounts, projectForCwd, SORT_FIELDS } from './query.ts';
 import { statusLine, withBad } from './statusline.ts';
-import { ISSUE_STATUSES, normalizeStoredPath, issueFile, SOURCES, type Issue, type IssueStatus } from './store.ts';
+import { ISSUE_FIELDS, ISSUE_STATUSES, normalizeStoredPath, issueFile, SOURCES, unknownKeys, type Issue, type IssueStatus } from './store.ts';
 import { serve } from './web.ts';
 import { weekLines, weekSummary } from './week.ts';
 import { addDays, isDay, weekStart, workDay, workDayOf } from './workday.ts';
@@ -82,6 +82,8 @@ const HELP = `belay — what should I work on?
                                     lesson restarts its session
   learn [args]                      the same, in the Learning root (LEARNING_ROOT, default ~/Learning)
   search <words>...                 issues (title, description, comments) and grill sessions (slug, topic, project) with every word
+  check                             report bad files (nothing is written while one exists) and issue
+                                    frontmatter keys belay doesn't know (kept on save)
   serve [--port <n>] [--no-open] [--dev]
                                     dashboard at http://127.0.0.1:4747/ (Ctrl+C to stop); builds web/
                                     first when it or src/ changed (needs 'npm install' in web/);
@@ -317,6 +319,21 @@ function cmdShow(argv: string[]): void {
       for (const line of c.text.split('\n')) out.push(`      ${line}`.trimEnd());
     });
   }
+  print(out);
+}
+
+/** Warn-only: always exits 0. */
+function cmdCheck(argv: string[]): void {
+  args(argv, {}, 0);
+  const ctx = readCtx();
+  const unknown = ctx.issues.map((t) => ({ id: t.id, keys: unknownKeys(t, ISSUE_FIELDS) })).filter((u) => u.keys.length);
+  const out: string[] = [];
+  if (ctx.bad.length) out.push('bad files (nothing is written while one is listed):', ...ctx.bad.map((b) => `  ${b.file}  ${b.error}`));
+  if (unknown.length) {
+    const width = Math.max(...unknown.map((u) => u.id.length));
+    out.push('issues with keys belay does not know (kept on save):', ...unknown.map((u) => `  ${u.id.padEnd(width)}  ${u.keys.join(', ')}`));
+  }
+  out.push(`${plural(ctx.bad.length, 'bad file')}, ${plural(unknown.length, 'issue')} with unknown keys`);
   print(out);
 }
 
@@ -760,6 +777,7 @@ const COMMANDS: Record<string, (argv: string[]) => void> = {
   week: cmdWeek,
   history: cmdHistory,
   search: cmdSearch,
+  check: cmdCheck,
   git: cmdGit,
   grill: cmdGrill,
   claude: (argv) => launch('claude', argv),

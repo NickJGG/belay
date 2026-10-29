@@ -495,3 +495,51 @@ test('a lenient Ctx with bad files refuses writes, naming them', () => {
   assert.throws(() => setStatus(ctx, 'PIX-1', 'doing'), /^Error: not writing while files are bad: issues\/pix-2\.md \(missing frontmatter\)$/);
   assert.equal(loadIssues(dir, { bad: [] })[0].status, 'todo');
 });
+
+/** PIX-1 with plain unknown keys before `id`, after `blocked_by` and at the end. */
+const withExtras = () =>
+  '---\nfirst: true\nid: PIX-1\ntitle: Do the thing\nproject: PIX\nstatus: todo\nblocked_by: []\nestimate: 3\nsource: user\ncreated: 2026-10-01\nupdated: 2026-10-01\nmeta:\n  a: [x, y]\n---\n';
+
+test('ops keep an issue\'s plain unknown keys in place', () => {
+  const file = join(dir, 'issues', 'pix-1.md');
+  writeFileSync(file, withExtras());
+  createIssue(dir, issue({ title: 'other' }));
+  setStatus(new Ctx(dir), 'PIX-1', 'doing');
+  addComment(new Ctx(dir), 'PIX-1', 'hi', USER);
+  editIssue(new Ctx(dir), 'PIX-1', { title: 'New', priority: 'high', grill: 'g', plan: 'p.md' });
+  replaceBody(new Ctx(dir), 'PIX-1', 'body');
+  editIssue(new Ctx(dir), 'PIX-2', { blockers: ['PIX-1'] });
+  rekeyProject(new Ctx(dir), 'PIX', 'PXL');
+  const src = readFileSync(join(dir, 'issues', 'pxl-1.md'), 'utf8');
+  assert.match(src, /^---\nfirst: true\nid: PXL-1\ntitle: New\n/);
+  assert.match(src, /^blocked_by: \[\]\nestimate: 3\npriority: high\nsource: user\ngrill: g\nplan: p\.md\n/m);
+  assert.match(src, /^updated: \S+\nmeta:\n {2}a:\n {4}- x\n {4}- y\ncomments:\n/m);
+});
+
+test('a file with a non-plain unknown value is refused by every op, and its bytes stay unchanged', () => {
+  createIssue(dir, issue());
+  const bad = '---\nid: PIX-2\ntitle: x\nproject: PIX\nstatus: todo\nblocked_by: []\nsource: user\ncreated: 2026-10-01\nupdated: 2026-10-01\nbig: 12345678901234567890\n---\n';
+  const file = join(dir, 'issues', 'pix-2.md');
+  writeFileSync(file, bad);
+  assert.throws(() => new Ctx(dir), /issues\/pix-2\.md: the value of unknown key "big"/);
+  const ops: [string, (ctx: Ctx) => unknown][] = [
+    ['setStatus', (c) => setStatus(c, 'PIX-1', 'doing')],
+    ['addIssue', (c) => addIssue(c, { title: 'n', project: 'PIX' })],
+    ['setPriority', (c) => setPriority(c, 'PIX-1', true)],
+    ['editIssue', (c) => editIssue(c, 'PIX-1', { title: 'y' })],
+    ['replaceBody', (c) => replaceBody(c, 'PIX-1', 'b')],
+    ['addComment', (c) => addComment(c, 'PIX-1', 'hi', USER)],
+    ['deleteIssue', (c) => deleteIssue(c, 'PIX-1', USER)],
+    ['editProject', (c) => editProject(c, 'PIX', { name: 'n' })],
+    ['setFocus', (c) => setFocus(c, 'PIX', true)],
+    ['moveProject', (c) => moveProject(c, 'PIX', 'top')],
+    ['addProject', (c) => addProject(c, { name: 'New one', paths: ['C:/y'] })],
+    ['rekeyProject', (c) => rekeyProject(c, 'PIX', 'PXL')],
+    ['addLog', (c) => addLog(c, { project: 'PIX', text: 'did' }, USER)],
+  ];
+  for (const [name, op] of ops) {
+    assert.throws(() => op(new Ctx(dir, { lenient: true })), /^Error: not writing while files are bad: issues\/pix-2\.md \(the value of unknown key "big"/, name);
+  }
+  assert.equal(readFileSync(file, 'utf8'), bad);
+  assert.ok(existsSync(join(dir, 'issues', 'pix-1.md')));
+});
