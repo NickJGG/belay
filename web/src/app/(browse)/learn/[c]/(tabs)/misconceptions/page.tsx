@@ -11,8 +11,8 @@ function Items({ course, items }: { course: string; items: MisconceptionItem[] }
     <ul className={styles.misc}>
       {items.map((m, i) => (
         <li key={i}>
-          <Prose compact className={styles.inline} markdown={m.date ? `${m.date} · ${m.claim}` : m.claim} course={{ course }} />
-          {m.correction ? <Prose compact className={cn(styles.inline, styles.correction)} markdown={m.correction} course={{ course }} /> : null}
+          <Prose compact className={styles.inline} markdown={m.date ? `${m.date} · ${m.claim}` : m.claim} context={{ id: "learn", course }} />
+          {m.correction ? <Prose compact className={cn(styles.inline, styles.correction)} markdown={m.correction} context={{ id: "learn", course }} /> : null}
         </li>
       ))}
     </ul>

@@ -1,21 +1,25 @@
 /**
- * The site's built-in session kinds on the server: each extension's `(browse)/(<id>)/_lib/manifest.server.ts`, and
- * the core's ways of reaching them. Only active kinds count, so an inactive kind's folder is never read.
+ * The site's built-in session kinds and slots on the server: each extension's `(browse)/(<id>)/_lib/manifest.server.ts`,
+ * and the core's ways of reaching them. Only active ones count, so an inactive kind's folder is never read.
  */
 import "server-only";
 import { dataDir } from "../../../src/config.ts";
 import type { ExtensionId } from "../../../src/extension-ids.ts";
 import { isActive } from "../../../src/extensions.ts";
-import { server as grill } from "../app/(browse)/(grill)/_lib/manifest.server.ts";
+import type { ComponentType } from "react";
+import type { GridSource } from "../../../src/home.ts";
+import { server as grill, slots as grillSlots, type GrillSearch } from "../app/(browse)/(grill)/_lib/manifest.server.ts";
 import type { GrillItem, GrillLive, runtime as grillRuntime } from "../app/(browse)/(grill)/_lib/runtime.server.ts";
 import type { GrillSession } from "../app/(browse)/(grill)/_lib/sessions.ts";
-import { server as learn } from "../app/(browse)/(learn)/_lib/manifest.server.ts";
+import { server as learn, slots as learnSlots, type LearnSearch } from "../app/(browse)/(learn)/_lib/manifest.server.ts";
 import type { LessonLive, runtime as learnRuntime } from "../app/(browse)/(learn)/_lib/runtime.server.ts";
 import { sessionKind } from "./extensions.ts";
 import type { ItemContext, KindRuntime, LiveSession, ServerKind } from "./session-kind.ts";
+import type { SearchContext, ServerSlots } from "./slots.ts";
 import type { SessionBase, SessionMemo } from "./sessions.ts";
 
 export const SERVER_KINDS: readonly ServerKind[] = [grill, learn];
+export const SERVER_SLOTS: readonly ServerSlots[] = [grillSlots, learnSlots];
 
 /** What the kinds' lists and Tabs add up to. */
 export type ListedSession = GrillSession;
@@ -23,6 +27,9 @@ export type SessionItem = GrillItem;
 export type LiveItem = Widen<GrillLive, LessonLive> | Widen<LessonLive, GrillLive>;
 
 /** One kind's Tab, with the other kinds' fields readable as undefined. */
+/** The palette's names the extensions add, merged flat. */
+export type SearchParts = GrillSearch & LearnSearch;
+
 type Widen<T, U> = T & { [K in Exclude<keyof U, keyof T>]?: undefined };
 
 type Runtimes = { grill: typeof grillRuntime; learn: typeof learnRuntime };
@@ -94,3 +101,18 @@ export function reattachHint(slug: string, id?: ExtensionId): string {
   const kind = id ?? activeKinds()[0]?.id;
   return kind ? sessionKind(kind).reattach(slug) : "Not attached";
 }
+
+const activeSlots = (data = dataDir()) => SERVER_SLOTS.filter((s) => isActive(s.id, data));
+
+/** The active extensions' palette names, merged in built-in order. */
+export async function searchParts(c: SearchContext<ListedSession>): Promise<SearchParts> {
+  const parts = await Promise.all(activeSlots().map((s) => s.search?.(c)));
+  return Object.assign({}, ...parts) as SearchParts;
+}
+
+/** The active extensions' Home sections, in built-in order. */
+export const homeSections = (): Promise<{ id: ExtensionId; Section: ComponentType }[]> =>
+  Promise.all(activeSlots().flatMap((s) => (s.home ? [s.home().then((Section) => ({ id: s.id, Section }))] : [])));
+
+/** What the active extensions add to Home's activity grid. */
+export const gridSources = (): Promise<GridSource[]> => Promise.all(activeSlots().flatMap((s) => (s.grid ? [s.grid()] : [])));

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { History, LayoutTemplate } from "lucide-react";
 import { Mark } from "@/components/layout/logo";
 import { RailFoot } from "@/components/layout/rail";
-import { NAV } from "@/components/layout/site-nav";
+import { useNav } from "@/components/layout/site-nav";
 import { families, statusChip, type Opt, type Question, type SessionDoc } from "@/lib/session-doc";
 import { cn } from "@/lib/utils";
 import styles from "./session.module.css";
@@ -83,6 +83,7 @@ type Props = {
 export function Outline({ doc, here, opt, onOpt, pulse, open, onToggle }: Props) {
   const decided = doc.questions.filter((q) => q.status === "resolved").length;
   const [paneRef, tipNode] = useTip();
+  const nav = useNav();
   return (
     <aside ref={paneRef} className={cn(styles.outline, !open && styles.outlineShut)} aria-label="Outline">
       <nav className={styles.olNav} aria-label="Primary">
@@ -90,7 +91,7 @@ export function Outline({ doc, here, opt, onOpt, pulse, open, onToggle }: Props)
           <Mark className={styles.olMark} />
         </Link>
         {open
-          ? NAV.map((item) => {
+          ? nav.map((item) => {
               const Icon = item.icon;
               return (
                 <Link key={item.href} href={item.href} className={cn(styles.olRow, styles.olKey)} aria-label={item.label} data-tip={item.label} data-tip-below="">

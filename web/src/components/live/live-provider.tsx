@@ -38,7 +38,8 @@ type Live = {
   setSheet: (open: boolean) => void;
   /** The selected Tab's seed from the server, for the state its kind keeps. */
   seed: DrawerSeed | undefined;
-  /** The active session kinds, in built-in order. */
+  /** The active extensions, and their session kinds, in built-in order. */
+  active: ExtensionId[];
   kinds: ClientKind[];
 };
 
@@ -240,9 +241,10 @@ export function LiveProvider({
     }
   }, [slug, usage, shownUsage, link.state, seeds, seed]);
 
-  // Each server render sends a new array, so the ids keep `kinds` stable across refreshes.
+  // Each server render sends a new array, so the ids keep these stable across refreshes.
   const ids = active.join(",");
-  const kinds = React.useMemo(() => activeClientKinds(ids.split(",") as ExtensionId[]), [ids]);
+  const stableActive = React.useMemo(() => (ids ? (ids.split(",") as ExtensionId[]) : []), [ids]);
+  const kinds = React.useMemo(() => activeClientKinds(stableActive), [stableActive]);
   const value: Live = {
     live,
     selected,
@@ -260,6 +262,7 @@ export function LiveProvider({
     sheet,
     setSheet,
     seed,
+    active: stableActive,
     kinds,
   };
   // Every built-in kind's state stays mounted, so switching one doesn't remount the page under it.

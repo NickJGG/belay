@@ -58,7 +58,7 @@ export default async function KnowledgePage({ params }: Props) {
         ]}
       />
       <div className={styles.kbody}>
-        <Prose markdown={d.body} course={{ course: c, topics: topicIndex(course) }} />
+        <Prose markdown={d.body} context={{ id: "learn", course: c, topics: topicIndex(course) }} />
       </div>
     </div>
   );

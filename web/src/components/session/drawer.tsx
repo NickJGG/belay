@@ -172,7 +172,7 @@ function Entry({
   open: ReturnType<typeof openPrompts>;
   link: LinkState;
   send: Send;
-  /** A lesson's course, so Claude's citations render as claim chips. */
+  /** Its kind's Markdown context: a lesson's course, so Claude's citations render as claim chips. */
   md?: MarkdownContext;
   /** Every active kind draws its own entries, whichever kind the session is. */
   kinds: ClientKind[];
@@ -202,7 +202,7 @@ function Entry({
       <div className={cn(styles.msg, styles.claude)}>
         <Speaker name="Claude" extra={e.kind === "terminal" ? "terminal" : undefined} />
         <div className={styles.bubble}>
-          <Prose markdown={text} course={md} compact />
+          <Prose markdown={text} context={md} compact />
         </div>
       </div>
     );
@@ -359,7 +359,7 @@ function PermInput({ name, raw }: { name: string; raw: string }) {
 
 export function Drawer({
   slug,
-  course,
+  md,
   kind,
   kinds,
   chat,
@@ -377,8 +377,8 @@ export function Drawer({
   onSheet,
 }: {
   slug: string;
-  /** Set for a lesson. */
-  course?: string;
+  /** Its kind's Markdown context. */
+  md?: MarkdownContext;
   /** The session's kind, and every active one. */
   kind: ClientKind;
   kinds: ClientKind[];
@@ -399,7 +399,6 @@ export function Drawer({
   onSheet: (open: boolean) => void;
 }) {
   const prompts = React.useMemo(() => openPrompts(chat), [chat]);
-  const md = React.useMemo(() => (course ? { course } : undefined), [course]);
   const shown = React.useMemo(() => placeSteps(chat), [chat]);
   const pendingChoice = [...prompts.choices].at(-1) ?? null;
   const [text, setText] = React.useState("");

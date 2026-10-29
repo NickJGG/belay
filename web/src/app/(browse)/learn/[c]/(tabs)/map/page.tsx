@@ -15,7 +15,7 @@ export default async function MapTab({ params }: { params: Promise<{ c: string }
   if (text === null) return <p className={belay.empty}>No map.md in this course.</p>;
   return (
     <div className={cn(styles.body, styles.wide)}>
-      <Prose wide markdown={splitTitle(text).body} course={{ course: c, topics: topicIndex(course) }} />
+      <Prose wide markdown={splitTitle(text).body} context={{ id: "learn", course: c, topics: topicIndex(course) }} />
     </div>
   );
 }

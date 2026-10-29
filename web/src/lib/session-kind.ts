@@ -82,6 +82,8 @@ export type ClientKind<L extends LiveBase = LiveBase> = {
   /** Its Tab's project or course, for the hover title. */
   place(s: L): string;
   mark(s: L): ReactNode;
+  /** Its Drawer's Markdown context, the same object each time for the same Tab, as the Drawer's chat is memoized on it. */
+  markdown?(s: L): MarkdownContext | undefined;
   /** A chat entry it draws its own way; undefined when the entry isn't its own. */
   entry?(e: ChatEntry, ctx: { slug: string; md?: MarkdownContext }): ReactNode | undefined;
   /** The Drawer's banner while its session can't be answered. */

@@ -105,7 +105,7 @@ function ShellDrawer() {
     <Drawer
       key={selected.slug}
       slug={selected.slug}
-      course={selected.course}
+      md={kind.markdown?.(selected)}
       kind={kind}
       kinds={kinds}
       chat={chat}

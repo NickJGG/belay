@@ -63,7 +63,7 @@ export default async function NowPage({ params }: Props) {
         {text === null ? (
           <p className={styles.empty}>Nothing on the board yet. Claude writes notation and diagrams to now.md during a lesson.</p>
         ) : (
-          <Prose markdown={splitTitle(text).body} course={{ course: c, topics: topicIndex(course) }} wide />
+          <Prose markdown={splitTitle(text).body} context={{ id: "learn", course: c, topics: topicIndex(course) }} wide />
         )}
       </div>
     </div>

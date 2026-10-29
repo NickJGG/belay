@@ -4,22 +4,22 @@ import { cn } from "@/lib/utils";
 import styles from "./prose.module.css";
 
 /**
- * Rendered Markdown in the prose styles; `course` adds its Obsidian syntax (claim and source chips, `^cN` anchors),
+ * Rendered Markdown in the prose styles; `context` adds an extension's syntax (a course's claim and source chips),
  * `compact` is for chat bubbles and list rows, `wide` drops the 68ch measure for diagrams. Memoized: parsing is costly
  * and the drawer re-renders on every keystroke.
  */
 export const Prose = memo(function Prose({
   markdown,
-  course,
+  context,
   compact = false,
   wide = false,
   className,
 }: {
   markdown: string;
-  course?: MarkdownContext;
+  context?: MarkdownContext;
   compact?: boolean;
   wide?: boolean;
   className?: string;
 }) {
-  return <div className={cn(styles.prose, compact && styles.compact, wide && styles.wide, className)}>{renderMarkdown(markdown, course)}</div>;
+  return <div className={cn(styles.prose, compact && styles.compact, wide && styles.wide, className)}>{renderMarkdown(markdown, context)}</div>;
 });

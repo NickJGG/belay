@@ -6,4 +6,4 @@ const session: PureKind = {
   reattach: (slug) => `Not attached: run \`/grill resume ${slug}\` in the terminal`,
 };
 
-export const manifest = { id: "grill", patterns: PATH_PATTERNS.grill, session } as const;
+export const manifest = { id: "grill", noun: "grills", patterns: PATH_PATTERNS.grill, session } as const;
