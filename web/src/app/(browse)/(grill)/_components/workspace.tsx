@@ -18,9 +18,9 @@ import {
   stepView,
   type Remembered,
   type ViewState,
-} from "@/lib/behaviours";
+} from "../_lib/behaviours";
 import type { LiveItem, Mark } from "@/lib/data";
-import { frameDoc, loadSpec, renderBody, type MockFile, type Spec } from "@/lib/mock";
+import { frameDoc, loadSpec, renderBody, type MockFile, type Spec } from "../_lib/mock";
 import {
   BEFORE,
   context,
@@ -33,16 +33,17 @@ import {
   type Question,
   type SessionDoc,
   type View,
-} from "@/lib/session-doc";
-import { usePendingComment } from "@/app/(browse)/(grill)/_components/pending-comment";
-import type { QuestionSummary } from "@/app/(browse)/(grill)/_lib/sessions";
+} from "../_lib/session-doc";
+import { usePendingComment } from "./pending-comment";
+import type { QuestionSummary } from "../_lib/sessions";
 import { OUTLINE_KEY, parseOutline } from "@/lib/shell";
 import { cn } from "@/lib/utils";
 import { Bar, type CommentProps, type PickProps } from "./bar";
-import type { LinkState, Send } from "./drawer";
+import type { LinkState, Send } from "@/components/session/drawer";
 import { Frame } from "./frame";
 import { Outline, OutlineList } from "./outline";
-import styles from "./session.module.css";
+import shared from "@/components/session/session.module.css";
+import styles from "./workspace.module.css";
 
 /** What the grill page passes about the grill beside its doc. */
 export type SessionNav = {
@@ -486,8 +487,8 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
                 </button>
               </div>
             ) : null}
-            {specError && spec ? <div className={styles.err}>The latest mock edit didn&apos;t load ({specError}); showing the previous one.</div> : null}
-            {pickError ? <div className={styles.err}>{pickError}</div> : null}
+            {specError && spec ? <div className={shared.err}>The latest mock edit didn&apos;t load ({specError}); showing the previous one.</div> : null}
+            {pickError ? <div className={shared.err}>{pickError}</div> : null}
           </div>
         ) : null}
         <div className={styles.canvas}>
@@ -527,9 +528,9 @@ function Split({ ratio, onRatio, children }: { ratio: number; onRatio: (r: numbe
     const up = () => {
       removeEventListener("pointermove", move);
       removeEventListener("pointerup", up);
-      document.body.classList.remove(styles.dragging);
+      document.body.classList.remove(shared.dragging);
     };
-    document.body.classList.add(styles.dragging);
+    document.body.classList.add(shared.dragging);
     addEventListener("pointermove", move);
     addEventListener("pointerup", up);
   };
@@ -555,7 +556,7 @@ function QuestionCard({ q, doc }: { q: Question | null; doc: SessionDoc }) {
       <div className={styles.card}>
         <h2>{doc.topic}</h2>
         {doc.open ? <p>{doc.open}</p> : null}
-        <p className={styles.dim}>{doc.questions.length ? "Pick a question on the left." : "No questions yet."}</p>
+        <p className={shared.dim}>{doc.questions.length ? "Pick a question on the left." : "No questions yet."}</p>
       </div>
     );
   }
@@ -577,7 +578,7 @@ function QuestionCard({ q, doc }: { q: Question | null; doc: SessionDoc }) {
           ))}
         </ul>
       ) : null}
-      <p className={styles.dim}>No mock for this session.</p>
+      <p className={shared.dim}>No mock for this session.</p>
     </div>
   );
 }

@@ -15,6 +15,11 @@ test('every owned-but-unmoved path still exists', () => {
   assert.deepEqual(Object.keys(OWNED_UNMOVED).filter((p) => !existsSync(join(ROOT, p))), []);
 });
 
+test("every extension's code has moved into its folders, with no edge left pending", () => {
+  assert.deepEqual(OWNED_UNMOVED, {});
+  assert.deepEqual(readPending(), []);
+});
+
 test('the scanner reads every import form and skips comments and strings', () => {
   const src = [
     "import a from './a';",
@@ -52,7 +57,7 @@ test("an extension's folders across layers are one owner", () => {
   assert.equal(ownerOf('bridge/test/kinds/grill.test.mts'), 'grill');
   assert.equal(ownerOf('bridge/kinds/index.mts'), undefined);
   assert.equal(ownerOf('bridge/test/settings.test.mts'), undefined);
-  assert.equal(ownerOf('web/src/lib/mock.ts'), 'grill');
+  assert.equal(ownerOf('web/src/app/(browse)/(grill)/_lib/mock.ts'), 'grill');
   assert.equal(ownerOf('web/src/lib/data.ts'), undefined);
   assert.equal(mayImport('bridge/kinds/learn.mts', 'web/src/app/(browse)/(learn)/_lib/x.ts'), true);
   assert.equal(mayImport('src/extensions/grill/x.ts', 'src/extensions/learn/y.ts'), false);

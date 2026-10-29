@@ -3,7 +3,7 @@
 import { Command } from "cmdk";
 import styles from "@/components/layout/palette.module.css";
 import { ProjectMark } from "@/components/project-mark";
-import { grillHref } from "@/lib/hrefs";
+import { grillHref } from "../_lib/hrefs";
 import type { PaletteProps } from "@/lib/slots";
 import type { GrillSearch } from "../_lib/manifest.server";
 

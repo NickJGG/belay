@@ -2,13 +2,14 @@ import { notFound } from "next/navigation";
 import { Prose } from "@/components/content/prose";
 import { ShellSlot } from "@/components/layout/shell-slot";
 import { projectColor } from "@/components/project-mark";
-import { SessionWorkspace, type SessionNav } from "@/components/session/workspace";
-import { navData, sessionDetail } from "@/lib/data";
+import { SessionWorkspace, type SessionNav } from "@/app/(browse)/(grill)/_components/workspace";
+import { sessionDetail } from "@/app/(browse)/(grill)/_lib/detail.server";
+import { navData } from "@/lib/data";
 import { UNFILED } from "@/app/(browse)/(grill)/_lib/manifest";
 import { shortDate, statusLabel } from "@/lib/format";
-import type { SessionDoc } from "@/lib/session-doc";
+import type { SessionDoc } from "@/app/(browse)/(grill)/_lib/session-doc";
 import { cn } from "@/lib/utils";
-import styles from "../../page.module.css";
+import styles from "@/app/page.module.css";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

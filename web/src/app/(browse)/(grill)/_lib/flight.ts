@@ -10,3 +10,9 @@ export function unlinkedGrills(issues: Pick<Issue, "extra">[], grills: GrillSess
   const linked = new Set(issues.map((t) => owned(t, "grill").grill));
   return grills.filter((g) => !g.legacy && g.status === "in-progress" && g.project && !linked.has(g.slug));
 }
+
+/** Belay's In flight grills with the live ones moved first, and any live grill its rule left out (no project tag) added. */
+export function flightGrills<G extends { slug: string }>(flight: G[], live: G[]): G[] {
+  const on = new Set(live.map((g) => g.slug));
+  return [...live, ...flight.filter((g) => !on.has(g.slug))];
+}

@@ -1,6 +1,5 @@
-import { GrillList, type GrillItem } from "@/components/belay/grill-list";
-import { grillProgress } from "@/lib/belay-view";
-import type { Stage } from "@/lib/issues";
+import { GrillList, type GrillItem } from "./grill-list";
+import { grillProgress, type Stage } from "../_lib/issues";
 import { projectStages, type WorkItem } from "../_lib/projects.server";
 
 const row = (s: WorkItem): GrillItem => ({

@@ -14,6 +14,7 @@ import type { ChatEntry } from "./chat.ts";
 import type { HubEvent } from "./hub.ts";
 import type { Issue } from "./issues.ts";
 import type { MarkdownContext } from "./markdown.ts";
+import type { Project } from "./projects.ts";
 import type { SessionBase, SessionMemo } from "./sessions.ts";
 
 export type PureKind<F = unknown> = {
@@ -44,8 +45,8 @@ export type ItemBase = Pick<SessionBase, "slug" | "topic" | "status" | "project"
 /** A live Tab; `href` is the page it opens. */
 export type LiveBase = ItemBase & Pick<LiveSession, "working" | "connected" | "wt"> & { kind: string; href: string };
 
-/** What turns a session into a list item, beyond the session itself. */
-export type ItemContext = { live: Set<string>; marks: Map<string, Mark>; byGrill: Map<string, Issue[]> };
+/** What turns a session into a list item, beyond the session itself: belay's issues, for a kind to link its own. */
+export type ItemContext = { live: Set<string>; marks: Map<string, Mark>; issues: Issue[] };
 
 /** Written as methods, whose parameters TS checks both ways, so every kind's runtime is a plain `KindRuntime` too. */
 export type KindRuntime<S extends SessionBase = SessionBase, L extends LiveBase = LiveBase, I extends ItemBase = ItemBase> = {
@@ -55,6 +56,8 @@ export type KindRuntime<S extends SessionBase = SessionBase, L extends LiveBase 
   list?(root: string, memo?: SessionMemo): S[];
   /** A listed session as a list row. */
   item?(s: S, ctx: ItemContext): I;
+  /** The project each listed session is filed under, for its mark; one it leaves out is unfiled. */
+  filed?(sessions: S[], projects: Project[], issues: Issue[]): Map<string, Project>;
   /** Its live Tabs, in the order given; `s` is null for a live session whose folder it can't read. */
   liveItems(entries: { l: LiveSession; s: S | null }[], ctx: ItemContext): Promise<L[]>;
   /** Watchers beyond its session folder's, run while it's active. */

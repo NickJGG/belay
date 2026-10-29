@@ -1,7 +1,7 @@
 /** Reading a grill's session.json for the server; the parsing is shared with the browser. */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Question, SessionDoc } from "../../../../lib/session-doc.ts";
+import type { Question, SessionDoc } from "./session-doc.ts";
 
 /** session.json, or null when it's missing or doesn't parse. Only shape-checked enough to render. */
 export function readSessionDoc(dir: string): SessionDoc | null {

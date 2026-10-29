@@ -1,12 +1,12 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { Stage } from "@/lib/issues";
+import type { Stage } from "../_lib/issues";
 import { cn } from "@/lib/utils";
 import { GrillRow } from "./grill-row";
-import styles from "./belay.module.css";
+import styles from "@/components/belay/belay.module.css";
 
-// Not issues.ts's STAGES: importing a value from it would bundle the CLI's store into the client.
+// Not _lib/issues.ts's STAGES: importing a value from it would bundle the CLI's store into the client.
 const STAGES: Stage[] = ["grilling", "building", "shipped"];
 const LABELS: Record<Stage, string> = { grilling: "Still grilling", building: "Building", shipped: "Shipped" };
 const NONE: Record<Stage, string> = { grilling: "No grills still going.", building: "Nothing building.", shipped: "Nothing shipped yet." };

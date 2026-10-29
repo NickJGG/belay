@@ -78,8 +78,7 @@ Lessons (/learn; the tag has \`course\`):
         },
         "detach",
     ],
-    // The same advice as a grill's, as before lessons were a kind of their own.
-    reattach: (slug) => `disconnected: run \`/grill resume ${slug}\` in the terminal`,
+    reattach: () => "disconnected: start the routine again in the terminal",
     page: (_slug, state) => `/learn/${state.course}/now`,
     /**
      * An idle session in the Learning root checks for a queued start at startup (a restart's fresh session) and then

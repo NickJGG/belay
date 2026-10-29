@@ -1,12 +1,11 @@
 import "server-only";
-import { flightGrills } from "@/lib/belay-view";
 import { belay, sessionLists, type SessionItem } from "@/lib/data";
 import type { LiveSession } from "@/lib/hub";
-import { STAGES, type Stage } from "@/lib/issues";
-import { fileSessions } from "@/lib/projects";
 import { byUpdated } from "@/lib/sessions";
 import type { ListsContext } from "@/lib/slots";
-import { unlinkedGrills } from "./flight";
+import { fileSessions } from "./filing";
+import { flightGrills, unlinkedGrills } from "./flight";
+import { byGrillOf, STAGES, type Stage } from "./issues";
 import { UNFILED } from "./manifest";
 import type { GrillSession } from "./sessions";
 
@@ -16,7 +15,7 @@ export type WorkItem = SessionItem & Partial<Pick<LiveSession, "working">>;
 /** A project's grills (or Unfiled's) by stage. An archived project shows only while it still has some. */
 export async function projectStages(key: string): Promise<Record<Stage, WorkItem[]>> {
   const { live, sessions, projects, ctx, item } = await sessionLists();
-  const filed = fileSessions(sessions, projects, ctx.byGrill);
+  const filed = fileSessions(sessions, projects, byGrillOf(ctx.issues));
   const node = filed.projects.find((p) => p.project.key === key.toUpperCase());
   const mine = key === UNFILED ? filed.unfiled : node ? [...node.tagged, ...node.byIssues, ...node.matched].sort(byUpdated) : [];
   const working = new Map(live.map((l) => [l.slug, l.working]));
@@ -44,4 +43,4 @@ export function flight({ live, sessions, ctx }: ListsContext<GrillSession>): Fli
 }
 
 /** How many grills no project files, for Unfiled's card. */
-export const unfiledCount = ({ sessions, projects, ctx }: ListsContext<GrillSession>) => fileSessions(sessions, projects, ctx.byGrill).unfiled.length;
+export const unfiledCount = ({ sessions, projects, ctx }: ListsContext<GrillSession>) => fileSessions(sessions, projects, byGrillOf(ctx.issues)).unfiled.length;

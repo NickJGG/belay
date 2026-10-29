@@ -7,9 +7,9 @@ import { History, LayoutTemplate } from "lucide-react";
 import { Mark } from "@/components/layout/logo";
 import { RailFoot } from "@/components/layout/rail";
 import { useNav } from "@/components/layout/site-nav";
-import { families, statusChip, type Opt, type Question, type SessionDoc } from "@/lib/session-doc";
+import { families, statusChip, type Opt, type Question, type SessionDoc } from "../_lib/session-doc";
 import { cn } from "@/lib/utils";
-import styles from "./session.module.css";
+import styles from "./workspace.module.css";
 
 const RAIL_MARK: Record<string, string> = { resolved: "done", open: "open", deferred: "muted", dropped: "muted", see: "muted" };
 

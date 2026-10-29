@@ -13,9 +13,6 @@ export const KINDS: readonly Kind[] = [grill, learn];
 /** Whether each is on when `settings.yaml` doesn't say, as in `src/extension-ids.ts` (a test checks they agree). */
 export const BUILT_IN: Readonly<Record<string, boolean>> = { grill: true, learn: false };
 
-/** The kinds whose setting takes effect; the rest are active whatever it says, as in `src/extensions.ts`. */
-export const GATED: ReadonlySet<string> = new Set(["learn"]);
-
 export type Message = CoreMessage | GrillMessage | LessonMessage;
 export type KindEvent = GrillEvent | LessonEvent;
 

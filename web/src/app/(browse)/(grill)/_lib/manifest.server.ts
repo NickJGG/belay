@@ -2,9 +2,9 @@ import { grillsDir } from "../../../../../../src/config.ts";
 import { owned } from "../../../../../../src/extensions.ts";
 import { linkedPath } from "../../../../../../src/open.ts";
 import type { Issue } from "../../../../../../src/store.ts";
-import { stage } from "../../../../lib/issues.ts";
 import type { ServerKind } from "../../../../lib/session-kind.ts";
 import type { ListsContext, SearchContext, ServerSlots } from "../../../../lib/slots.ts";
+import { byGrillOf, stage } from "./issues.ts";
 import { UNFILED } from "./manifest.ts";
 import type { GrillSession } from "./sessions.ts";
 
@@ -25,7 +25,7 @@ export const slots = {
     sessions: sessions.map((s) => ({
       slug: s.slug,
       topic: s.topic,
-      stage: stage(s, ctx.byGrill.get(s.slug) ?? []),
+      stage: stage(s, byGrillOf(ctx.issues).get(s.slug) ?? []),
       updated: s.updated,
       project: ctx.marks.get(s.slug) ?? null,
     })),

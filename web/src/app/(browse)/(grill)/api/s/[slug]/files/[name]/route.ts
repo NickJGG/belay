@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { sessionDir } from "@/lib/config";
-import { MOCK_FILES, type MockFile } from "@/lib/mock";
+import { MOCK_FILES, type MockFile } from "@/app/(browse)/(grill)/_lib/mock";
 import { isSlug } from "@/lib/sessions";
 
 /** A session's mock files, for the stage (spec, data) and the frames (CSS). Nothing else in the folder. */

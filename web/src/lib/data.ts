@@ -1,6 +1,5 @@
 import "server-only";
-import { existsSync, readFileSync, statSync } from "node:fs";
-import path from "node:path";
+import { statSync } from "node:fs";
 import { connection } from "next/server";
 import { cache } from "react";
 import { dataDir } from "../../../src/config.ts";
@@ -13,7 +12,7 @@ import { projectBoard, type Board } from "../../../src/query.ts";
 import { sectionNeighbours, sidebarSections } from "../../../src/sidebar.ts";
 import type { Issue as BelayIssue, Project as BelayProject } from "../../../src/store.ts";
 import { addDays, isDay, workDay } from "../../../src/workday.ts";
-import type { ChatEntry, OpenTurn } from "./chat";
+import type { OpenTurn } from "./chat";
 import type { Focus } from "./extensions";
 import {
   claim,
@@ -23,29 +22,22 @@ import {
   liveItems,
   loadKinds,
   projectEntries,
-  runtimeOf,
   searchParts,
-  sessionRoots,
   type ListedSession,
   type LiveItem,
   type SearchParts,
   type SessionItem,
 } from "./extensions.server";
-import { parseFrontmatter } from "./frontmatter";
-import { issuesByGrill, type Issue } from "./issues";
-import { MOCK_FILES, type MockFile } from "./mock";
-import type { SessionDoc } from "./session-doc";
-import { readChat } from "./session-files";
 import { accountUsage, focusFor, liveSessions, openTurn, usageFor } from "./hub";
-import { fileSessions, projectsOf, type Project } from "./projects";
+import { projectsOf, type Project } from "./projects";
 import type { ItemContext, Mark } from "./session-kind";
 import type { FlightGroup, ProjectEntry } from "./slots";
 import type { Usage } from "./usage";
-import { isSlug, type SessionMemo } from "./sessions";
+import type { SessionMemo } from "./sessions";
 
 // On globalThis so dev-mode module reloads keep the parsed sessions.
 const g = globalThis as typeof globalThis & { __belayMemo?: SessionMemo };
-const memo = () => (g.__belayMemo ??= new Map());
+export const sessionMemo = () => (g.__belayMemo ??= new Map());
 
 /** Belay's data, loaded once per request. Lenient: pages render what loaded rather than failing on a bad file. */
 export const belay = cache(() => new BelayCtx(dataDir(), { lenient: true }));
@@ -66,17 +58,16 @@ export function markOf(p: Project): Mark {
   return { key: p.key, name: p.name, iconV, color: p.color };
 }
 
-/** Each filed session's mark: the first project, in project order, that files it. */
-function marks(sessions: ListedSession[], projects: Project[], byGrill: Map<string, Issue[]>): Map<string, Mark> {
+/** Each filed session's mark, from the project its kind files it under. */
+export function marksOf(filed: Map<string, Project>): Map<string, Mark> {
+  const byKey = new Map<string, Mark>();
   const out = new Map<string, Mark>();
-  for (const { project, tagged, byIssues, matched } of fileSessions(sessions, projects, byGrill).projects) {
-    const m = markOf(project);
-    for (const s of [...tagged, ...byIssues, ...matched]) if (!out.has(s.slug)) out.set(s.slug, m);
+  for (const [slug, p] of filed) {
+    if (!byKey.has(p.key)) byKey.set(p.key, markOf(p));
+    out.set(slug, byKey.get(p.key)!);
   }
   return out;
 }
-
-const byGrill = () => issuesByGrill(belay().issues);
 
 /**
  * The active kinds' listed sessions, and the bridges that count as Live in the lists: attached, to a session still in
@@ -86,20 +77,22 @@ const byGrill = () => issuesByGrill(belay().issues);
 export async function sessionLists() {
   await connection();
   const kinds = await loadKinds();
+  const projects = projectsOf(belay());
+  const issues = belay().issues;
   const rows = new Map<string, (s: ListedSession, ctx: ItemContext) => SessionItem>();
-  const sessions: ListedSession[] = kinds.flatMap(({ root, runtime: { list, item } }) => {
+  const filed = new Map<string, Project>();
+  const sessions: ListedSession[] = kinds.flatMap(({ root, runtime: { list, item, filed: fileOf } }) => {
     if (!list || !item) return [];
     // Only grills are listed so far.
-    const listed = list(root, memo()) as ListedSession[];
+    const listed = list(root, sessionMemo()) as ListedSession[];
     for (const s of listed) rows.set(s.slug, item as (s: ListedSession, ctx: ItemContext) => SessionItem);
+    for (const [slug, p] of fileOf?.(listed, projects, issues) ?? []) filed.set(slug, p);
     return listed;
   });
   const all = await liveSessions();
-  const claims = claim(all, kinds, memo());
+  const claims = claim(all, kinds, sessionMemo());
   const live = all.filter((l) => l.connected && claims.has(l.slug) && (claims.get(l.slug)!.s?.status ?? "in-progress") === "in-progress");
-  const projects = projectsOf(belay());
-  const issues = byGrill();
-  const ctx: ItemContext = { live: new Set(live.map((l) => l.slug)), marks: marks(sessions, projects, issues), byGrill: issues };
+  const ctx: ItemContext = { live: new Set(live.map((l) => l.slug)), marks: marksOf(filed), issues };
   const item = (s: ListedSession) => rows.get(s.slug)!(s, ctx);
   return { live, sessions, projects, ctx, claims, item };
 }
@@ -181,61 +174,6 @@ export async function searchIndex(): Promise<SearchIndex> {
     projects: projects.filter((p) => p.status !== "archived").map((p) => ({ ...markOf(p), status: p.status })),
     issues: belay().issues.map(({ id, title, status, project }) => ({ id, title, status, project })),
   };
-}
-
-export type SessionPage = { session: ListedSession; live: LiveItem | null; projectName?: string; mark: Mark | null };
-
-/** One grill for its page and the drill-in sidebar; null when there's none. */
-export async function sessionData(slug: string): Promise<SessionPage | null> {
-  if (!isSlug(slug)) return null;
-  await connection();
-  const root = sessionRoots().grill;
-  if (!root) return null;
-  const grill = await runtimeOf("grill");
-  const session = grill.read(root, slug, memo());
-  if (!session) return null;
-  const live = (await liveSessions()).filter((l) => l.slug === slug);
-  const projects = projectsOf(belay());
-  const projectName = session.project ? projects.find((p) => p.key === session.project)?.name : undefined;
-  const issues = byGrill();
-  const m = marks([session], projects, issues);
-  const ctx: ItemContext = { live: new Set(live.map((l) => l.slug)), marks: m, byGrill: issues };
-  const items = await grill.liveItems(live.map((l) => ({ l, s: session })), ctx);
-  return { session, live: items[0] ?? null, projectName, mark: m.get(slug) ?? null };
-}
-
-export type SessionDetail = SessionPage & {
-  /** Null for a legacy grill, or a fresh one with only bridge.json. */
-  doc: SessionDoc | null;
-  chat: ChatEntry[];
-  turn: OpenTurn | null;
-  usage: Usage | null;
-  /** Each mock file present, with its mtime (a cache-buster for the frames' URLs). */
-  files: Partial<Record<MockFile, number>>;
-  /** A legacy grill: its markdown body, and whether it has an old preview.html. */
-  legacy: { markdown: string; preview: boolean } | null;
-};
-
-/** Everything the grill page renders; null when there's no such grill. */
-export async function sessionDetail(slug: string): Promise<SessionDetail | null> {
-  const page = await sessionData(slug);
-  const root = sessionRoots().grill;
-  if (!page || !root) return null;
-  const dir = path.join(root, slug);
-  if (page.session.legacy) {
-    let markdown = "";
-    try {
-      markdown = parseFrontmatter(readFileSync(path.join(dir, `${slug}.md`), "utf8")).body;
-    } catch {}
-    return { ...page, doc: null, chat: [], turn: null, usage: null, files: {}, legacy: { markdown, preview: existsSync(path.join(dir, "preview.html")) } };
-  }
-  const files: SessionDetail["files"] = {};
-  for (const name of MOCK_FILES) {
-    try {
-      files[name] = statSync(path.join(dir, name)).mtimeMs;
-    } catch {}
-  }
-  return { ...page, doc: (await runtimeOf("grill")).readDoc(dir), chat: readChat(dir), turn: openTurn(slug), usage: usageFor(slug), files, legacy: null };
 }
 
 /** An issue as a chip or picker option shows it; `status` is unset when the id names no issue. */

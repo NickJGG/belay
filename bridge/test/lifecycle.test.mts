@@ -415,3 +415,29 @@ test("a lesson attached when learn goes off keeps its tools and can re-attach un
     writeFileSync(settings, "extensions: { learn: on }\n");
   }
 });
+
+test("grill off: no grill tools or instructions, an attach by slug is refused, and a lesson still attaches with choice", async () => {
+  const settings = path.join(data, "settings.yaml");
+  const learning = path.join(root, "learning");
+  writeFileSync(settings, "extensions: { learn: on, grill: off }\n");
+  const gc = new Client({ name: "grill-off-test", version: "0" });
+  await gc.connect(new StdioClientTransport({ command: process.execPath, args: [SERVER], cwd: learning, env: { ...env, LEARNING_ROOT: learning }, stderr: "ignore" }));
+  try {
+    assert.doesNotMatch(gc.getInstructions() ?? "", /grill/i);
+    const { tools } = await gc.listTools();
+    assert.deepEqual(tools.map((t) => t.name), ["attach"]);
+    assert.ok(!("slug" in (tools[0].inputSchema as { properties: object }).properties));
+    assert.doesNotMatch(tools[0].description ?? "", /grill/);
+
+    const r = await gc.callTool({ name: "attach", arguments: { slug: "plain" } });
+    assert.ok(r.isError);
+    assert.match(textOf(r), /grills are switched off/);
+
+    assert.match(textOf(await gc.callTool({ name: "attach", arguments: { course: "demo-course" } })), /^attached lesson-/);
+    assert.deepEqual((await gc.listTools()).tools.map((t) => t.name).sort(), ["attach", "choice", "detach", "reply", "restart", "show"]);
+    assert.match(textOf(await gc.callTool({ name: "detach", arguments: {} })), /^detached/);
+  } finally {
+    await gc.close();
+    writeFileSync(settings, "extensions: { learn: on }\n");
+  }
+});
