@@ -17,6 +17,8 @@ export const DEFAULT_PATHS: Record<string, string> = {
   courses: 'web/src/lib/courses.ts',
   startQueue: 'web/src/lib/start-queue.ts',
   images: 'web/src/lib/images.ts',
+  shell: 'web/src/lib/shell.ts',
+  sidebar: 'web/src/lib/sidebar.ts',
 };
 
 export interface Code {

@@ -14,6 +14,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync,
 import { join, resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { YAMLError, isAlias, isMap, isPair, isScalar, isSeq, parse, parseDocument, stringify, type Document } from 'yaml';
+import { ownedFields } from './extensions.ts';
 
 export const ISSUE_STATUSES = ['idea', 'todo', 'doing', 'done', 'dropped'] as const;
 export const PROJECT_STATUSES = ['active', 'paused', 'archived'] as const;
@@ -79,6 +80,9 @@ export interface ExtraKey {
 /** The keys `serializeIssue` writes, in the order it writes them. */
 export const ISSUE_FIELDS = ['id', 'title', 'project', 'status', 'blocked_by', 'priority', 'source', 'grill', 'plan', 'created', 'updated', 'comments', 'transitions'] as const;
 type IssueField = (typeof ISSUE_FIELDS)[number];
+
+/** The core fields and every built-in extension's owned fields, on or off. The rest are unknown, though still kept. */
+export const KNOWN_ISSUE_KEYS: readonly string[] = [...ISSUE_FIELDS, ...ownedFields(ISSUE_FIELDS).map((f) => f.key)];
 
 interface Transition {
   at: string;
@@ -477,7 +481,7 @@ export function loadProjects(dir: string, { bad }: LoadOptions = {}): Project[] 
  * too, and the version is a string so it never equals the integer that code from before `extra` wrote.
  */
 const CACHE_SHAPE = 2;
-const ISSUE_CACHE_VERSION = `${CACHE_SHAPE}-${createHash('sha256').update(ISSUE_FIELDS.join()).digest('hex').slice(0, 12)}`;
+const ISSUE_CACHE_VERSION = `${CACHE_SHAPE}-${createHash('sha256').update(KNOWN_ISSUE_KEYS.join()).digest('hex').slice(0, 12)}`;
 
 /** Only an issue that writes the same bytes after a trip through JSON may be served from the cache. */
 const cacheSafe = (t: Issue) => serializeIssue(t) === serializeIssue(JSON.parse(JSON.stringify(t)));

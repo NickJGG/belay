@@ -27,10 +27,13 @@ export function belayWatched(root: string, abs: string): boolean {
   return rel === "order.yaml" || /^(issues|projects)\/[^/]+\.md$/.test(rel) || /^log\/[^/]+\.yaml$/.test(rel);
 }
 
-/** Belay's data dir: its watched files and the folders holding them. Temp files from `writeAtomic` are skipped. */
+/** Whether a path under belay's data dir is its `settings.yaml`, which says which extensions are on. */
+export const isSettings = (root: string, abs: string) => belayRel(root, abs) === "settings.yaml";
+
+/** Belay's data dir: its watched files, settings.yaml and the folders holding them. Temp files from `writeAtomic` are skipped. */
 export const belayIgnored = (root: string) => (p: string) => {
   const rel = belayRel(root, p);
-  return rel !== "" && rel !== "issues" && rel !== "projects" && rel !== "log" && !belayWatched(root, p);
+  return rel !== "" && rel !== "issues" && rel !== "projects" && rel !== "log" && !belayWatched(root, p) && !isSettings(root, p);
 };
 
 /** `[course, rel]` for a path under the Learning root that the site may show, else null. */

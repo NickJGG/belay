@@ -16,6 +16,7 @@ Never run `belay serve`, `pnpm dev`, `next dev` or `next start`. The user starts
 
 - Every data write goes through `src/ops.ts`. Each op re-reads the file just before saving it. A write that bypasses the ops can overwrite a note Claude or the CLI appended a moment earlier.
 - The dashboard's data operations are a subset of the CLI's (the user's rule). Before adding a write to the dashboard, add it to the CLI.
+- Only an extension's own folders, each layer's built-in list and `scripts/` may import its code; `test/import-rule.test.ts` enforces this. `scripts/import-rule.ts` lists the files it owns that haven't moved yet, and `test/import-pending.json` the frozen edges still to remove: never add to it.
 - Put logic in `ops.ts` or pure helpers in `src/` and test it with `node:test`. There are no UI tests, so logic inside components or server actions goes untested.
 - Never test against the real data dir (`~/Belay`). Its git history is local only, and lessons, `.run/` and unfinished grills aren't tracked, so a bad write may not be undoable. Point `BELAY_DATA` at a temp copy.
 

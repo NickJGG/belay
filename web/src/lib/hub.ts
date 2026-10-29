@@ -11,7 +11,7 @@ import { isSlug } from "./sessions";
 import { connectUpstream, readBridgeFile, sameBridge, type BridgeEvent, type Upstream } from "./upstream";
 import { UsageStore, type StatusLine, type Usage } from "./usage";
 import { root as learningRoot } from "./courses";
-import { belayIgnored, belayWatched, courseIgnored, courseLocate, locate, sessionIgnored } from "./watch-paths";
+import { belayIgnored, belayWatched, courseIgnored, courseLocate, isSettings, locate, sessionIgnored } from "./watch-paths";
 
 /*
  * The server's one event hub, started by its first user. It watches the grills and lessons roots and holds an
@@ -24,6 +24,7 @@ import { belayIgnored, belayWatched, courseIgnored, courseLocate, locate, sessio
  *   usage     a live session's meters, from the status line's POST to /api/usage (matched by the bridge's sessionId)
  *   limits    the account-wide 5h and 7d limits from that same POST, live session or not (Home's rings)
  *   belay     an issue, project, log day or order.yaml in belay's data dir changed (by a page, the CLI or Claude)
+ *   settings  belay's settings.yaml changed, which may switch an extension on or off
  *   course    a visible file of a course folder changed (see `visibleParts`), as `{course, path}`
  *   start     the queued lesson start (start-queue.ts) was set or cleared, by `/api/lesson/start`
  */
@@ -39,6 +40,7 @@ export type HubEvent =
   | { type: "usage"; slug: string; usage: Usage }
   | { type: "limits"; usage: Usage }
   | { type: "belay" }
+  | { type: "settings" }
   | { type: "course"; course: string; path: string }
   | { type: "start"; queue: Queue | null };
 
@@ -103,6 +105,7 @@ function start(): Hub {
   for (const ev of ["add", "change", "unlink"] as const) {
     belayWatch.on(ev, (abs) => {
       if (belayWatched(data, abs)) emit({ type: "belay" });
+      else if (isSettings(data, abs)) emit({ type: "settings" });
     });
   }
 
