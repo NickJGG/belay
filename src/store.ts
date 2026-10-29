@@ -5,10 +5,15 @@
  *
  * Keys and IDs are uppercase in memory and in frontmatter (`ELV`, `ELV-12`) and lowercase in
  * file names. Loading uppercases whatever it reads, so files from before that rule still load.
+ *
+ * An issue keeps frontmatter keys it doesn't know (`Issue.extra`) when their values are plain; a file with any
+ * other unknown value is bad, so no op writes it. Projects, logs and `order.yaml` drop unknown keys on save.
  */
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { YAMLError, parse, stringify } from 'yaml';
+import { isDeepStrictEqual } from 'node:util';
+import { YAMLError, isAlias, isMap, isPair, isScalar, isSeq, parse, parseDocument, stringify, type Document } from 'yaml';
 
 export const ISSUE_STATUSES = ['idea', 'todo', 'doing', 'done', 'dropped'] as const;
 export const PROJECT_STATUSES = ['active', 'paused', 'archived'] as const;
@@ -59,8 +64,21 @@ export interface Issue {
   comments: Comment[];
   /** Oldest first; absent on issues from before transitions were recorded. */
   transitions?: Transition[];
+  /** Frontmatter keys the store doesn't know, in file order; absent when there are none. */
+  extra?: ExtraKey[];
   body: string;
 }
+
+/** `after` is the nearest known key before it in the file, `null` when none is: it's written back after that key. */
+export interface ExtraKey {
+  key: string | number;
+  value: unknown;
+  after: string | null;
+}
+
+/** The keys `serializeIssue` writes, in the order it writes them. */
+export const ISSUE_FIELDS = ['id', 'title', 'project', 'status', 'blocked_by', 'priority', 'source', 'grill', 'plan', 'created', 'updated', 'comments', 'transitions'] as const;
+type IssueField = (typeof ISSUE_FIELDS)[number];
 
 interface Transition {
   at: string;
@@ -117,27 +135,39 @@ export function normalizeStoredPath(p: string): string {
 
 type Data = Record<string, unknown>;
 
+function yamlFailure(e: YAMLError, where: string, offset: number): Error {
+  const line = e.linePos?.[0].line;
+  const reason = e.message.replace(/ at line \d+, column \d+:[\s\S]*$/, '');
+  return new Error(`${where}: ${line ? `line ${line + offset}: ` : ''}${reason}`);
+}
+
 /** yaml's `parse`, failing as `<where>: line N: <reason>`. `offset` is how many file lines precede `src`. */
 export function parseYaml(src: string, where: string, offset = 0): unknown {
   try {
     return parse(src);
   } catch (e) {
     if (!(e instanceof YAMLError)) throw e;
-    const line = e.linePos?.[0].line;
-    const reason = e.message.replace(/ at line \d+, column \d+:[\s\S]*$/, '');
-    throw new Error(`${where}: ${line ? `line ${line + offset}: ` : ''}${reason}`);
+    throw yamlFailure(e, where, offset);
   }
 }
 
-export function splitFrontmatter(text: string, where: string): { data: Data; body: string } {
+function frontmatterParts(text: string, where: string): { yaml: string; body: string } {
   const m = /^---\r?\n([\s\S]*?)\r?\n?---(?:\r?\n|$)([\s\S]*)$/.exec(text);
   if (!m) throw new Error(`${where}: missing frontmatter`);
-  const data = (parseYaml(m[1], where, 1) ?? {}) as Data;
-  if (typeof data !== 'object' || Array.isArray(data)) throw new Error(`${where}: frontmatter is not a mapping`);
-  return { data, body: m[2].trim() };
+  return { yaml: m[1], body: m[2].trim() };
 }
 
-function joinFrontmatter(data: Data, body: string): string {
+function frontmatterData(data: unknown, where: string): Data {
+  if (typeof data !== 'object' || Array.isArray(data)) throw new Error(`${where}: frontmatter is not a mapping`);
+  return data as Data;
+}
+
+export function splitFrontmatter(text: string, where: string): { data: Data; body: string } {
+  const { yaml, body } = frontmatterParts(text, where);
+  return { data: frontmatterData(parseYaml(yaml, where, 1) ?? {}, where), body };
+}
+
+function joinFrontmatter(data: Data | Map<unknown, unknown>, body: string): string {
   const head = `---\n${stringify(data, { lineWidth: 0 })}---\n`;
   return body.trim() ? `${head}\n${body.trim()}\n` : head;
 }
@@ -249,12 +279,73 @@ export function serializeProject(p: Project): string {
 
 // --- issues ---
 
+const PLAIN_TAGS = new Set(['str', 'int', 'float', 'bool', 'null', 'map', 'seq'].map((t) => `tag:yaml.org,2002:${t}`));
+
+const nodeJS = (node: unknown, doc: Document, mapAsMap = false): unknown =>
+  isScalar(node) || isMap(node) || isSeq(node) ? node.toJS(doc, { mapAsMap }) : null;
+
+/**
+ * Why a node isn't plain, or undefined when it is: plain values use only the core tags and no aliases, and parse back
+ * from a save deep-equal to how `bigDoc` (`intAsBigInt`) read them, with key types kept, and survive JSON for the cache.
+ */
+function notPlain(node: unknown, big: unknown, doc: Document, bigDoc: Document): string | undefined {
+  const shape = (n: unknown): string | undefined => {
+    if (isAlias(n)) return 'is an alias';
+    const tag = (n as { tag?: string } | null)?.tag;
+    if (tag && !PLAIN_TAGS.has(tag)) return `has the tag ${tag.replace('tag:yaml.org,2002:', '!!')}`;
+    if (!isMap(n) && !isSeq(n)) return undefined;
+    for (const item of n.items as unknown[]) {
+      const why = isPair(item) ? (shape(item.key) ?? shape(item.value)) : shape(item);
+      if (why) return why;
+    }
+  };
+  const why = shape(node);
+  if (why) return why;
+  const value = nodeJS(node, doc);
+  const saved = parseDocument(stringify(value), { intAsBigInt: true }).toJS({ mapAsMap: true });
+  if (!isDeepStrictEqual(saved, nodeJS(big, bigDoc, true)) || !isDeepStrictEqual(JSON.parse(JSON.stringify(value)), value)) {
+    return "wouldn't survive a save exactly";
+  }
+}
+
+/** The top-level keys outside `ISSUE_FIELDS`. Throws, saying what to quote, on one that isn't plain. */
+function extraKeys(yaml: string, doc: Document, where: string): ExtraKey[] {
+  if (!isMap(doc.contents)) return [];
+  const known = new Set<unknown>(ISSUE_FIELDS);
+  const extra: ExtraKey[] = [];
+  let after: string | null = null;
+  let bigDoc: Document | undefined;
+  doc.contents.items.forEach((pair, i) => {
+    const key = isScalar(pair.key) ? pair.key.value : pair.key;
+    if (typeof key === 'string' && known.has(key)) {
+      after = key;
+      return;
+    }
+    bigDoc ??= parseDocument(yaml, { intAsBigInt: true });
+    const big = (bigDoc.contents as typeof doc.contents).items[i];
+    const name = JSON.stringify(String(key));
+    const keyFailure = (why: string) => new Error(`${where}: unknown key ${name} ${why}`);
+    if (typeof key !== 'string' && typeof key !== 'number') throw keyFailure('is not text or a number: quote the key');
+    if (key === '__proto__') throw keyFailure('is reserved: rename it');
+    const keyWhy = notPlain(pair.key, big.key, doc, bigDoc);
+    if (keyWhy) throw keyFailure(`${keyWhy}: quote the key`);
+    const valueWhy = notPlain(pair.value, big.value, doc, bigDoc);
+    if (valueWhy) throw new Error(`${where}: the value of unknown key ${name} ${valueWhy}: quote it to keep it as text`);
+    extra.push({ key, value: nodeJS(pair.value, doc), after });
+  });
+  return extra;
+}
+
 export function parseIssue(src: string, where: string): Issue {
-  const { data: d, body } = splitFrontmatter(src, where);
+  const { yaml, body } = frontmatterParts(src, where);
+  const doc = parseDocument(yaml);
+  if (doc.errors.length) throw yamlFailure(doc.errors[0], where, 1);
+  const d = frontmatterData(doc.toJS() ?? {}, where);
   const id = canon(text(d, 'id', where));
   const project = canon(text(d, 'project', where));
   if (parseId(id)?.key !== project) throw new Error(`${where}: id '${id}' does not match project '${project}'`);
   const priority = d.priority == null ? undefined : oneOf(d, 'priority', ['high'] as const, where);
+  const extra = extraKeys(yaml, doc, where);
   return {
     id,
     title: text(d, 'title', where),
@@ -269,16 +360,50 @@ export function parseIssue(src: string, where: string): Issue {
     updated: text(d, 'updated', where),
     comments: commentList(d, where),
     ...(d.transitions != null && { transitions: transitionList(d, where) }),
+    ...(extra.length && { extra }),
     body,
   };
 }
 
+/** Each extra key goes after its `after` field, or the nearest set field before that one; runs keep their order. */
 export function serializeIssue(t: Issue): string {
-  const { id, title, project, status, blocked_by, priority, source, grill, plan, created, updated, comments, transitions, body } = t;
-  return joinFrontmatter(
-    { id, title, project, status, blocked_by, priority, source, grill, plan, created, updated, comments: comments.length ? comments : undefined, transitions },
-    body,
-  );
+  const { id, title, project, status, blocked_by, priority, source, grill, plan, created, updated, comments, transitions, extra = [], body } = t;
+  const fields: Record<IssueField, unknown> = {
+    id,
+    title,
+    project,
+    status,
+    blocked_by,
+    priority,
+    source,
+    grill,
+    plan,
+    created,
+    updated,
+    comments: comments.length ? comments : undefined,
+    transitions,
+  };
+  const anchor = (after: string | null): string | null => {
+    for (let i = ISSUE_FIELDS.indexOf(after as IssueField); i >= 0; i--) if (fields[ISSUE_FIELDS[i]] !== undefined) return ISSUE_FIELDS[i];
+    return null;
+  };
+  const data = new Map<unknown, unknown>();
+  const place = (after: string | null) => {
+    for (const e of extra) if (anchor(e.after) === after) data.set(e.key, e.value);
+  };
+  place(null);
+  for (const k of ISSUE_FIELDS) {
+    if (fields[k] === undefined) continue;
+    data.set(k, fields[k]);
+    place(k);
+  }
+  return joinFrontmatter(data, body);
+}
+
+/** The keys in `issue.extra` that aren't in `known`. */
+export function unknownKeys(issue: Issue, known: Iterable<string>): string[] {
+  const set = new Set(known);
+  return (issue.extra ?? []).map((e) => String(e.key)).filter((k) => !set.has(k));
 }
 
 // --- disk ---
@@ -347,8 +472,15 @@ export function loadProjects(dir: string, { bad }: LoadOptions = {}): Project[] 
   );
 }
 
-/** Bump when the parsed `Issue` shape changes, so old entries aren't served. */
-const ISSUE_CACHE_VERSION = 1;
+/**
+ * Bump `CACHE_SHAPE` when the parsed `Issue` shape changes, so old entries aren't served. The known keys are hashed in
+ * too, and the version is a string so it never equals the integer that code from before `extra` wrote.
+ */
+const CACHE_SHAPE = 2;
+const ISSUE_CACHE_VERSION = `${CACHE_SHAPE}-${createHash('sha256').update(ISSUE_FIELDS.join()).digest('hex').slice(0, 12)}`;
+
+/** Only an issue that writes the same bytes after a trip through JSON may be served from the cache. */
+const cacheSafe = (t: Issue) => serializeIssue(t) === serializeIssue(JSON.parse(JSON.stringify(t)));
 
 type IssueCacheEntries = Record<string, { mtimeMs: number; size: number; issue: Issue }>;
 
@@ -382,7 +514,7 @@ export function loadIssues(dir: string, { bad }: LoadOptions = {}): Issue[] {
       misses++;
       const t = parseIssue(readFileSync(file, 'utf8'), rel);
       if (`issues/${t.id.toLowerCase()}.md` !== rel) throw new Error(`${rel}: id '${t.id}' does not match file name`);
-      fresh[rel] = { mtimeMs, size, issue: t };
+      if (cacheSafe(t)) fresh[rel] = { mtimeMs, size, issue: t };
       return t;
     },
     bad,
