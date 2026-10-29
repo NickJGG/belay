@@ -7,7 +7,9 @@ import { shortDate } from "../format.ts";
 import { frontmatterList, parseFrontmatter } from "../frontmatter.ts";
 import { Ctx } from "../../../../src/ops.ts";
 import { fileSessions, projectsOf, projectTerms, resolveIcon } from "../projects.ts";
-import { byUpdated, listSessions, type SessionMemo, type SessionSummary } from "../sessions.ts";
+import type { SessionBase } from "../sessions.ts";
+
+type SessionSummary = SessionBase & Record<string, unknown>;
 
 const tmp = mkdtempSync(path.join(os.tmpdir(), "belay-site-"));
 after(() => rmSync(tmp, { recursive: true, force: true }));
@@ -78,80 +80,6 @@ describe("resolveIcon", () => {
 
   test("only .svg, .png and .ico", () => {
     assert.equal(resolveIcon("notes.txt", repo), undefined);
-  });
-});
-
-describe("listSessions", () => {
-  const grills = path.join(tmp, "grills");
-  write(
-    "grills/new-one/session.json",
-    JSON.stringify({
-      slug: "new-one",
-      topic: "New",
-      status: "in-progress",
-      project: "kiln",
-      started: "2026-10-20",
-      updated: "2026-10-23",
-      open: "Q2 next",
-      mock: { page: "new" },
-      questions: [
-        { n: 1, title: "First?", short: "First", status: "resolved" },
-        { n: 2, title: "Second?", status: "weird" },
-      ],
-    }),
-  );
-  write("grills/new-one/new-one.md", md({ topic: "Rendered plan" }));
-  write("grills/fresh/bridge.json", "{}");
-  write("grills/broken/session.json", "{not json");
-  write("grills/Not-A-Slug/session.json", "{}");
-  write("grills/old-one/old-one.md", md({ topic: '"Old grill"', status: "abandoned", project: "MAPS", started: "2026-09-01" }));
-  write("grills/no-file/preview.html", "");
-  write("grills/lesson-llm-20261025-1405/session.json", JSON.stringify({ kind: "lesson", course: "llm" }));
-
-  test("reads session.json, legacy markdown and bare bridge.json folders, and skips lessons", () => {
-    const bySlug = new Map(listSessions(grills).map((s) => [s.slug, s]));
-    assert.deepEqual([...bySlug.keys()].sort(), ["fresh", "new-one", "old-one"]);
-
-    const n = bySlug.get("new-one")!;
-    assert.equal(n.topic, "New");
-    assert.equal(n.project, "KILN");
-    assert.equal(n.open, "Q2 next");
-    assert.equal(n.mock, true);
-    assert.equal(n.legacy, false);
-    assert.deepEqual(n.questions, [
-      { n: 1, title: "First?", short: "First", status: "resolved" },
-      { n: 2, title: "Second?", short: "Second?", status: "open" },
-    ]);
-
-    const o = bySlug.get("old-one")!;
-    assert.equal(o.topic, "Old grill");
-    assert.equal(o.legacy, true);
-    assert.equal(o.updated, "2026-09-01");
-    assert.equal(o.questions, null);
-
-    assert.deepEqual(bySlug.get("fresh"), {
-      slug: "fresh",
-      topic: "fresh",
-      status: "in-progress",
-      questions: [],
-      mock: false,
-      legacy: false,
-    });
-  });
-
-  test("the memo reuses a parse until the file's mtime changes", () => {
-    const memo: SessionMemo = new Map();
-    const first = listSessions(grills, memo).find((s) => s.slug === "old-one");
-    assert.equal(listSessions(grills, memo).find((s) => s.slug === "old-one"), first);
-  });
-
-  test("byUpdated puts the newest first", () => {
-    assert.deepEqual(
-      listSessions(grills)
-        .sort(byUpdated)
-        .map((s) => s.slug),
-      ["new-one", "old-one", "fresh"],
-    );
   });
 });
 

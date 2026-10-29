@@ -24,6 +24,9 @@ export const DEFAULT_PATHS: Record<string, string> = {
   upstream: 'web/src/lib/upstream.ts',
   chat: 'web/src/lib/chat.ts',
   sessions: 'web/src/lib/sessions.ts',
+  lessonSessions: 'web/src/app/(browse)/(learn)/_lib/sessions.ts',
+  webExtensions: 'web/src/lib/extensions.ts',
+  lesson: 'web/src/lib/lesson.ts',
 };
 
 export interface Code {

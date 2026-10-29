@@ -18,15 +18,11 @@
   "web/src/components/live/live-provider.tsx -> web/src/lib/start-queue.ts",
   "web/src/lib/data.ts -> web/src/lib/course-data.ts",
   "web/src/lib/data.ts -> web/src/lib/courses.ts",
-  "web/src/lib/data.ts -> web/src/lib/lesson.ts",
   "web/src/lib/data.ts -> web/src/lib/mock.ts",
   "web/src/lib/data.ts -> web/src/lib/session-doc.ts",
-  "web/src/lib/hub.ts -> web/src/lib/courses.ts",
-  "web/src/lib/hub.ts -> web/src/lib/lesson.ts",
   "web/src/lib/hub.ts -> web/src/lib/start-queue.ts",
   "web/src/lib/markdown.ts -> web/src/lib/courses.ts",
   "web/src/lib/markdown.ts -> web/src/lib/wiki-target.ts",
-  "web/src/lib/session-files.ts -> web/src/lib/session-doc.ts",
   "web/src/lib/sidebar.ts -> web/src/lib/course-nav.ts",
   "web/src/lib/test/behaviours.test.ts -> web/src/lib/behaviours.ts",
   "web/src/lib/test/behaviours.test.ts -> web/src/lib/session-doc.ts",
@@ -49,6 +45,5 @@
   "web/src/lib/test/ts-env.test.ts -> web/src/lib/ts-env-files.ts",
   "web/src/lib/test/ts-env.test.ts -> web/src/lib/ts-env.ts",
   "web/src/lib/test/work-draft.test.ts -> web/src/lib/work-draft.ts",
-  "web/src/lib/upstream.ts -> web/src/lib/lesson.ts",
   "web/src/lib/watch-paths.ts -> web/src/lib/course-paths.ts"
 ]

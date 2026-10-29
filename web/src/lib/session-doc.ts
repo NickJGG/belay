@@ -3,7 +3,7 @@
  * page needs from it. `decisions` and `context` mirror plugin/scripts/session.js, which the skill and
  * check-preview.js use, so a mock renders the same on the site as in the check.
  */
-import type { QuestionStatus } from "./sessions.ts";
+import type { QuestionStatus } from "../app/(browse)/(grill)/_lib/sessions.ts";
 
 export type Patch = Record<string, unknown>;
 

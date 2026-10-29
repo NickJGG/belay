@@ -7,7 +7,9 @@ import { Ctx } from "../../../../src/ops.ts";
 import type { IssueStatus } from "../../../../src/store.ts";
 import { issuesByGrill, stage, type Issue } from "../issues.ts";
 import { fileSessions, type Project } from "../projects.ts";
-import type { SessionSummary } from "../sessions.ts";
+import type { SessionBase } from "../sessions.ts";
+
+type SessionSummary = SessionBase & Record<string, unknown>;
 
 const tmp = mkdtempSync(path.join(os.tmpdir(), "belay-issues-"));
 after(() => rmSync(tmp, { recursive: true, force: true }));

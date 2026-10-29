@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { grillsDir } from "@/lib/config";
+import { sessionRoots } from "@/lib/extensions.server";
 import { isSlug } from "@/lib/sessions";
 
 const TYPES: Record<string, string> = {
@@ -17,8 +17,9 @@ const TYPES: Record<string, string> = {
 export async function GET(_request: Request, { params }: { params: Promise<{ path: string[] }> }) {
   const parts = (await params).path;
   let file: string | null = null;
-  if (parts.length === 3 && parts[0] === "sessions" && isSlug(parts[1]) && /^preview\.[a-z.]+$/.test(parts[2])) {
-    file = path.join(grillsDir(), parts[1], parts[2]);
+  const grills = sessionRoots().grill;
+  if (grills && parts.length === 3 && parts[0] === "sessions" && isSlug(parts[1]) && /^preview\.[a-z.]+$/.test(parts[2])) {
+    file = path.join(grills, parts[1], parts[2]);
   } else if (parts.length === 1 && /^preview-shell\.v\d+\.(js|css)$/.test(parts[0])) {
     // `belay serve` runs Next in web/.
     file = path.join(/*turbopackIgnore: true*/ process.cwd(), "legacy", parts[0]);

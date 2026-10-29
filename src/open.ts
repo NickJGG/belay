@@ -13,10 +13,10 @@ export const isLinked = (v: unknown): v is Linked => v === 'file' || v === 'gril
 export function linkedPath(
   issue: Pick<Issue, 'id' | 'grill' | 'plan'>,
   kind: Linked,
-  dirs: { data: string; grills: string },
+  dirs: { data: string; grills?: string },
 ): string | undefined {
   if (kind === 'file') return issueFile(dirs.data, issue.id);
-  if (kind === 'grill') return issue.grill ? grillFile(dirs.grills, issue.grill) : undefined;
+  if (kind === 'grill') return issue.grill && dirs.grills ? grillFile(dirs.grills, issue.grill) : undefined;
   return issue.plan ? resolve(issue.plan) : undefined;
 }
 

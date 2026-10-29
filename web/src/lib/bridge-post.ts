@@ -1,6 +1,7 @@
 import "server-only";
 import http from "node:http";
-import { sessionDir } from "./config";
+import { sessionOwner } from "./config";
+import { reattachHint } from "./extensions.server";
 import { readBridgeFile } from "./upstream";
 
 export type BridgeReply = { ok: true } | { ok: false; status: number; error: string };
@@ -31,9 +32,9 @@ function post(port: number, token: string, body: string): Promise<{ status: numb
 
 /** Posts one message to the slug's bridge, adding the slug and the token, which never reach the browser. */
 export async function postToBridge(slug: string, msg: Record<string, unknown>): Promise<BridgeReply> {
-  const dir = sessionDir(slug);
-  const bridge = dir ? readBridgeFile(dir) : null;
-  if (!bridge) return { ok: false, status: 409, error: `Not attached: run \`/grill resume ${slug}\` in the terminal` };
+  const owner = sessionOwner(slug);
+  const bridge = owner ? readBridgeFile(owner.dir) : null;
+  if (!bridge) return { ok: false, status: 409, error: reattachHint(slug, owner?.id) };
   try {
     const res = await post(bridge.port, bridge.token, JSON.stringify({ ...msg, slug }));
     if (res.status === 200 || res.status === 204) return { ok: true };

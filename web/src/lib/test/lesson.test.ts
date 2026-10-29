@@ -4,36 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 import { coursePage, lessonHref, lessonSlug, lessonTopic, showKey, showPage, toShow } from "../lesson.ts";
-import { listSessions, readSession } from "../sessions.ts";
 import { missing, pageKind, pageTab } from "../shell.ts";
 import { clearQueue, QUEUE_TTL, queueFile, readQueue, writeQueue } from "../start-queue.ts";
 
 const tmp = mkdtempSync(path.join(os.tmpdir(), "belay-lesson-"));
 after(() => rmSync(tmp, { recursive: true, force: true }));
-
-describe("lesson sessions", () => {
-  const grills = path.join(tmp, "Belay", "grills");
-  const lessons = path.join(tmp, "Belay", "lessons");
-  const write = (root: string, slug: string, doc: object) => {
-    mkdirSync(path.join(root, slug), { recursive: true });
-    writeFileSync(path.join(root, slug, "session.json"), JSON.stringify(doc));
-  };
-  write(grills, "a-grill", { topic: "A grill", status: "in-progress" });
-  write(lessons, "lesson-llm-20261025-1405", { kind: "lesson", course: "llm", topic: "Lesson · chain-rule", status: "in-progress" });
-
-  test("a lesson folder reads with its kind and course, and the grill list holds only grills", () => {
-    const l = readSession(lessons, "lesson-llm-20261025-1405")!;
-    assert.equal(l.kind, "lesson");
-    assert.equal(l.course, "llm");
-    assert.equal(l.topic, "Lesson · chain-rule");
-    assert.equal(readSession(grills, "a-grill")!.kind, undefined);
-    assert.deepEqual(
-      listSessions(grills).map((s) => s.slug),
-      ["a-grill"],
-    );
-    assert.deepEqual(listSessions(lessons), []);
-  });
-});
 
 describe("Follow along targets", () => {
   test("each show names its page and label", () => {

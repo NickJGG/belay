@@ -14,21 +14,22 @@ import { sectionNeighbours, sidebarSections } from "../../../src/sidebar.ts";
 import type { Issue as BelayIssue, Project as BelayProject } from "../../../src/store.ts";
 import { addDays, isDay, workDay } from "../../../src/workday.ts";
 import type { ChatEntry, OpenTurn } from "./chat";
-import { courseIndex, courseList, type CourseIndex } from "./course-data";
-import { courseColor, hues, listCourses, listLessons } from "./courses";
-import { grillsDir, lessonsDir } from "./config";
+import { courseIndex, type CourseIndex } from "./course-data";
+import { listCourses, listLessons } from "./courses";
+import type { Focus } from "./extensions";
+import { claim, liveItems, loadKinds, runtimeOf, sessionRoots, type ListedSession, type LiveItem, type SessionItem } from "./extensions.server";
 import { parseFrontmatter } from "./frontmatter";
 import { flightGrills } from "./belay-view";
-import { isClosed, issuesByGrill, stage, STAGES, type Issue, type Stage } from "./issues";
-import { grillHref, UNFILED } from "./hrefs";
+import { issuesByGrill, stage, STAGES, type Issue, type Stage } from "./issues";
+import { UNFILED } from "./hrefs";
 import { MOCK_FILES, type MockFile } from "./mock";
 import type { SessionDoc } from "./session-doc";
-import { readChat, readSessionDoc } from "./session-files";
+import { readChat } from "./session-files";
 import { accountUsage, focusFor, liveSessions, openTurn, usageFor, type LiveSession } from "./hub";
-import { lessonHref, lessonTopic, type LessonShow } from "./lesson";
 import { fileSessions, projectsOf, type Project } from "./projects";
+import type { ItemContext, Mark } from "./session-kind";
 import type { Usage } from "./usage";
-import { byUpdated, isSlug, listSessions, readSession, type SessionMemo, type SessionSummary } from "./sessions";
+import { byUpdated, isSlug, type SessionMemo } from "./sessions";
 
 // On globalThis so dev-mode module reloads keep the parsed sessions.
 const g = globalThis as typeof globalThis & { __belayMemo?: SessionMemo };
@@ -39,35 +40,7 @@ export const belay = cache(() => new BelayCtx(dataDir(), { lenient: true }));
 
 export { UNFILED };
 
-/**
- * The project a session is filed under, for its marker; `iconV` (the icon's mtime) is set when it has an icon, and
- * `color` when belay gives it one.
- */
-export type Mark = { key: string; name: string; iconV?: number; color?: string };
-
-export type SessionItem = Pick<SessionSummary, "slug" | "topic" | "status" | "project" | "updated" | "open"> & {
-  live: boolean;
-  /** Null when unfiled. */
-  mark: Mark | null;
-  stage: Stage;
-  /** Closed issues out of all the session's issues, when it has any. */
-  progress?: { done: number; total: number };
-  /** Building only: the first open issue in id order. */
-  next?: Pick<Issue, "id" | "title" | "status">;
-  /** How many questions it asked; unset without a session.json. */
-  questions?: number;
-};
-
-/** A live Tab: a grill, or a lesson (with its `course` and the course's `color`). `href` is the page its Tab opens. */
-export type LiveItem = SessionItem &
-  Pick<LiveSession, "working" | "connected" | "wt"> & {
-    kind: "grill" | "lesson";
-    course?: string;
-    color?: string;
-    /** A lesson's course topic titles, for Follow along's claim hovers. */
-    titles?: Record<string, string>;
-    href: string;
-  };
+export type { LiveItem, Mark, SessionItem };
 
 /** A row of the work lists (Home, a project's stages); `working` is set on the live ones. */
 export type WorkItem = SessionItem & Partial<Pick<LiveSession, "working">>;
@@ -84,8 +57,8 @@ export type ProjectNode = {
   sessions: SessionItem[];
 };
 
-/** What the Drawer starts from for a live session: a turn in progress, the status line's meters, a lesson's last show. */
-export type DrawerSeed = { turn: OpenTurn | null; usage: Usage | null; focus: LessonShow | null };
+/** What the Drawer starts from for a live session: a turn in progress, the status line's meters, its focus (a lesson's last show). */
+export type DrawerSeed = { turn: OpenTurn | null; usage: Usage | null; focus: Focus | null };
 
 export type Nav = { live: LiveItem[]; seeds: Record<string, DrawerSeed> };
 
@@ -98,7 +71,7 @@ function mark(p: Project): Mark {
 }
 
 /** Each filed session's mark: the first project, in project order, that files it. */
-function marks(sessions: SessionSummary[], projects: Project[], byGrill: Map<string, Issue[]>): Map<string, Mark> {
+function marks(sessions: ListedSession[], projects: Project[], byGrill: Map<string, Issue[]>): Map<string, Mark> {
   const out = new Map<string, Mark>();
   for (const { project, tagged, byIssues, matched } of fileSessions(sessions, projects, byGrill).projects) {
     const m = mark(project);
@@ -107,91 +80,35 @@ function marks(sessions: SessionSummary[], projects: Project[], byGrill: Map<str
   return out;
 }
 
-/** What turns a session into a list item, beyond the session itself. */
-type Ctx = { live: Set<string>; marks: Map<string, Mark>; byGrill: Map<string, Issue[]> };
-
-function item(s: SessionSummary, ctx: Ctx): SessionItem {
-  const issues = ctx.byGrill.get(s.slug) ?? [];
-  const st = stage(s, issues);
-  const out: SessionItem = {
-    slug: s.slug,
-    topic: s.topic,
-    status: s.status,
-    project: s.project,
-    updated: s.updated,
-    open: s.open,
-    live: ctx.live.has(s.slug),
-    mark: ctx.marks.get(s.slug) ?? null,
-    stage: st,
-    questions: s.questions?.length,
-  };
-  if (issues.length) out.progress = { done: issues.filter(isClosed).length, total: issues.length };
-  const next = issues.find((i) => !isClosed(i));
-  if (st === "building" && next) out.next = { id: next.id, title: next.title, status: next.status };
-  return out;
-}
-
-/**
- * The bridges that count as Live in the lists: attached, to a session still in progress. `/clear` leaves the
- * bridge running but disconnected, and a plan accepted with a clear leaves it attached to a `planned` session.
- */
-function active(live: LiveSession[], sessions: SessionSummary[], lessons: Map<string, SessionSummary>) {
-  const status = new Map(sessions.map((s) => [s.slug, s.status]));
-  for (const [slug, s] of lessons) status.set(slug, s.status);
-  return live.filter((l) => l.connected && (status.get(l.slug) ?? "in-progress") === "in-progress");
-}
-
-/** The live lessons' folders, which the grill lists leave out. */
-function liveLessons(live: LiveSession[]): Map<string, SessionSummary> {
-  const out = new Map<string, SessionSummary>();
-  for (const l of live) {
-    const s = readSession(lessonsDir(), l.slug, memo());
-    if (s?.kind === "lesson" && s.course) out.set(l.slug, s);
-  }
-  return out;
-}
-
 const byGrill = () => issuesByGrill(belay().issues);
 
+/**
+ * The active kinds' listed sessions, and the bridges that count as Live in the lists: attached, to a session still in
+ * progress. `/clear` leaves the bridge running but disconnected, and a plan accepted with a clear leaves it attached to
+ * a `planned` session.
+ */
 async function load() {
   await connection();
-  const sessions = listSessions(grillsDir(), memo()).sort(byUpdated);
+  const kinds = await loadKinds();
+  const rows = new Map<string, (s: ListedSession, ctx: ItemContext) => SessionItem>();
+  const sessions: ListedSession[] = kinds.flatMap(({ root, runtime: { list, item } }) => {
+    if (!list || !item) return [];
+    // Only grills are listed so far.
+    const listed = list(root, memo()) as ListedSession[];
+    for (const s of listed) rows.set(s.slug, item as (s: ListedSession, ctx: ItemContext) => SessionItem);
+    return listed;
+  });
   const all = await liveSessions();
-  const lessons = liveLessons(all);
-  const live = active(all, sessions, lessons);
+  const claims = claim(all, kinds, memo());
+  const live = all.filter((l) => l.connected && claims.has(l.slug) && (claims.get(l.slug)!.s?.status ?? "in-progress") === "in-progress");
   const projects = projectsOf(belay());
   const issues = byGrill();
-  const ctx: Ctx = { live: new Set(live.map((l) => l.slug)), marks: marks(sessions, projects, issues), byGrill: issues };
-  return { live, sessions, projects, ctx, lessons };
+  const ctx: ItemContext = { live: new Set(live.map((l) => l.slug)), marks: marks(sessions, projects, issues), byGrill: issues };
+  const item = (s: ListedSession) => rows.get(s.slug)!(s, ctx);
+  return { live, sessions, projects, ctx, claims, item };
 }
 
-function liveItems(
-  live: LiveSession[],
-  sessions: SessionSummary[],
-  ctx: Ctx,
-  lessons = new Map<string, SessionSummary>(),
-  titles = new Map<string, Record<string, string>>(),
-): LiveItem[] {
-  const bySlug = new Map(sessions.map((s) => [s.slug, s]));
-  const slots = lessons.size ? hues() : new Map<string, number>();
-  return live.map((l) => {
-    const state = { working: l.working, connected: l.connected, wt: l.wt };
-    const lesson = lessons.get(l.slug);
-    if (lesson?.course) {
-      const t = titles.get(lesson.course) ?? {};
-      const base: SessionItem = { slug: l.slug, topic: lessonTopic(lesson.topic, t), status: lesson.status, live: true, mark: null, stage: "grilling" };
-      const color = courseColor({ hue: slots.get(lesson.course) ?? 0 });
-      return { ...base, ...state, kind: "lesson", course: lesson.course, color, titles: t, href: lessonHref(lesson.course) };
-    }
-    const s = bySlug.get(l.slug);
-    const base: SessionItem = s
-      ? item(s, ctx)
-      : { slug: l.slug, topic: l.slug, status: "in-progress", live: true, mark: null, stage: "grilling" };
-    return { ...base, ...state, kind: "grill", href: grillHref(l.slug) };
-  });
-}
-
-function tree(sessions: SessionSummary[], projects: Project[], ctx: Ctx) {
+function tree(sessions: ListedSession[], projects: Project[], ctx: ItemContext, item: (s: ListedSession) => SessionItem) {
   const filed = fileSessions(sessions, projects, ctx.byGrill);
   return {
     projects: filed.projects
@@ -204,17 +121,16 @@ function tree(sessions: SessionSummary[], projects: Project[], ctx: Ctx) {
         focus: project.focus,
         status: project.status,
         mark: mark(project),
-        sessions: [...tagged, ...byIssues, ...matched].sort(byUpdated).map((s) => item(s, ctx)),
+        sessions: [...tagged, ...byIssues, ...matched].sort(byUpdated).map(item),
       })),
-    unfiled: { key: UNFILED, name: "Unfiled", mark: null, sessions: filed.unfiled.map((s) => item(s, ctx)) },
+    unfiled: { key: UNFILED, name: "Unfiled", mark: null, sessions: filed.unfiled.map(item) },
   };
 }
 
 /** What every page's chrome needs: the live tabs, and what the Drawer starts from for each. */
 export async function navData(): Promise<Nav> {
-  const { live, sessions, ctx, lessons } = await load();
-  const titles = new Map(lessons.size ? (await courseList()).map((c) => [c.course, c.titles]) : []);
-  const items = liveItems(live, sessions, ctx, lessons, titles);
+  const { live, ctx, claims } = await load();
+  const items = await liveItems(live, claims, ctx);
   const seed = (slug: string): DrawerSeed => ({ turn: openTurn(slug), usage: usageFor(slug), focus: focusFor(slug) });
   return { live: items, seeds: Object.fromEntries(items.map((l) => [l.slug, seed(l.slug)])) };
 }
@@ -281,8 +197,8 @@ const byStage = (sessions: WorkItem[]) =>
 export async function projectData(
   key: string,
 ): Promise<(ProjectNode & { tagged: Set<string>; stages: Record<Stage, WorkItem[]> }) | null> {
-  const { live, sessions, projects, ctx } = await load();
-  const t = tree(sessions, projects, ctx);
+  const { live, sessions, projects, ctx, item } = await load();
+  const t = tree(sessions, projects, ctx, item);
   const working = new Map(live.map((l) => [l.slug, l.working]));
   const stages = (node: ProjectNode) =>
     byStage(node.sessions.map((s) => (working.has(s.slug) ? { ...s, working: working.get(s.slug) } : s)));
@@ -344,21 +260,25 @@ export async function searchIndex(): Promise<SearchIndex> {
   };
 }
 
-export type SessionPage = { session: SessionSummary; live: LiveItem | null; projectName?: string; mark: Mark | null };
+export type SessionPage = { session: ListedSession; live: LiveItem | null; projectName?: string; mark: Mark | null };
 
 /** One grill for its page and the drill-in sidebar; null when there's none. */
 export async function sessionData(slug: string): Promise<SessionPage | null> {
   if (!isSlug(slug)) return null;
   await connection();
-  const session = readSession(grillsDir(), slug, memo());
-  if (!session || session.kind === "lesson") return null;
+  const root = sessionRoots().grill;
+  if (!root) return null;
+  const grill = await runtimeOf("grill");
+  const session = grill.read(root, slug, memo());
+  if (!session) return null;
   const live = (await liveSessions()).filter((l) => l.slug === slug);
   const projects = projectsOf(belay());
   const projectName = session.project ? projects.find((p) => p.key === session.project)?.name : undefined;
   const issues = byGrill();
   const m = marks([session], projects, issues);
-  const ctx: Ctx = { live: new Set(live.map((l) => l.slug)), marks: m, byGrill: issues };
-  return { session, live: liveItems(live, [session], ctx)[0] ?? null, projectName, mark: m.get(slug) ?? null };
+  const ctx: ItemContext = { live: new Set(live.map((l) => l.slug)), marks: m, byGrill: issues };
+  const items = await grill.liveItems(live.map((l) => ({ l, s: session })), ctx);
+  return { session, live: items[0] ?? null, projectName, mark: m.get(slug) ?? null };
 }
 
 export type SessionDetail = SessionPage & {
@@ -376,8 +296,9 @@ export type SessionDetail = SessionPage & {
 /** Everything the grill page renders; null when there's no such grill. */
 export async function sessionDetail(slug: string): Promise<SessionDetail | null> {
   const page = await sessionData(slug);
-  if (!page) return null;
-  const dir = path.join(grillsDir(), slug);
+  const root = sessionRoots().grill;
+  if (!page || !root) return null;
+  const dir = path.join(root, slug);
   if (page.session.legacy) {
     let markdown = "";
     try {
@@ -391,7 +312,7 @@ export async function sessionDetail(slug: string): Promise<SessionDetail | null>
       files[name] = statSync(path.join(dir, name)).mtimeMs;
     } catch {}
   }
-  return { ...page, doc: readSessionDoc(dir), chat: readChat(dir), turn: openTurn(slug), usage: usageFor(slug), files, legacy: null };
+  return { ...page, doc: (await runtimeOf("grill")).readDoc(dir), chat: readChat(dir), turn: openTurn(slug), usage: usageFor(slug), files, legacy: null };
 }
 
 /** An issue as a chip or picker option shows it; `status` is unset when the id names no issue. */
@@ -486,7 +407,7 @@ export async function issueDetail(id: string): Promise<IssueDetail | null> {
     blocks: c.issues.filter((t) => t.blocked_by.includes(issue.id)).map((t) => ref(c, t.id)),
     candidates: openRefs(c, issue.id),
     hash: bodyHash(issue.body),
-    plan: linkedPath(issue, "plan", { data: c.dir, grills: grillsDir(c.dir) }),
+    plan: linkedPath(issue, "plan", { data: c.dir }),
   };
 }
 
