@@ -3,8 +3,6 @@ import { learn } from "./learn.mjs";
 export const KINDS = [grill, learn];
 /** Whether each is on when `settings.yaml` doesn't say, as in `src/extension-ids.ts` (a test checks they agree). */
 export const BUILT_IN = { grill: true, learn: false };
-/** The kinds whose setting takes effect; the rest are active whatever it says, as in `src/extensions.ts`. */
-export const GATED = new Set(["learn"]);
 export const loadKinds = (kinds = KINDS) => Promise.all(kinds.map(async (kind) => ({ kind, runtime: await kind.load() })));
 /** The loaded kinds' site messages, their notifications and step labels. */
 export function compose(loaded) {

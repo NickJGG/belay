@@ -1,4 +1,4 @@
-import { GrillRow } from "@/components/belay/grill-row";
+import { GrillRow } from "./grill-row";
 import styles from "@/components/belay/belay.module.css";
 import type { FlightGroup, ListsContext } from "@/lib/slots";
 import { flight } from "../_lib/projects.server";

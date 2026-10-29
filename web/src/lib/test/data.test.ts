@@ -6,10 +6,7 @@ import { after, describe, test } from "node:test";
 import { shortDate } from "../format.ts";
 import { frontmatterList, parseFrontmatter } from "../frontmatter.ts";
 import { Ctx } from "../../../../src/ops.ts";
-import { fileSessions, projectsOf, projectTerms, resolveIcon } from "../projects.ts";
-import type { SessionBase } from "../sessions.ts";
-
-type SessionSummary = SessionBase & Record<string, unknown>;
+import { projectsOf, resolveIcon } from "../projects.ts";
 
 const tmp = mkdtempSync(path.join(os.tmpdir(), "belay-site-"));
 after(() => rmSync(tmp, { recursive: true, force: true }));
@@ -106,39 +103,6 @@ describe("projects", () => {
       projectsOf(new Ctx(belay, { lenient: true })).map((p) => p.key),
       ["PIX", "CLD", "ELV", "MAPS"],
     );
-  });
-
-  test("projectTerms keeps 5+ letter words, singularized", () => {
-    assert.deepEqual(projectTerms({ key: "ELV", name: "Rideable Elevators", status: "active", focus: false }), [
-      "rideable",
-      "elevator",
-    ]);
-  });
-
-  test("fileSessions files tagged and fuzzy-matched sessions; the rest are unfiled", () => {
-    const s = (slug: string, topic: string, project?: string): SessionSummary => ({
-      slug,
-      topic,
-      status: "in-progress",
-      project,
-      questions: null,
-      mock: false,
-      legacy: true,
-    });
-    const sessions = [
-      s("pz-buildable-elevators", "Elevators you can build"),
-      s("claude-hooks", "Hooks", "CLD"),
-      s("misc", "Something else"),
-      s("ghost", "Tagged with an unknown key", "NOPE"),
-      s("pixel-tiles", "Mentions pixels but is tagged", "MAPS"),
-    ];
-    const { projects, unfiled } = fileSessions(sessions, projectsOf(new Ctx(belay, { lenient: true })));
-    const by = Object.fromEntries(projects.map((p) => [p.project.key, p]));
-    assert.deepEqual(by.ELV.matched.map((x) => x.slug), ["pz-buildable-elevators"]);
-    assert.deepEqual(by.CLD.tagged.map((x) => x.slug), ["claude-hooks"]);
-    assert.deepEqual(by.PIX.matched, []);
-    assert.deepEqual(by.MAPS.tagged.map((x) => x.slug), ["pixel-tiles"]);
-    assert.deepEqual(unfiled.map((x) => x.slug), ["misc", "ghost"]);
   });
 });
 

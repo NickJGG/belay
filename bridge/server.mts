@@ -32,7 +32,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 import { dataDir } from "./files.mts";
 import type { BridgeEvent, BridgeHttp } from "./http.mts";
 import { ALWAYS, text, type IdleContext, type Kind, type Runtime, type Tool } from "./kind.mts";
-import { BUILT_IN, compose, GATED, KINDS, loadKinds, type Composed, type Message } from "./kinds/index.mts";
+import { BUILT_IN, compose, KINDS, loadKinds, type Composed, type Message } from "./kinds/index.mts";
 import { loadYaml, readEnabled } from "./settings.mts";
 import type { Tail, TurnEvent, Turns } from "./transcript.mts";
 
@@ -93,7 +93,7 @@ let live: Live | null = null;
 /** The kinds new sessions may attach as. */
 const attachable = (): Kind[] => {
   const on = readEnabled(dataDir(), BUILT_IN);
-  return KINDS.filter((k) => !GATED.has(k.id) || on[k.id]);
+  return KINDS.filter((k) => on[k.id]);
 };
 /** The kinds whose tools are known: the attachable ones and the attached session's. */
 const listed = (): Kind[] => {

@@ -69,13 +69,12 @@ export const client: ClientKind<LessonLive> = {
       );
     }
   },
-  banner: (link, slug) =>
+  banner: (link) =>
     link.state === "disconnected" ? (
       <>Disconnected: the lesson&apos;s terminal cleared. Start the routine again to reattach.</>
     ) : (
-      // Today's wording, which names /grill for a lesson too.
       <>
-        No terminal attached. Run <code>/grill resume {slug}</code> in a session started with <code>belay claude</code> to answer from here.
+        No terminal attached. Start the routine again in a session started with <code>belay learn</code> to answer from here.
       </>
     ),
   Provider: LessonProvider,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import { test } from "node:test";
-import { dayLabel, flightGrills, grillProgress, kindTotals, projectGroups, gapLabel, windowDays } from "../belay-view.ts";
+import { dayLabel, kindTotals, projectGroups, gapLabel, windowDays } from "../belay-view.ts";
 import { belayIgnored, belayWatched, isSettings } from "../watch-paths.ts";
 
 test("day labels are relative to today, with the year only when it differs", () => {
@@ -30,13 +30,6 @@ test("the Activity window is whole weeks, one to fifty-two", () => {
 test("kind totals sum counts per kind, an entry without a count being one", () => {
   assert.equal(kindTotals([{ kind: "applied", count: 3 }, { kind: "outreach" }, { kind: "applied" }, {}]), "4 applied · 1 outreach");
   assert.equal(kindTotals([{}]), "");
-});
-
-test("only a building grill with issues shows its progress", () => {
-  assert.equal(grillProgress({ stage: "building", progress: { done: 1, total: 3 } }), "1/3");
-  assert.equal(grillProgress({ stage: "building" }), undefined);
-  assert.equal(grillProgress({ stage: "shipped", progress: { done: 3, total: 3 } }), undefined);
-  assert.equal(grillProgress({ stage: "grilling" }), undefined);
 });
 
 test("projects group into Working on, Everything else, then paused and archived", () => {
@@ -72,10 +65,4 @@ test("belay's watcher sees issues, projects, log days, order.yaml and settings.y
     assert.equal(isSettings(root, at("settings.yaml")), true);
     assert.equal(isSettings(root, at("issues", "settings.yaml")), false);
   }
-});
-
-test("live grills lead In flight, once each, untagged ones included", () => {
-  const g = (slug: string) => ({ slug });
-  assert.deepEqual(flightGrills([g("a"), g("b"), g("c")], [g("c"), g("z")]).map((x) => x.slug), ["c", "z", "a", "b"]);
-  assert.deepEqual(flightGrills([g("a")], []).map((x) => x.slug), ["a"]);
 });

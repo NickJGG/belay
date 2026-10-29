@@ -50,7 +50,7 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
         .catch(() => {});
     void reload();
     const unsubscribe = subscribeLive((e) => {
-      if (e.type === "start") setStart(e.queue);
+      if (e.type === "start") setStart(e.queue as Queue | null);
       else if (e.type === "reconnect") void reload();
     });
     return () => {

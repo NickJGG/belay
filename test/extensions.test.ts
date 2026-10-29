@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
 import { BUILT_IN, matchesPattern, ownerOfPath } from '../src/extension-ids.ts';
 import {
+  ATTACHED_SCAN_MS,
   attachedSessions,
   enabledExtensions,
   fieldLines,
@@ -70,24 +71,32 @@ test('the reader keeps the last good value through a broken file, and turns ever
   }
 });
 
-test('learn follows its setting; grill stays active until its gating lands', () => {
-  writeFileSync(join(dir, 'settings.yaml'), 'extensions:\n  learn: off\n  grill: off\n');
-  assert.equal(isActive('learn', dir), false);
+test('each extension follows its setting, over its built-in default', () => {
   assert.equal(isActive('grill', dir), true);
-  writeFileSync(join(dir, 'settings.yaml'), 'extensions:\n  learn: on\n');
+  assert.equal(isActive('learn', dir), false);
+  writeFileSync(join(dir, 'settings.yaml'), 'extensions:\n  learn: on\n  grill: off\n');
+  assert.equal(isActive('grill', dir), false);
   assert.equal(isActive('learn', dir), true);
 });
 
-test('a switched-off extension stays active while one of its sessions has a live bridge', () => {
-  writeFileSync(join(dir, 'settings.yaml'), 'extensions:\n  learn: off\n');
+test('a switched-off extension stays active while one of its sessions has a live bridge, seen within a scan interval', (t) => {
+  t.mock.timers.enable({ apis: ['Date'] });
+  const scan = () => t.mock.timers.tick(ATTACHED_SCAN_MS);
+  writeFileSync(join(dir, 'settings.yaml'), 'extensions:\n  learn: off\n  grill: off\n');
   mkdirSync(join(dir, 'lessons', 'lesson-none'), { recursive: true });
   assert.equal(isActive('learn', dir), false);
   bridge('lessons', 'lesson-dead', { port: 1, token: 't', pid: 2 ** 22 + 1 });
+  scan();
   assert.equal(isActive('learn', dir), false);
   bridge('lessons', 'lesson-a', { port: 1, token: 't', pid: process.pid });
+  assert.equal(isActive('learn', dir), false, 'not before the next scan');
+  scan();
   assert.equal(isActive('learn', dir), true);
   rmSync(join(dir, 'lessons', 'lesson-a', 'bridge.json'));
+  scan();
   assert.equal(isActive('learn', dir), false);
+  bridge('grills', 'g', { port: 1, token: 't', pid: process.pid });
+  assert.equal(isActive('grill', dir), true);
 });
 
 test('owned fields may claim neither a core key nor another extension’s key', () => {
@@ -212,6 +221,15 @@ test('belay extension switches, and refuses off while a session of that kind is 
 function spawnAsync(...args: string[]) {
   return spawn(process.execPath, [join(import.meta.dirname, '..', 'src', 'cli.ts'), ...args], { env: { ...process.env, BELAY_DATA: dir, CLAUDECODE: '' } });
 }
+
+test("grill's paths are gated: its pages, its mock files, Unfiled and its project section", () => {
+  for (const p of ['/s/x', '/legacy/sessions/x/preview.html', '/api/s/x/files/preview.spec.js', '/p/unfiled', '/p/unfiled/grills', '/p/BEL/grills']) {
+    assert.equal(ownerOfPath(p, ['grill']), 'grill', p);
+  }
+  for (const p of ['/', '/p', '/p/BEL', '/p/BEL/activity', '/api/s/x/chat', '/api/s/x/send', '/api/s/x/images', '/sessions']) {
+    assert.equal(ownerOfPath(p, ['grill']), undefined, p);
+  }
+});
 
 test("learn's paths are gated, segment by segment", () => {
   for (const p of ['/learn', '/learn/c/work', '/api/lesson/start', '/api/work', '/api/work/run', '/api/courses/c/claim']) {

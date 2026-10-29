@@ -1,9 +1,11 @@
 /** Grill's session kind on the server: its sessions, list rows and live Tabs. Loaded by `manifest.server.ts`. */
-import { grillHref } from "../../../../lib/hrefs.ts";
-import { isClosed, stage, type Issue, type Stage } from "../../../../lib/issues.ts";
+import { isClosed, type Issue } from "../../../../lib/issues.ts";
 import type { ItemBase, ItemContext, KindRuntime, LiveBase } from "../../../../lib/session-kind.ts";
-import { readSessionDoc } from "./session-files.ts";
 import { byUpdated } from "../../../../lib/sessions.ts";
+import { projectOf } from "./filing.ts";
+import { grillHref } from "./hrefs.ts";
+import { byGrillOf, stage, type Stage } from "./issues.ts";
+import { readSessionDoc } from "./session-files.ts";
 import { listSessions, readGrill, type GrillSession } from "./sessions.ts";
 
 export type GrillItem = ItemBase & {
@@ -19,7 +21,7 @@ export type GrillItem = ItemBase & {
 export type GrillLive = GrillItem & LiveBase & { kind: "grill" };
 
 function item(s: GrillSession, ctx: ItemContext): GrillItem {
-  const issues = ctx.byGrill.get(s.slug) ?? [];
+  const issues = byGrillOf(ctx.issues).get(s.slug) ?? [];
   const st = stage(s, issues);
   const out: GrillItem = {
     slug: s.slug,
@@ -43,6 +45,7 @@ export const runtime = {
   read: readGrill,
   list: (root: string, memo) => listSessions(root, memo).sort(byUpdated),
   item,
+  filed: (sessions, projects, issues) => projectOf(sessions, projects, byGrillOf(issues)),
   readDoc: readSessionDoc,
   liveItems: async (entries, ctx) =>
     entries.map(({ l, s }) => {

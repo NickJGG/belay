@@ -10,7 +10,8 @@ import { Prose } from "@/components/content/prose";
 import { ProjectMark } from "@/components/project-mark";
 import { imagesOf, SentPics, Speaker, str } from "@/components/session/drawer";
 import styles from "@/components/session/session.module.css";
-import { grillHref } from "@/lib/hrefs";
+import ws from "./workspace.module.css";
+import { grillHref } from "../_lib/hrefs";
 import type { ClientKind, Composer as ComposerT } from "@/lib/session-kind";
 import type { ClientSlots } from "@/lib/slots";
 import { cn } from "@/lib/utils";
@@ -23,7 +24,7 @@ const PLAN_READY = /^Plan ready\b/i;
 
 function CommentChip({ comment, onCancel }: { comment: PendingComment; onCancel: () => void }) {
   return (
-    <div className={styles.commentChip}>
+    <div className={ws.commentChip}>
       <span>
         Comment on <b>Q{comment.q}</b> · <b>{comment.opt === "before" ? "Before" : comment.opt}</b> · <code>{comment.selector}</code>
         {comment.text ? <q>{comment.text}</q> : null}
@@ -61,8 +62,8 @@ export const client: ClientKind<GrillLive> = {
     if (e.from === "claude" && (e.kind === "reply" || e.kind === "terminal") && PLAN_READY.test(str(e.text))) {
       return (
         <div className={cn(styles.msg, styles.claude)}>
-          <Speaker name="Plan ready" className={styles.tagPlan} />
-          <div className={cn(styles.bubble, styles.bubblePlan)}>
+          <Speaker name="Plan ready" className={ws.tagPlan} />
+          <div className={cn(styles.bubble, ws.bubblePlan)}>
             <Prose markdown={str(e.text)} compact />
           </div>
         </div>

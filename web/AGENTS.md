@@ -27,7 +27,7 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - `src/components/layout/shell.tsx` is every page's chrome, mounted by the root layout: the sidebar (`rail`, pinned
   open or collapsed to icons), the live Tabs, the Drawer and, on phones, the dock (`site-nav`) and Strip. Pages pass
   their project or owned place (a course) and section (a Reading page's section rows, `lib/sidebar.ts`) through `<ShellSlot>`, and a
-  Workspace may pass its own `pane`, drawn in the rail's place (a grill's Outline, `session/outline.tsx`). The Drawer's conversation is `live-provider.tsx`'s.
+  Workspace may pass its own `pane`, drawn in the rail's place (a grill's Outline, its `_components/outline.tsx`). The Drawer's conversation is `live-provider.tsx`'s.
 - `layout/palette.tsx` is belay's cmdk command palette, mounted by the shell. A page lists its own commands first with
   `<PageCommands>` (an issue's status keys and !, a grill's resume command, a course's starts, a lesson note's Resume
   conversation). Its New issue and Log what you did reach
@@ -48,6 +48,12 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - Lessons: a live lesson's Tab opens `/learn/<c>/now`, its Workspace. Start buttons
   (`_components/start-buttons.tsx`) POST `/api/lesson/start`, which queues the routine (`_lib/start-queue.ts`) and asks a
   live lesson to restart into it; Follow along (`_components/follow.tsx`) follows the lesson's `show`s (`_lib/lesson.ts`).
+- Grill pages: `/s/<slug>` (a grill's Workspace), `/legacy/…` (a legacy grill's old preview) and
+  `/api/s/<slug>/files/<name>` (its mock files) are grill's, in `src/app/(browse)/(grill)/`, with its components (the
+  session workspace, bar, frame, outline and pin, the Grills list and row) and `_lib/` (its sessions, `filing` under
+  projects, `issues` for the stages, `session-doc`, `mock`, `behaviours`, and `detail.server.ts` for the page's data).
+  The Drawer and `session.module.css` (buttons, Drawer, meters) stay core; the workspace's rules are in its
+  `_components/workspace.module.css`. A CSS module can't name another's classes, so the two never share a selector.
 - Belay's pages: `/p` (project cards), `/p/<key>` (Issues; `?view=ideas`), `/p/<key>/{activity,logs}` and the
   extensions' sections (`/p/<key>/[section]`, grill's Grills) under one layout holding the project header, `/i/<id>` and `/l/<day>/<n>?at=`. Their pieces are in
   `src/components/belay/`; their writes are the server actions in `src/app/actions.ts`, each a thin wrapper around
@@ -69,19 +75,19 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   `BELAY_SITE_PORT`.
 - Keep the tested data modules free of `server-only` and `@/` imports: `src/lib/`'s (`sessions`, `projects`, `issues`,
   `frontmatter`, `upstream`, `format`, `shell`, `course-art`, `belay-view`, `watch-paths`, `sidebar`) and each extension's
-  `_lib/` ones (learn's `courses`, `calendar`, `course-paths`, `course-home`, `course-nav`, `wiki-target`, `work`,
+  `_lib/` ones (grill's `sessions`, `filing`, `issues`, `flight`, `session-doc`, `mock`, `behaviours`; learn's `courses`, `calendar`, `course-paths`, `course-home`, `course-nav`, `wiki-target`, `work`,
   `session-log`, `routines`, `lesson`, `start-queue`, `run`, `ts-env`). `pnpm test:site` runs `src/lib/test/` and
   `src/app/**/_lib/test/` under plain `node --test`, which resolves neither. They may import the CLI's `src/*.ts` by relative path.
 - Client components take only types from `lib/data`, `lib/belay-view`, learn's `_lib/courses` and `_lib/course-home`, and the CLI's
   `store.ts`, whose runtime pulls in `node:fs`. Values they need live in import-free modules: `lib/hrefs`,
-  `lib/collapsed`, learn's `_lib/{hrefs,course-nav,calendar,routines,lesson}`, and the CLI's `keys`, `picker` and `time`.
+  `lib/collapsed`, grill's `_lib/hrefs`, learn's `_lib/{hrefs,course-nav,calendar,routines,lesson}`, and the CLI's `keys`, `picker` and `time`.
 - Every write goes through a CLI op (via `actions.ts`), and adding one to the app means adding it to the CLI first.
 - `src/proxy.ts` applies belay's host guard (`src/guard.ts`) to every request but `/api/usage`, which checks its own.
-- `src/lib/session-doc.ts`'s `decisions`/`context` mirror `plugin/scripts/session.js`, and a test checks that
+- Grill's `_lib/session-doc.ts`'s `decisions`/`context` mirror `plugin/scripts/session.js`, and a test checks that
   they agree, so change both together.
 - Bridge tokens stay on the server. The browser uses `/api/events` and `POST /api/s/<slug>/send`, which adds the
   slug and token and forwards to the bridge.
-- Mock frames are same-origin srcdoc iframes, and comment mode (`pin.ts`) reaches into them, so a `sandbox`
+- Mock frames are same-origin srcdoc iframes, and comment mode (grill's `_components/pin.ts`) reaches into them, so a `sandbox`
   attribute without `allow-same-origin` breaks comments.
 - Key presses don't leave an iframe, so frames re-dispatch theirs to the page's document, where `Ctrl K` (the command
   palette, `GET /api/search`) listens too. `p` is Pick, so an option keyed `p` has no shortcut.
@@ -146,7 +152,7 @@ open. The core message kinds live in `bridge/protocol.mts`, event types in `brid
   and reattach hint (`lib/extensions.ts`, browser-safe), and its `manifest.server.ts` its sessions' folder and a
   lazily loaded runtime: its session reader, list rows, live Tabs and extra watchers (`lib/extensions.server.ts`).
   Only active kinds count: `sessionRoots()`, `sessionDir`, `data.ts`'s lists and the hub's watchers, which the hub
-  starts and stops on the `settings` event. A live session is the first kind's that reads its folder, else grill's.
+  starts and stops on the `settings` event. A live session is the first kind's that reads its folder, else grill's while grill is active.
   In the browser, its `_components/manifest.client.tsx` (`lib/extensions.client.ts`) draws its Tabs' title, place and
   mark, its Drawer messages, banners and composer (grill's comment mode), and adds its shell mounts, refresh events
   and provider state (grill's pending comment, a lesson's focus and the start queue), read through its own hooks. The
@@ -168,7 +174,8 @@ open. The core message kinds live in `bridge/protocol.mts`, event types in `brid
   `<data>/lessons/*`. `/api/s/<slug>/*` routes find a slug's folder with `sessionDir` (grills, then lessons).
 - The site sends a bridge `X-Belay-Token`, read from that session's `bridge.json`.
 - Belay's data comes from the CLI's store through one lenient, request-cached `Ctx` (`belay()` in `data.ts`,
-  `BELAY_DATA`); `projects.ts` sorts its projects and files untagged sessions by belay's fuzzy match.
+  `BELAY_DATA`); `projects.ts` sorts its projects, and grill's `_lib/filing.ts` files untagged grills under them by belay's fuzzy
+  match.
 - Live sync: the hub also watches the data dir's issues, projects, log days and `order.yaml` (`belayWatched`) and
   sends a `belay` event, on which `LiveRefresh` re-renders the page, whether a page, the CLI or Claude wrote it.
 - Courses live in `~/Learning` (`LEARNING_ROOT`). The hub watches its visible course paths (`visibleParts`: never

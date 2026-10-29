@@ -31,7 +31,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { dataDir } from "./files.mjs";
 import { ALWAYS, text } from "./kind.mjs";
-import { BUILT_IN, compose, GATED, KINDS, loadKinds } from "./kinds/index.mjs";
+import { BUILT_IN, compose, KINDS, loadKinds } from "./kinds/index.mjs";
 import { loadYaml, readEnabled } from "./settings.mjs";
 const STARTED = Date.now();
 const POLL = 2000;
@@ -59,7 +59,7 @@ let live = null;
 /** The kinds new sessions may attach as. */
 const attachable = () => {
     const on = readEnabled(dataDir(), BUILT_IN);
-    return KINDS.filter((k) => !GATED.has(k.id) || on[k.id]);
+    return KINDS.filter((k) => on[k.id]);
 };
 /** The kinds whose tools are known: the attachable ones and the attached session's. */
 const listed = () => {

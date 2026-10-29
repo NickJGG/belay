@@ -3,9 +3,10 @@
 import * as React from "react";
 import { Columns2, Menu, MessageSquarePlus, Monitor, Smartphone } from "lucide-react";
 import { Popover } from "@/components/ui/popover";
-import { BEFORE, families, statusChip, type Controls, type Opt, type Question } from "@/lib/session-doc";
+import { BEFORE, families, statusChip, type Controls, type Opt, type Question } from "../_lib/session-doc";
 import { cn } from "@/lib/utils";
-import styles from "./session.module.css";
+import shared from "@/components/session/session.module.css";
+import styles from "./workspace.module.css";
 
 export type Device = "desktop" | "phone";
 
@@ -48,7 +49,7 @@ function PickButton({ pick }: { pick: PickProps }) {
       trigger={
         <button
           type="button"
-          className={cn(styles.btn, styles.primary)}
+          className={cn(shared.btn, styles.btn, shared.primary)}
           disabled={pick.disabled}
           title={pick.why ?? "Pick (P)"}
           aria-expanded={pick.open}
@@ -79,10 +80,10 @@ function PickButton({ pick }: { pick: PickProps }) {
           }}
         />
         <span className={styles.pickActs}>
-          <button type="button" className={styles.btn} onClick={close}>
+          <button type="button" className={cn(shared.btn, styles.btn)} onClick={close}>
             Cancel
           </button>
-          <button type="submit" className={cn(styles.btn, styles.primary)} disabled={busy}>
+          <button type="submit" className={cn(shared.btn, styles.btn, shared.primary)} disabled={busy}>
             {note.trim() ? "Pick with note" : "Pick"}
           </button>
         </span>
@@ -221,7 +222,7 @@ function OutlineMenu({ label, children }: { label: string; children: React.React
         label="Outline"
         focus="[aria-current], a[href]"
         trigger={
-          <button type="button" className={styles.btn} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          <button type="button" className={cn(shared.btn, styles.btn)} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
             <Menu size={14} aria-hidden /> {label}
           </button>
         }
@@ -315,7 +316,7 @@ export function Bar({
             />
           ) : null}
           {compareOn ? (
-            <button type="button" className={cn(styles.btn, compare && styles.btnOn)} aria-pressed={compare} onClick={onCompare} title="Compare (Shift+letter pins the other side)">
+            <button type="button" className={cn(shared.btn, styles.btn, compare && shared.btnOn)} aria-pressed={compare} onClick={onCompare} title="Compare (Shift+letter pins the other side)">
               <Columns2 size={14} aria-hidden /> Compare
             </button>
           ) : null}
@@ -323,7 +324,7 @@ export function Bar({
           {comment ? (
             <button
               type="button"
-              className={cn(styles.btn, comment.on && styles.btnOn)}
+              className={cn(shared.btn, styles.btn, comment.on && shared.btnOn)}
               aria-pressed={comment.on}
               disabled={comment.disabled}
               title={comment.why ?? (comment.on ? "Click an element in the mock (Esc to stop)" : "Comment on an element of the mock")}

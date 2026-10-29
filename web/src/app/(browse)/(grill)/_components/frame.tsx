@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { fitDesktop, PHONE } from "@/lib/mock";
+import { fitDesktop, PHONE } from "../_lib/mock";
 import { COMMENT_ATTR, cssPath, elementText, HOVER_ATTR, markPin } from "./pin";
-import styles from "./session.module.css";
+import styles from "./workspace.module.css";
 
 type Scroll = [number[], number, number][];
 

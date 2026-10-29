@@ -8,7 +8,6 @@ import type { OpenTurn } from "./chat";
 import type { Focus } from "./extensions";
 import { activeKinds, runtimeOf, SERVER_KINDS } from "./extensions.server";
 import type { KindRuntime, LiveSession } from "./session-kind";
-import type { Queue } from "../app/(browse)/(learn)/_lib/start-queue";
 import { isSlug } from "./sessions";
 import { Switchboard } from "./switchboard";
 import { connectUpstream, readBridgeFile, sameBridge, type BridgeEvent, type Upstream } from "./upstream";
@@ -29,7 +28,7 @@ import { belayIgnored, belayWatched, isSettings, locate, sessionIgnored } from "
  *   belay     an issue, project, log day or order.yaml in belay's data dir changed (by a page, the CLI or Claude)
  *   settings  belay's settings.yaml changed, which may switch an extension on or off
  *   course    a visible file of a course folder changed (see `visibleParts`), as `{course, path}`
- *   start     the queued lesson start (start-queue.ts) was set or cleared, by `/api/lesson/start`
+ *   start     the queued session start (`.run/start.json`) was set or cleared, in the shape of the kind that queued it
  */
 
 export type { LiveSession };
@@ -44,7 +43,7 @@ export type HubEvent =
   | { type: "belay" }
   | { type: "settings" }
   | { type: "course"; course: string; path: string }
-  | { type: "start"; queue: Queue | null };
+  | { type: "start"; queue: object | null };
 
 type Listener = (e: HubEvent) => void;
 type Hub = {
@@ -163,8 +162,8 @@ export function openTurn(slug: string): OpenTurn | null {
   return hub().bridges.get(slug)?.turn() ?? null;
 }
 
-/** Tells every page the queued lesson start changed. */
-export function announceStart(queue: Queue | null) {
+/** Tells every page the queued session start changed. */
+export function announceStart(queue: object | null) {
   hub().emit({ type: "start", queue });
 }
 

@@ -20,21 +20,7 @@ const SCAN = ['src', 'test', 'scripts', 'bridge', 'web/src'];
 const SOURCE = /\.(ts|tsx|mts)$/;
 
 /** Files and folders (ending in `/`) an extension owns before they move into its folders. */
-export const OWNED_UNMOVED: Record<string, ExtensionId> = {
-  'web/src/app/s/': 'grill',
-  'web/src/app/legacy/': 'grill',
-  'web/src/app/api/s/[slug]/files/': 'grill',
-  'web/src/components/belay/grill-list.tsx': 'grill',
-  'web/src/components/belay/grill-row.tsx': 'grill',
-  'web/src/components/session/bar.tsx': 'grill',
-  'web/src/components/session/frame.tsx': 'grill',
-  'web/src/components/session/outline.tsx': 'grill',
-  'web/src/components/session/pin.ts': 'grill',
-  'web/src/components/session/workspace.tsx': 'grill',
-  'web/src/lib/behaviours.ts': 'grill',
-  'web/src/lib/mock.ts': 'grill',
-  'web/src/lib/session-doc.ts': 'grill',
-};
+export const OWNED_UNMOVED: Record<string, ExtensionId> = {};
 
 /** May import any extension's code; listed whether or not the file exists yet. */
 export const BUILT_IN_LISTS = new Set([

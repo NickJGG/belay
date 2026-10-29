@@ -18,7 +18,7 @@ The marketplace loads the plugin in place, so edits take effect at the next sess
 
 ## Extensions
 
-Grills and courses are extensions on top of the issue tracker. `belay extension on|off <id>` switches one in `~/Belay/settings.yaml`'s `extensions:` map; grill starts on and learn off. An extension that's off leaves no trace in the site, the CLI or the channel's tools (the channel's instructions drop it at Claude Code's next start), but its data stays where it is. Switching off is refused while one of its sessions is attached, and a session attached before the switch keeps working until it detaches. Learn's switch works today; grill's is always on for now.
+Grills and courses are extensions on top of the issue tracker. `belay extension on|off <id>` switches one in `~/Belay/settings.yaml`'s `extensions:` map; grill starts on and learn off. An extension that's off leaves no trace in the site, the CLI or the channel's tools (the channel's instructions drop it at Claude Code's next start), but its data stays where it is. Switching off is refused while one of its sessions is attached, and a session attached before the switch keeps working until it detaches. With grill off, issues keep their `grill:` and `plan:` lines untouched.
 
 ## Dashboard setup
 

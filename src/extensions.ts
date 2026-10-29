@@ -121,12 +121,8 @@ export function enabledExtensions(dir: string): Enabled {
   }
 }
 
-/** Extensions whose switch takes effect; the rest are active whatever the settings say. */
-const GATED: ReadonlySet<ExtensionId> = new Set(['learn']);
-
 /** An extension is active while it's switched on, or while one of its sessions is attached (until that detaches). */
 export function isActive(id: ExtensionId, dir?: string): boolean {
-  if (!GATED.has(id)) return true;
   const data = dir ?? dataDir();
   return enabledExtensions(data)[id] || hasAttached(data, id);
 }
@@ -197,20 +193,25 @@ async function portAnswers(port: number): Promise<boolean> {
   }
 }
 
-const bridgePids = new Map<string, { stamp: string; pids: number[] }>();
+export const ATTACHED_SCAN_MS = 2000;
+
+const bridgePids = new Map<string, { at: number; stamp: string; pids: number[] }>();
 
 /**
  * Whether a `bridge.json` under `id`'s session folder names a live pid. Synchronous, for `isActive`, so unlike
- * `attachedSessions` it doesn't ask the port. The files are re-read only when a session folder's mtime changes, which a
- * bridge.json appearing or going does.
+ * `attachedSessions` it doesn't ask the port. The pids are re-checked on every call, but the folder (hundreds of
+ * grills) is scanned at most every `ATTACHED_SCAN_MS`, and the files re-read only when a session folder's mtime
+ * changes, which a bridge.json appearing or going does.
  */
 function hasAttached(dir: string, id: ExtensionId): boolean {
   const root = SESSION_ROOTS[id](dir);
   try {
+    let cached = bridgePids.get(root);
+    if (cached && Date.now() - cached.at < ATTACHED_SCAN_MS) return cached.pids.some(pidAlive);
     const slugs = readdirSync(/*turbopackIgnore: true*/ root);
     const stamp = slugs.map((s) => `${s}:${statSync(/*turbopackIgnore: true*/ join(root, s)).mtimeMs}`).join('|');
-    let cached = bridgePids.get(root);
-    if (cached?.stamp !== stamp) {
+    if (cached?.stamp === stamp) cached.at = Date.now();
+    else {
       const pids = slugs.flatMap((slug) => {
         try {
           const b = JSON.parse(readFileSync(/*turbopackIgnore: true*/ join(root, slug, 'bridge.json'), 'utf8'));
@@ -219,7 +220,7 @@ function hasAttached(dir: string, id: ExtensionId): boolean {
           return [];
         }
       });
-      bridgePids.set(root, (cached = { stamp, pids }));
+      bridgePids.set(root, (cached = { at: Date.now(), stamp, pids }));
     }
     return cached.pids.some(pidAlive);
   } catch {

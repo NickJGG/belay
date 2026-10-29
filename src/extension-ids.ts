@@ -13,7 +13,7 @@ export const BUILT_IN: Readonly<Record<ExtensionId, boolean>> = { grill: true, l
 
 /** The site paths each owns, gated by the proxy while it's inactive. `*` matches one segment. */
 export const PATH_PATTERNS: Readonly<Record<ExtensionId, readonly string[]>> = {
-  grill: [],
+  grill: ['/s', '/legacy', '/api/s/*/files', '/p/unfiled', '/p/*/grills'],
   learn: ['/learn', '/api/lesson', '/api/work', '/api/courses'],
 };
 
