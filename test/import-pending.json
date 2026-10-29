@@ -1,5 +1,4 @@
 [
-  "test/grill.test.ts -> src/grill.ts",
   "web/src/lib/data.ts -> web/src/lib/mock.ts",
   "web/src/lib/data.ts -> web/src/lib/session-doc.ts",
   "web/src/lib/hub.ts -> web/src/app/(browse)/(learn)/_lib/start-queue.ts",

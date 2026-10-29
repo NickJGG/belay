@@ -1,18 +1,27 @@
 import { resolve } from 'node:path';
 import { grillsDir } from '../../config.ts';
-import type { ExtensionManifest } from '../../extensions.ts';
+import { owned, type ExtensionManifest } from '../../extensions.ts';
 
 export const manifest: ExtensionManifest = {
   id: 'grill',
-  fields: [],
+  fields: [
+    { key: 'grill', after: 'source' },
+    { key: 'plan', after: 'grill' },
+  ],
   skills: ['grill'],
   cli: {
     commands: { grill: async () => (await import('./cli.ts')).cmdGrill },
     search: async () => (await import('./cli.ts')).searchLines,
     digest: async () => (await import('./cli.ts')).digestSection,
     linked: {
-      grill: async (issue, data) => (issue.grill ? (await import('../../grill.ts')).grillFile(grillsDir(data), issue.grill) : undefined),
-      plan: async (issue) => (issue.plan ? resolve(issue.plan) : undefined),
+      grill: async (issue, data) => {
+        const { grill } = owned(issue, 'grill');
+        return grill ? (await import('./sessions.ts')).grillFile(grillsDir(data), grill) : undefined;
+      },
+      plan: async (issue) => {
+        const { plan } = owned(issue, 'grill');
+        return plan ? resolve(plan) : undefined;
+      },
     },
     help: {
       commands: [

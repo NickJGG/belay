@@ -12,7 +12,10 @@ import { manifest as grill } from './extensions/grill/manifest.ts';
 import { manifest as learn } from './extensions/learn/manifest.ts';
 import type { Issue, Project } from './store.ts';
 
-/** An issue frontmatter key an extension owns, saved right after `after`. */
+/**
+ * An issue frontmatter key an extension owns, saved right after `after` (a core field, or an earlier owned one). Its
+ * value is optional text, validated whether or not the extension is active.
+ */
 export interface OwnedField {
   key: string;
   after: string;
@@ -131,6 +134,12 @@ export function isActive(id: ExtensionId, dir?: string): boolean {
 /** The active manifests, in built-in order. Reads the settings, so only command handlers call it. */
 export function activeManifests(dir?: string): ExtensionManifest[] {
   return MANIFESTS.filter((m) => isActive(m.id, dir));
+}
+
+/** Extension `id`'s owned field values on an issue, by key; a field the issue doesn't set is absent. */
+export function owned(issue: Pick<Issue, 'extra'>, id: ExtensionId): Partial<Record<string, string>> {
+  const keys = new Set(MANIFESTS.find((m) => m.id === id)?.fields.map((f) => f.key));
+  return Object.fromEntries((issue.extra ?? []).filter((e) => keys.has(String(e.key))).map((e) => [e.key, String(e.value)]));
 }
 
 /** An owned field's value from `add` or `edit`; an empty value clears it. */

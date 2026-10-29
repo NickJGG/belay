@@ -95,7 +95,7 @@ test('owned fields may claim neither a core key nor another extension’s key', 
   assert.deepEqual(ownedFields(ISSUE_FIELDS, [m('grill', 'x')]).map((f) => f.key), ['x']);
   assert.throws(() => ownedFields(ISSUE_FIELDS, [m('grill', 'title')]), /claims the core issue key 'title'/);
   assert.throws(() => ownedFields(ISSUE_FIELDS, [m('grill', 'x'), m('learn', 'x')]), /both claim the issue key 'x'/);
-  assert.deepEqual(KNOWN_ISSUE_KEYS, [...ISSUE_FIELDS]);
+  assert.deepEqual(KNOWN_ISSUE_KEYS, [...ISSUE_FIELDS, 'grill', 'plan']);
 });
 
 const estimates: ExtensionManifest = { id: 'grill', fields: [{ key: 'estimate', after: 'source' }], skills: [] };

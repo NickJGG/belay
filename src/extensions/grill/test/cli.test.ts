@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
 import { initHistory } from '../../../gitlog.ts';
-import { grillForProject, grillMatches, grillMentions, projectTerms, type GrillSession } from '../../../grill.ts';
+import { grillForProject, grillMatches, grillMentions, projectTerms, type GrillSession } from '../sessions.ts';
 import type { Issue, Project } from '../../../store.ts';
 import { commitGrill, digestLines, searchLines } from '../cli.ts';
 import { manifest } from '../manifest.ts';
@@ -53,6 +53,11 @@ const issue = (id: string, over: Partial<Issue> = {}): Issue => ({
 
 const session = (slug: string, topic = '', over: Partial<GrillSession> = {}): GrillSession => ({ slug, topic, ...over });
 
+/** An issue's `extra` holding grill's owned fields. */
+const linked = (fields: { grill?: string; plan?: string }): Pick<Issue, 'extra'> => ({
+  extra: Object.entries(fields).map(([key, value]) => ({ key, value, after: key === 'grill' ? 'source' : 'grill' })),
+});
+
 test('projectTerms: 5+ letter words, singularized', () => {
   assert.deepEqual(projectTerms(project), ['rideable', 'elevator']);
   assert.deepEqual(projectTerms({ ...project, key: 'pz-fridges', name: 'Turn off Fridges' }), ['fridge']);
@@ -82,7 +87,7 @@ test('grillMatches includes the project tag', () => {
 });
 
 test('the digest line counts unlinked sessions matched by terms', () => {
-  const issues = [issue('ELV-5', { status: 'idea', grill: 'linked-elevator' })];
+  const issues = [issue('ELV-5', { status: 'idea', ...linked({ grill: 'linked-elevator' }) })];
   const grills = [session('elevator-call-button'), session('linked-elevator'), session('unrelated')];
   assert.deepEqual(digestLines(project, issues, grills), ['grill: 1 old session matches rideable/elevator (belay search <word>)']);
   assert.deepEqual(digestLines(project, issues, [session('unrelated')]), []);
@@ -97,7 +102,7 @@ test('the digest line counts tagged sessions, naming the newest in progress', ()
     session('e', '', { project: 'ELV', status: 'in-progress' }),
     session('elevator-old'),
   ];
-  const issues = [issue('ELV-1', { grill: 'e' })];
+  const issues = [issue('ELV-1', linked({ grill: 'e' }))];
   assert.deepEqual(digestLines(project, issues, grills), [
     'grill: 4 sessions tagged (in progress: b, a, …) · 1 old session matches rideable/elevator (belay search <word>)',
   ]);
@@ -119,10 +124,10 @@ test('search lists matching sessions newest first, under a header naming the fol
 
 test("linked kinds: grill opens the session file, plan the plan's absolute path", async () => {
   const { grill: grillPath, plan } = manifest.cli!.linked!;
-  assert.equal(await grillPath(issue('BEL-7', { grill: 'some-topic' }), dir), join(dir, 'grills', 'some-topic', 'some-topic.md'));
-  assert.equal(await plan(issue('TRK-1', { plan: 'C:/plans/p.md' }), dir), resolve('C:/plans/p.md'));
+  assert.equal(await grillPath(issue('BEL-7', linked({ grill: 'some-topic' })), dir), join(dir, 'grills', 'some-topic', 'some-topic.md'));
+  assert.equal(await plan(issue('TRK-1', linked({ plan: 'C:/plans/p.md' })), dir), resolve('C:/plans/p.md'));
   assert.equal(await grillPath(issue('TRK-1'), dir), undefined);
-  assert.equal(await plan(issue('TRK-1', { grill: 'x' }), dir), undefined);
+  assert.equal(await plan(issue('TRK-1', linked({ grill: 'x' })), dir), undefined);
 });
 
 function grill(slug: string, files: Record<string, string>) {

@@ -51,7 +51,7 @@ const issue = (over: Partial<Issue> = {}): Omit<Issue, 'id'> => ({
 test('issue frontmatter round-trips, including optional fields and body', () => {
   const t: Issue = {
     id: 'PIX-3',
-    ...issue({ priority: 'high', grill: 'some-slug', plan: 'C:/plans/x.md', blocked_by: ['PIX-1'], title: '2048: "quoted" title' }),
+    ...issue({ priority: 'high', blocked_by: ['PIX-1'], title: '2048: "quoted" title' }),
     body: 'notes\n\n- 2026-10-02: more',
   };
   assert.deepEqual(parseIssue(serializeIssue(t), 'x'), t);
@@ -246,8 +246,6 @@ test('issue transitions round-trip and are validated', () => {
     id: 'PIX-3',
     ...issue({
       priority: undefined,
-      grill: undefined,
-      plan: undefined,
       transitions: [
         { at: '2026-10-01T09:00', to: 'todo', by: 'user' },
         { at: '2026-10-02T10:30', from: 'todo', to: 'doing', by: 'claude', session: 's1' },

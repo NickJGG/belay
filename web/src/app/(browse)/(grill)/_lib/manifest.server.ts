@@ -1,4 +1,5 @@
 import { grillsDir } from "../../../../../../src/config.ts";
+import { owned } from "../../../../../../src/extensions.ts";
 import { linkedPath } from "../../../../../../src/open.ts";
 import type { Issue } from "../../../../../../src/store.ts";
 import { stage } from "../../../../lib/issues.ts";
@@ -35,7 +36,7 @@ export const slots = {
     return n > 0 ? [{ key: UNFILED, name: "Unfiled", facts: n === 1 ? "1 grill" : `${n} grills` }] : [];
   },
   sections: { grills: async () => (await import("../_components/project-grills.tsx")).ProjectGrills },
-  issue: async (issue: Issue, data: string): Promise<GrillIssue> => ({ grill: issue.grill, plan: await linkedPath(issue, "plan", data) }),
+  issue: async (issue: Issue, data: string): Promise<GrillIssue> => ({ grill: owned(issue, "grill").grill, plan: await linkedPath(issue, "plan", data) }),
 } satisfies ServerSlots;
 
 export type GrillSearch = Awaited<ReturnType<typeof slots.search>>;

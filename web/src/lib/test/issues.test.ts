@@ -25,7 +25,7 @@ const issue = (id: string, status: IssueStatus, grill?: string, project = id.rep
   title: `${id} title`,
   project,
   status,
-  grill,
+  ...(grill && { extra: [{ key: "grill", value: grill, after: "source" }] }),
   updated: "2026-10-24T20:58",
 });
 
