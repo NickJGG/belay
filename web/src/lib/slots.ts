@@ -3,7 +3,8 @@
  * `manifest.ts` (`extensions.ts`), are what the shell, sidebar and Not found go by. Its server part, in its
  * `manifest.server.ts` (listed in `extensions.server.ts`), loads its loaders only when they're called; its browser
  * part, in `manifest.client.tsx` (`extensions.client.ts`), is what the nav, palette and issue page draw. Its Markdown
- * syntax is a handler in `extensions.markdown.ts`. Only active extensions' slots are used.
+ * syntax is a handler in `extensions.markdown.ts`. Only active extensions' slots are used, except by Settings, which
+ * lists them all.
  */
 import type { ComponentType, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
@@ -11,6 +12,7 @@ import type { ExtensionId } from "../../../src/extension-ids.ts";
 import type { GridSource } from "../../../src/home.ts";
 import type { Issue } from "../../../src/store.ts";
 import type { Fact } from "../components/belay/facts.tsx";
+import type { MarkProps } from "../components/layout/logo.tsx";
 import type { Slot } from "../components/layout/shell-slot.tsx";
 import type { LiveSession } from "./hub.ts";
 import type { Project } from "./projects.ts";
@@ -95,6 +97,10 @@ export type IssueAction = { id: string; label: string; run: () => Promise<Result
 
 export type ClientSlots<I = unknown, D = unknown> = {
   id: ExtensionId;
+  /** Its card on Settings, listed whether it's active or not: name, one-line summary and Extension mark. */
+  name: string;
+  summary: string;
+  Mark: ComponentType<MarkProps>;
   /** Its app nav entries, after the core's. */
   nav?: NavItem[];
   /** The icons of the sidebar sections its pages list, by label. */

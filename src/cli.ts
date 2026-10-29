@@ -6,7 +6,6 @@ import { claudeDir, dataDir, DEFAULT_PORT } from './config.ts';
 import { clip, digestLines, plural } from './digest.ts';
 import {
   activeManifests,
-  attachedSessions,
   extensionId,
   fieldLines,
   fieldValues,
@@ -35,8 +34,8 @@ import {
   moveProject,
   oneOf,
   rekeyProject,
-  setExtension,
   setStatus,
+  switchExtension,
   type MoveTarget,
 } from './ops.ts';
 import { launchCommand } from './launch.ts';
@@ -655,12 +654,7 @@ async function cmdExtension(argv: string[]): Promise<void> {
   const [action, raw] = positionals;
   if (action !== 'on' && action !== 'off') throw new Error(`expected on or off, got '${action}' — see 'belay help'`);
   const id = extensionId(raw);
-  const dir = dataDir();
-  if (action === 'off') {
-    const live = await attachedSessions(dir, id);
-    if (live.length) throw new Error(`a ${id} session is attached (${live.join(', ')}): switch ${id} off once it detaches`);
-  }
-  print(setExtension(new Ctx(dir), id, action === 'on') ? `${id} ${action}` : `${id} was already ${action}`);
+  print((await switchExtension(new Ctx(), id, action === 'on')) ? `${id} ${action}` : `${id} was already ${action}`);
 }
 
 const COMMANDS: Record<string, Command> = {

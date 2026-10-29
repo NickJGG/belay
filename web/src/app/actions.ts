@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { dataDir } from "../../../src/config.ts";
+import { isExtensionId } from "../../../src/extension-ids.ts";
 import { logFile } from "../../../src/logs.ts";
 import { activeManifests } from "../../../src/extensions.ts";
 import { linkedKinds, linkedPath, openFile } from "../../../src/open.ts";
@@ -25,6 +26,7 @@ import {
   setFocus,
   setPriority,
   setStatus,
+  switchExtension,
 } from "../../../src/ops.ts";
 import { isDay } from "../../../src/workday.ts";
 import { projectHref } from "@/lib/hrefs";
@@ -255,5 +257,19 @@ export async function openLogFile(day: unknown): Promise<Result> {
   } catch (e) {
     return { error: (e as Error).message };
   }
+  return {};
+}
+
+/** Switches an extension on or off, refusing off while one of its sessions is attached, as `belay extension` does. */
+export async function setExtensionOn(id: unknown, on: unknown): Promise<Result> {
+  try {
+    const ext = str(id, "id");
+    if (!isExtensionId(ext)) throw new Error(`no extension '${ext}'`);
+    if (typeof on !== "boolean") throw new Error("on must be a boolean");
+    await switchExtension(new Ctx(dataDir()), ext, on);
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  revalidatePath("/", "layout");
   return {};
 }

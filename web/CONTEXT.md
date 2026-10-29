@@ -22,7 +22,14 @@ _Avoid_: session (for this meaning)
 A Session working on a project's Issues, with no Grill or Lesson.
 
 **Extension**:
-An optional part of the app beyond projects and Issues: grill (Grills) or learn (Courses and Lessons), switched on and off in `settings.yaml`. While it's off, its pages, nav, palette and search entries, home and project sections, issue facts and actions, In flight group and Tabs are gone; its data isn't.
+An optional part of the app beyond projects and Issues: grill (Grills) or learn (Courses and Lessons), switched on and off in `settings.yaml` or on the Settings page. While it's off, its pages, nav, palette and search entries, home and project sections, issue facts and actions, In flight group and Tabs are gone; its data isn't.
+
+**Extension mark**:
+An Extension's icon, drawn like the Belay mark (one heavy run-on stroke and a dot): grill's open flame, learn's open book. In the Dusk gradient only on the Settings page while it's on; elsewhere in its row's colour, or its course's on a Lesson's Tab.
+_Avoid_: logo, project mark (for this meaning)
+
+**Settings**:
+The `/settings` page, opened from the cog at the sidebar's foot: Appearance (Glow, saved per browser) and an Extension card each, with its switch.
 
 ### Shell
 

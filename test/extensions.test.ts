@@ -19,7 +19,7 @@ import {
   withFieldOptions,
   type ExtensionManifest,
 } from '../src/extensions.ts';
-import { Ctx, setExtension } from '../src/ops.ts';
+import { Ctx, setExtension, switchExtension } from '../src/ops.ts';
 import { ISSUE_FIELDS, KNOWN_ISSUE_KEYS } from '../src/store.ts';
 
 let dir: string;
@@ -180,6 +180,21 @@ test('a session counts as attached only while its pid is alive and its port answ
     mkdirSync(join(dir, 'lessons', 'lesson-none'));
     assert.deepEqual(await attachedSessions(dir, 'learn'), ['lesson-a']);
     assert.deepEqual(await attachedSessions(dir, 'grill'), []);
+  } finally {
+    server.close();
+  }
+});
+
+test('the switch refuses off while a session of that kind is attached, and switches on regardless', async () => {
+  const server = createServer((_, res) => res.end()).listen(0, '127.0.0.1');
+  await new Promise((r) => server.once('listening', r));
+  try {
+    bridge('grills', 'g', { port: (server.address() as AddressInfo).port, token: 't', pid: process.pid });
+    await assert.rejects(switchExtension(new Ctx(dir), 'grill', false), /a grill session is attached \(g\): switch grill off once it detaches/);
+    assert.equal(existsSync(join(dir, 'settings.yaml')), false);
+    assert.equal(await switchExtension(new Ctx(dir), 'grill', true), true);
+    assert.equal(await switchExtension(new Ctx(dir), 'learn', false), true);
+    assert.equal(settings(), 'extensions:\n  grill: on\n  learn: off\n');
   } finally {
     server.close();
   }

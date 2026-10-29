@@ -17,6 +17,7 @@ import type { ClientSlots } from "@/lib/slots";
 import { cn } from "@/lib/utils";
 import type { GrillIssue, GrillSearch } from "../_lib/manifest.server";
 import type { GrillLive } from "../_lib/runtime.server";
+import { GrillMark } from "./mark";
 import { GrillsFound } from "./palette";
 import { PendingCommentProvider, usePendingComment, type PendingComment } from "./pending-comment";
 
@@ -112,6 +113,9 @@ export const client: ClientKind<GrillLive> = {
 
 export const slots: ClientSlots<GrillSearch, GrillIssue> = {
   id: "grill",
+  name: "Grill",
+  summary: "Design interviews with /grill, their pages, Tabs and the grill and plan fields on issues.",
+  Mark: GrillMark,
   sectionIcons: { Grills: MessagesSquare },
   Found: GrillsFound,
   issueFacts: (id, { grill, plan }, run, pending) => [

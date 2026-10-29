@@ -1,0 +1,124 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 720px;
+}
+
+.head {
+  margin: 0 0 var(--space-3);
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  max-width: 640px;
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--line);
+}
+
+.rowOff .seg {
+  opacity: 0.4;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.what {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.seg {
+  flex: none;
+  width: 96px;
+}
+
+.seg button:disabled {
+  cursor: default;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.top .name {
+  flex: 1;
+}
+
+.tile {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.mark {
+  width: 22px;
+  height: 22px;
+}
+
+.cardOff .tile {
+  color: var(--faint);
+}
+
+.cardOff .name {
+  color: var(--muted);
+}
+
+/* A locked Off: the CLI's rule, while one of its sessions is attached. */
+.card .seg button[aria-disabled="true"] {
+  opacity: 0.35;
+}
+
+.why,
+.error {
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+}
+
+.why {
+  color: var(--warn);
+}
+
+.error {
+  color: var(--bad);
+}
+
+.note {
+  margin: var(--space-2) 0 0;
+  color: var(--faint);
+  font-size: var(--text-xs);
+}

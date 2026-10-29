@@ -25,7 +25,7 @@ function readGlow() {
   }
 }
 
-/** This browser's Glow preference, shared by the halo, the rail's Glow button and the palette. Off until hydrated. */
+/** This browser's Glow preference, shared by the halo, Settings' Glow switch and the palette. Off until hydrated. */
 export const useGlow = () => React.useSyncExternalStore(subscribe, readGlow, () => false);
 
 export function setGlow(on: boolean) {

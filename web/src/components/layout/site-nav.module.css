@@ -52,6 +52,11 @@
   display: flex;
 }
 
+.phoneActions {
+  display: flex;
+  gap: var(--space-1);
+}
+
 .phoneMark {
   width: 24px;
   height: 24px;

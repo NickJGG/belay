@@ -3,7 +3,8 @@ import { statSync } from "node:fs";
 import { connection } from "next/server";
 import { cache } from "react";
 import { dataDir } from "../../../src/config.ts";
-import type { ExtensionId } from "../../../src/extension-ids.ts";
+import { EXTENSION_IDS, type ExtensionId } from "../../../src/extension-ids.ts";
+import { attachedSessions, enabledExtensions } from "../../../src/extensions.ts";
 import { activity, activityGrid, doingSince, inFlight, type ActivityDay, type GridDay } from "../../../src/home.ts";
 import { loadLog, type DatedEntry, type LogEntry } from "../../../src/logs.ts";
 import { Ctx as BelayCtx, bodyHash, logDays } from "../../../src/ops.ts";
@@ -31,6 +32,7 @@ import {
 import { accountUsage, focusFor, liveSessions, openTurn, usageFor } from "./hub";
 import { projectsOf, type Project } from "./projects";
 import type { ItemContext, Mark } from "./session-kind";
+import type { ExtensionState } from "./settings";
 import type { FlightGroup, ProjectEntry } from "./slots";
 import type { Usage } from "./usage";
 import type { SessionMemo } from "./sessions";
@@ -309,4 +311,12 @@ export async function logDetail(day: string, n: number, at: string | undefined):
     today,
     candidates: linkCandidates(c.issues, entry.project, entry.issue).map((t) => ref(c, t.id)),
   };
+}
+
+/** Settings' Extension cards: each built-in's setting, and its sessions with a bridge attached. */
+export async function extensionStates(): Promise<ExtensionState[]> {
+  await connection();
+  const dir = dataDir();
+  const enabled = enabledExtensions(dir);
+  return Promise.all(EXTENSION_IDS.map(async (id) => ({ id, on: enabled[id], attached: await attachedSessions(dir, id) })));
 }

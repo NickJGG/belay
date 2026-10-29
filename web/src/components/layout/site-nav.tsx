@@ -3,9 +3,10 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderOpen, House, Search } from "lucide-react";
+import { Cog, FolderOpen, House, Search } from "lucide-react";
 import { useLive } from "@/components/live/live-provider";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { buttonClass } from "@/components/ui/button";
 import { activeClientSlots } from "@/lib/extensions.client";
 import type { NavItem } from "@/lib/slots";
 import { cn } from "@/lib/utils";
@@ -28,7 +29,7 @@ export function useNav(): NavItem[] {
   return React.useMemo(() => [...CORE_NAV, ...activeClientSlots(active).flatMap((s) => s.nav ?? [])], [active]);
 }
 
-/** The phone's nav (below 768px, where the rail is hidden): the bottom dock, and the mark and Theme above the page. */
+/** The phone's nav (below 768px, where the rail is hidden): the bottom dock, and the mark, Theme and Settings above the page. */
 export function SiteNav() {
   const pathname = usePathname() ?? "/";
   const item = (it: NavItem) => {
@@ -56,7 +57,12 @@ export function SiteNav() {
         <Link href="/" aria-label="Belay home">
           <Mark className={styles.phoneMark} />
         </Link>
-        <ThemeToggle />
+        <span className={styles.phoneActions}>
+          <ThemeToggle />
+          <Link href="/settings" className={buttonClass("ghost", "icon-sm")} aria-label="Settings" title="Settings" aria-current={pathname === "/settings" ? "page" : undefined}>
+            <Cog size={16} aria-hidden />
+          </Link>
+        </span>
       </div>
     </>
   );

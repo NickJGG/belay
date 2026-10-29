@@ -58,6 +58,8 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   extensions' sections (`/p/<key>/[section]`, grill's Grills) under one layout holding the project header, `/i/<id>` and `/l/<day>/<n>?at=`. Their pieces are in
   `src/components/belay/`; their writes are the server actions in `src/app/actions.ts`, each a thin wrapper around
   one CLI op on a fresh strict `Ctx`.
+- Settings (`/settings`, core): Glow, and a card per built-in extension (`components/settings/`) whose switch is the
+  `setExtensionOn` action over the CLI's `switchExtension`, refusing Off while one of its sessions is attached.
 - At the repo root: `bridge/`: the MCP server's TypeScript source. `plugin/`: the plugin (`.claude-plugin/plugin.json` declares the
   `belay` MCP server and binds a `channels` entry to it). `.claude-plugin/marketplace.json`: the local `belay`
   marketplace listing it.
@@ -74,12 +76,12 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - The site runs on port 4747 (`belay serve`), the only site origin the bridge accepts; changing it also needs
   `BELAY_SITE_PORT`.
 - Keep the tested data modules free of `server-only` and `@/` imports: `src/lib/`'s (`sessions`, `projects`, `issues`,
-  `frontmatter`, `upstream`, `format`, `shell`, `course-art`, `belay-view`, `watch-paths`, `sidebar`) and each extension's
+  `frontmatter`, `upstream`, `format`, `shell`, `course-art`, `belay-view`, `watch-paths`, `sidebar`, `settings`) and each extension's
   `_lib/` ones (grill's `sessions`, `filing`, `issues`, `flight`, `session-doc`, `mock`, `behaviours`; learn's `courses`, `calendar`, `course-paths`, `course-home`, `course-nav`, `wiki-target`, `work`,
   `session-log`, `routines`, `lesson`, `start-queue`, `run`, `ts-env`). `pnpm test:site` runs `src/lib/test/` and
   `src/app/**/_lib/test/` under plain `node --test`, which resolves neither. They may import the CLI's `src/*.ts` by relative path.
 - Client components take only types from `lib/data`, `lib/belay-view`, learn's `_lib/courses` and `_lib/course-home`, and the CLI's
-  `store.ts`, whose runtime pulls in `node:fs`. Values they need live in import-free modules: `lib/hrefs`,
+  `store.ts`, whose runtime pulls in `node:fs`. Values they need live in import-free modules: `lib/hrefs`, `lib/settings`,
   `lib/collapsed`, grill's `_lib/hrefs`, learn's `_lib/{hrefs,course-nav,calendar,routines,lesson}`, and the CLI's `keys`, `picker` and `time`.
 - Every write goes through a CLI op (via `actions.ts`), and adding one to the app means adding it to the CLI first.
 - `src/proxy.ts` applies belay's host guard (`src/guard.ts`) to every request but `/api/usage`, which checks its own.
@@ -167,7 +169,7 @@ open. The core message kinds live in `bridge/protocol.mts`, event types in `brid
   description and holds its page rules (`shell`): Workspace pages, Tabs, Not found lines, project sections, a
   pseudo-project (grill's Unfiled) and a place's section rows (learn's courses, passed as `<ShellSlot owner>`).
   `lib/shell.ts` and `lib/sidebar.ts` take the active ids, so an inactive extension's addresses get the generic Not
-  found line. Only active extensions' slots are used.
+  found line. Only active extensions' slots are used, but Settings lists every built-in's `name`, `summary` and `Mark`.
 - `sessions.ts` reads a session folder in its kind's format: session.json, else a bare `bridge.json` (in progress),
   else, for a grill, `<slug>.md` frontmatter (`legacy`). A legacy grill is read-only and renders its `.md`, with its old preview at
   `/legacy/sessions/<slug>/preview.html`; the shared shell it loads is served from `web/legacy/`. Lessons come from

@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import type { LearnSearch } from "../_lib/manifest.server";
 import type { LessonLive } from "../_lib/runtime.server";
 import { LessonProvider } from "./lesson-state";
+import { LearnMark } from "./mark";
 import { CoursesBrowse, CoursesFound } from "./palette";
 
 /** A 14px open book in its course's colour: a lesson's marker where a grill shows its ProjectMark. Decorative. */
@@ -87,6 +88,9 @@ const under = (base: string) => (p: string) => p === base || p.startsWith(`${bas
 
 export const slots: ClientSlots<LearnSearch> = {
   id: "learn",
+  name: "Learn",
+  summary: "Courses and /learn lessons from ~/Learning, with their pages and Tabs.",
+  Mark: LearnMark,
   nav: [{ href: "/learn", label: "Learn", icon: LibraryBig, on: under("/learn"), parent: (slot) => slot.owner?.id === "learn" }],
   sectionIcons: {
     Overview: LayoutDashboard,

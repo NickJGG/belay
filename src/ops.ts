@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { isMap, parseDocument } from 'yaml';
 import { dataDir, runDir } from './config.ts';
 import type { ExtensionId } from './extension-ids.ts';
-import { settingsFile, type OwnedValue } from './extensions.ts';
+import { attachedSessions, settingsFile, type OwnedValue } from './extensions.ts';
 import { commitPaths } from './gitlog.ts';
 import { loadLog, loadLogDays, loadLogs, logFile, parseLogAddress, saveLog, type DatedEntry, type LogEntry } from './logs.ts';
 import { suggestKey } from './projectkey.ts';
@@ -785,4 +785,13 @@ export function setExtension(ctx: Ctx, id: ExtensionId, on: boolean): boolean {
     },
     () => `extension ${id} ${on ? 'on' : 'off'}`,
   );
+}
+
+/** `setExtension`, refusing `off` while one of `id`'s sessions is attached: the CLI's and the Settings page's switch. */
+export async function switchExtension(ctx: Ctx, id: ExtensionId, on: boolean): Promise<boolean> {
+  if (!on) {
+    const live = await attachedSessions(ctx.dir, id);
+    if (live.length) throw new Error(`a ${id} session is attached (${live.join(', ')}): switch ${id} off once it detaches`);
+  }
+  return setExtension(ctx, id, on);
 }
