@@ -70,7 +70,7 @@ export default async function SourcePage({ params }: Props) {
         ]}
       />
       <div className={styles.kbody}>
-        <Prose markdown={d.body} course={{ course: c }} />
+        <Prose markdown={d.body} context={{ id: "learn", course: c }} />
       </div>
     </div>
   );

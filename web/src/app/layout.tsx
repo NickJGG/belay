@@ -4,6 +4,7 @@ import { Toaster } from "@/components/belay/toaster";
 import { AppShell } from "@/components/layout/shell";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { navData } from "@/lib/data";
+import { siteDescription } from "@/lib/extensions";
 import { activeKinds } from "@/lib/extensions.server";
 import "katex/dist/katex.min.css";
 import "./globals.css";
@@ -26,10 +27,9 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Belay",
-  description: "Projects, grills and courses, worked through Claude Code sessions.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: "Belay", description: siteDescription(activeKinds().map((k) => k.id)) };
+}
 
 /** The shell wraps every page, Not found included, so the sidebar, Tabs and Drawer stay put across them. */
 export default async function RootLayout({

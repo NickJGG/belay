@@ -82,6 +82,7 @@ export const BUILT_IN_LISTS = new Set([
   'web/src/lib/extensions.ts',
   'web/src/lib/extensions.server.ts',
   'web/src/lib/extensions.client.ts',
+  'web/src/lib/extensions.markdown.ts',
   'bridge/kinds/index.mts',
 ]);
 

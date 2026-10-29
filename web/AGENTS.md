@@ -150,6 +150,11 @@ open. The core message kinds live in `bridge/protocol.mts`, event types in `brid
   and provider state (grill's pending comment, a lesson's focus and the start queue), read through its own hooks. The
   root layout passes the active ids; every built-in kind's provider stays mounted, and each active kind's entry
   renderers are tried for every session, as before kinds.
+- Slots (`lib/slots.ts`): beside its kind, an extension's `manifest.server.ts` exports `slots` with its palette names
+  (merged flat into `/api/search`), Home section and activity-grid source, each loaded on call; its
+  `manifest.client.tsx` exports `slots` with its nav entries, sidebar section icons and palette groups. Its Markdown
+  syntax is a handler (`lib/extensions.markdown.ts`), picked by the `id` of the context a page passes `Prose`. Its pure
+  `manifest.ts` names its noun for the site description. Only active extensions' slots are used.
 - `sessions.ts` reads a session folder in its kind's format: session.json, else a bare `bridge.json` (in progress),
   else, for a grill, `<slug>.md` frontmatter (`legacy`). A legacy grill is read-only and renders its `.md`, with its old preview at
   `/legacy/sessions/<slug>/preview.html`; the shared shell it loads is served from `web/legacy/`. Lessons come from

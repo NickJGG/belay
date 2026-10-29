@@ -1,14 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { X } from "lucide-react";
+import { MessagesSquare, X } from "lucide-react";
 import { Prose } from "@/components/content/prose";
 import { ProjectMark } from "@/components/project-mark";
 import { imagesOf, SentPics, Speaker, str } from "@/components/session/drawer";
 import styles from "@/components/session/session.module.css";
 import type { ClientKind, Composer as ComposerT } from "@/lib/session-kind";
+import type { ClientSlots } from "@/lib/slots";
 import { cn } from "@/lib/utils";
+import type { GrillSearch } from "../_lib/manifest.server";
 import type { GrillLive } from "../_lib/runtime.server";
+import { GrillsFound } from "./palette";
 import { PendingCommentProvider, usePendingComment, type PendingComment } from "./pending-comment";
 
 const PLAN_READY = /^Plan ready\b/i;
@@ -99,4 +102,10 @@ export const client: ClientKind<GrillLive> = {
     ),
   Composer,
   Provider: PendingCommentProvider,
+};
+
+export const slots: ClientSlots<GrillSearch> = {
+  id: "grill",
+  sectionIcons: { Grills: MessagesSquare },
+  Found: GrillsFound,
 };

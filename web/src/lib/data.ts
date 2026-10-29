@@ -14,13 +14,23 @@ import { sectionNeighbours, sidebarSections } from "../../../src/sidebar.ts";
 import type { Issue as BelayIssue, Project as BelayProject } from "../../../src/store.ts";
 import { addDays, isDay, workDay } from "../../../src/workday.ts";
 import type { ChatEntry, OpenTurn } from "./chat";
-import { courseIndex, type CourseIndex } from "./course-data";
-import { listCourses, listLessons } from "./courses";
 import type { Focus } from "./extensions";
-import { claim, liveItems, loadKinds, runtimeOf, sessionRoots, type ListedSession, type LiveItem, type SessionItem } from "./extensions.server";
+import {
+  claim,
+  gridSources,
+  liveItems,
+  loadKinds,
+  runtimeOf,
+  searchParts,
+  sessionRoots,
+  type ListedSession,
+  type LiveItem,
+  type SearchParts,
+  type SessionItem,
+} from "./extensions.server";
 import { parseFrontmatter } from "./frontmatter";
 import { flightGrills } from "./belay-view";
-import { issuesByGrill, stage, STAGES, type Issue, type Stage } from "./issues";
+import { issuesByGrill, STAGES, type Issue, type Stage } from "./issues";
 import { UNFILED } from "./hrefs";
 import { MOCK_FILES, type MockFile } from "./mock";
 import type { SessionDoc } from "./session-doc";
@@ -178,13 +188,12 @@ export async function homeFlight(): Promise<{ issues: FlightIssue[]; grills: Fli
 
 export type HomePulse = { today: string; grid: GridDay[]; usage: Usage | null };
 
-/** Home's header: the two-week activity grid (issues done and every course's lessons), and the account's limits. */
+/** Home's header: the two-week activity grid (issues done and what the extensions add), and the account's limits. */
 export async function homePulse(): Promise<HomePulse> {
   await connection();
   const c = belay();
   const today = workDay();
-  const lessonDays = listCourses().flatMap((course) => listLessons(course.course).map((l) => l.date));
-  return { today, grid: activityGrid(c.projects, c.issues, lessonDays, today), usage: accountUsage() };
+  return { today, grid: activityGrid(c.projects, c.issues, await gridSources(), today), usage: accountUsage() };
 }
 
 const byStage = (sessions: WorkItem[]) =>
@@ -234,27 +243,16 @@ export async function projectsIndex(): Promise<{ projects: ProjectCard[]; unfile
   };
 }
 
-export type SearchIndex = CourseIndex & {
-  sessions: (Pick<SessionItem, "slug" | "topic" | "stage" | "updated"> & { project: Mark | null })[];
+export type SearchIndex = SearchParts & {
   projects: (Mark & { status: string })[];
   issues: Pick<BelayIssue, "id" | "title" | "status" | "project">[];
 };
 
-/**
- * The command palette's names: every grill (legacy ones too), non-archived project and issue, and every
- * course with its lessons, notes, sources and misconceptions.
- */
+/** The command palette's names: every non-archived project and issue, and what the active extensions add. */
 export async function searchIndex(): Promise<SearchIndex> {
-  const [{ sessions, projects, ctx }, courses] = await Promise.all([load(), courseIndex()]);
+  const { sessions, projects, ctx } = await load();
   return {
-    ...courses,
-    sessions: sessions.map((s) => ({
-      slug: s.slug,
-      topic: s.topic,
-      stage: stage(s, ctx.byGrill.get(s.slug) ?? []),
-      updated: s.updated,
-      project: ctx.marks.get(s.slug) ?? null,
-    })),
+    ...(await searchParts({ sessions, ctx })),
     projects: projects.filter((p) => p.status !== "archived").map((p) => ({ ...mark(p), status: p.status })),
     issues: belay().issues.map(({ id, title, status, project }) => ({ id, title, status, project })),
   };

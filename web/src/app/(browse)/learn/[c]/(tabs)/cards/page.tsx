@@ -14,7 +14,7 @@ function Rows({ course, cards, now }: { course: string; cards: CardRow[]; now: s
       {cards.map((card) => {
         const line = (
           <>
-            <Prose compact className={cn(belay.grow, styles.inline)} markdown={card.q} course={{ course }} />
+            <Prose compact className={cn(belay.grow, styles.inline)} markdown={card.q} context={{ id: "learn", course }} />
             <span className={styles.faint}>{card.state}</span>
             <span className={styles.due}>{relativeDue(card.due, now)}</span>
           </>
@@ -27,7 +27,7 @@ function Rows({ course, cards, now }: { course: string; cards: CardRow[]; now: s
           <li key={card.id} className={cn(belay.row, styles.card)}>
             <details>
               <summary title="Show the answer">{line}</summary>
-              <Prose compact className={styles.answer} markdown={card.a} course={{ course }} />
+              <Prose compact className={styles.answer} markdown={card.a} context={{ id: "learn", course }} />
             </details>
           </li>
         );

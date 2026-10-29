@@ -9,4 +9,4 @@ const session: PureKind<LessonShow> = {
   reattach: (slug) => `Not attached: run \`/grill resume ${slug}\` in the terminal`,
 };
 
-export const manifest = { id: "learn", patterns: PATH_PATTERNS.learn, session } as const;
+export const manifest = { id: "learn", noun: "courses", patterns: PATH_PATTERNS.learn, session } as const;

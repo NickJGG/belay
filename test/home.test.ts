@@ -154,7 +154,7 @@ test('activityGrid: last week and this week, Sunday first, days after today futu
   assert.equal(activityGrid([project('BEL')], [], [], '2026-10-04')[0].day, '2026-09-27');
 });
 
-test('activityGrid: moves to done by transition, lessons weighted five, levels against the busiest day', () => {
+test('activityGrid: moves to done by transition, a source weighted five, levels against the busiest day', () => {
   const issues = [
     doneAt('BEL-1', '2026-10-05T10:00'),
     doneAt('BEL-2', '2026-10-05T11:00'),
@@ -163,10 +163,11 @@ test('activityGrid: moves to done by transition, lessons weighted five, levels a
     doneAt('BEL-4', '2026-09-20T10:00', { updated: '2026-10-06' }),
     issue('BEL-5', { status: 'doing', transitions: started('2026-10-06T10:00') }),
   ];
-  const grid = new Map(activityGrid([project('BEL')], issues, ['2026-10-06', '2026-10-06', '2026-09-28'], TODAY).map((d) => [d.day, d]));
-  assert.deepEqual(grid.get('2026-10-05'), { day: '2026-10-05', done: 3, lessons: 0, level: 2, future: false });
-  assert.deepEqual(grid.get('2026-10-06'), { day: '2026-10-06', done: 0, lessons: 2, level: 4, future: false });
-  assert.deepEqual(grid.get('2026-09-28'), { day: '2026-09-28', done: 0, lessons: 1, level: 2, future: false });
+  const lessons = { days: ['2026-10-06', '2026-10-06', '2026-09-28'], weight: 5, unit: ['lesson', 'lessons'] as [string, string] };
+  const grid = new Map(activityGrid([project('BEL')], issues, [lessons], TODAY).map((d) => [d.day, d]));
+  assert.deepEqual(grid.get('2026-10-05'), { day: '2026-10-05', done: 3, extra: [{ n: 0, noun: 'lessons' }], level: 2, future: false });
+  assert.deepEqual(grid.get('2026-10-06'), { day: '2026-10-06', done: 0, extra: [{ n: 2, noun: 'lessons' }], level: 4, future: false });
+  assert.deepEqual(grid.get('2026-09-28'), { day: '2026-09-28', done: 0, extra: [{ n: 1, noun: 'lesson' }], level: 2, future: false });
   assert.equal(grid.get('2026-10-01')!.level, 0);
 });
 

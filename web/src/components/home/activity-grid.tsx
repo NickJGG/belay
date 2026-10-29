@@ -12,8 +12,8 @@ function shortDay(day: string) {
   return new Date(y, m - 1, d).toLocaleDateString("en-GB", { weekday: "short", day: "numeric" });
 }
 
-function summary({ done, lessons }: GridDay) {
-  const parts = [done && `${done} done`, lessons && `${lessons} ${lessons === 1 ? "lesson" : "lessons"}`].filter(Boolean);
+function summary({ done, extra }: GridDay) {
+  const parts = [done && `${done} done`, ...extra.map((e) => e.n && `${e.n} ${e.noun}`)].filter(Boolean);
   return parts.length ? parts.join(" · ") : "Nothing";
 }
 

@@ -8,7 +8,7 @@ import { Prose } from "@/components/content/prose";
 import { subscribeLive } from "@/components/live/event-hub";
 import { Button } from "@/components/ui/button";
 import { courseHref, vscodeHref } from "@/lib/hrefs";
-import type { MarkdownContext } from "@/lib/markdown";
+import type { LearnMarkdown } from "@/app/(browse)/(learn)/_lib/markdown";
 import { runCommand } from "@/lib/run";
 import type { WorkEntry } from "@/lib/work";
 import { draftKey, encodeDraft, restoreDraft } from "@/lib/work-draft";
@@ -36,7 +36,7 @@ type Props = {
   /** `work/…` of the open file, or null for the bare tab. */
   rel: string | null;
   file: OpenFile | null;
-  topics: MarkdownContext["topics"];
+  topics: LearnMarkdown["topics"];
   /** Unset while no lesson is live. */
   send?: SendToLesson;
 };
@@ -173,7 +173,7 @@ function Editor({
   course: string;
   rel: string;
   file: Extract<OpenFile, { kind: "text" }>;
-  topics: MarkdownContext["topics"];
+  topics: LearnMarkdown["topics"];
   send?: SendToLesson;
 }) {
   const editor = React.useRef<CodeEditorHandle>(null);
@@ -461,7 +461,7 @@ function Editor({
             <div className={cn(styles.code, rendered && styles.hidden)}>{editorView}</div>
             {rendered ? (
               <div className={styles.preview} data-quote-source>
-                <Prose markdown={deferred} course={{ course, topics }} />
+                <Prose markdown={deferred} context={{ id: "learn", course, topics }} />
               </div>
             ) : null}
           </>

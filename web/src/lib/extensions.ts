@@ -26,3 +26,10 @@ export function parseFocus(e: Record<string, unknown>): Focus | null {
 }
 
 export const sessionKind = (id: ExtensionId): PureKind => MANIFESTS.find((m) => m.id === id)!.session;
+
+/** The site's description, naming what the active extensions add to projects. */
+export function siteDescription(active: readonly ExtensionId[]): string {
+  const nouns = ["Projects", ...MANIFESTS.filter((m) => active.includes(m.id)).map((m) => m.noun)];
+  const list = nouns.length > 1 ? `${nouns.slice(0, -1).join(", ")} and ${nouns.at(-1)}` : nouns[0];
+  return `${list}, worked through Claude Code sessions.`;
+}

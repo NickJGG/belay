@@ -1,16 +1,21 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { BookOpen, FileCode, Layers, LayoutDashboard, LibraryBig, ListChecks, MapIcon, NotebookPen, TriangleAlert } from "lucide-react";
 import { FocusHighlight } from "@/components/content/focus-highlight";
 import { FollowAlong } from "@/components/live/follow";
 import { useLive } from "@/components/live/live-provider";
 import styles from "@/components/project-mark.module.css";
 import { str } from "@/components/session/drawer";
 import sessionStyles from "@/components/session/session.module.css";
+import type { MarkdownContext } from "@/lib/markdown";
 import type { ClientKind } from "@/lib/session-kind";
+import type { ClientSlots } from "@/lib/slots";
 import { cn } from "@/lib/utils";
+import type { LearnSearch } from "../_lib/manifest.server";
 import type { LessonLive } from "../_lib/runtime.server";
 import { LessonProvider } from "./lesson-state";
+import { CoursesBrowse, CoursesFound } from "./palette";
 
 /** A 14px open book in its course's colour: a lesson's marker where a grill shows its ProjectMark. Decorative. */
 export function CourseBook({ color, className }: { color?: string; className?: string }) {
@@ -31,12 +36,22 @@ function Follow() {
   return selected?.kind === "lesson" ? <FollowAlong key={selected.slug} /> : null;
 }
 
+const contexts = new Map<string, MarkdownContext>();
+
+/** One context per course, so the Drawer's memoized chat keeps it across refreshes. */
+function courseContext(course: string): MarkdownContext {
+  let ctx = contexts.get(course);
+  if (!ctx) contexts.set(course, (ctx = { id: "learn", course }));
+  return ctx;
+}
+
 export const client: ClientKind<LessonLive> = {
   id: "learn",
   kind: "lesson",
   title: (s) => s.topic,
   place: (s) => s.course,
   mark: (s) => <CourseBook color={s.color} />,
+  markdown: (s) => courseContext(s.course),
   entry: (e) => {
     if (e.from === "site" && e.kind === "attempt") {
       return (
@@ -67,4 +82,23 @@ export const client: ClientKind<LessonLive> = {
   refresh: (e) => e.type === "course" && !e.path.startsWith("work/"),
   Frame: CourseFocus,
   Main: Follow,
+};
+
+const under = (base: string) => (p: string) => p === base || p.startsWith(`${base}/`);
+
+export const slots: ClientSlots<LearnSearch> = {
+  id: "learn",
+  nav: [{ href: "/learn", label: "Learn", icon: LibraryBig, on: under("/learn"), parent: (slot) => !!slot.course }],
+  sectionIcons: {
+    Overview: LayoutDashboard,
+    Syllabus: ListChecks,
+    Map: MapIcon,
+    Lessons: BookOpen,
+    Notes: NotebookPen,
+    Misconceptions: TriangleAlert,
+    Cards: Layers,
+    Work: FileCode,
+  },
+  Browse: CoursesBrowse,
+  Found: CoursesFound,
 };

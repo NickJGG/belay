@@ -110,25 +110,31 @@ export function activity(
   return out;
 }
 
+/** What an extension adds to the activity grid: a day per thing done, each worth `weight` issues moved to done. */
+export interface GridSource {
+  days: string[];
+  weight: number;
+  /** Its noun, singular and plural. */
+  unit: [string, string];
+}
+
 export interface GridDay {
   day: string;
   /** Issues moved to done that day. */
   done: number;
-  lessons: number;
+  /** Each source's count that day, in `sources` order, with its noun. */
+  extra: { n: number; noun: string }[];
   /** 0 when nothing happened, else 1–4: the day's score in quarters of the busiest day's. */
   level: number;
   future: boolean;
 }
 
-/** A lesson outweighs an issue moved to done. */
-const LESSON_WEIGHT = 5;
-
 /**
  * Home's activity grid: last week and this week, Sunday first. A day scores its issues moved to done (by
- * transition, not `updated`) plus LESSON_WEIGHT per lesson in `lessonDays` (one entry per lesson). Grills and
- * commits don't count; archived projects are left out.
+ * transition, not `updated`) plus each source's weighted count. Grills and commits don't count; archived projects
+ * are left out.
  */
-export function activityGrid(projects: Project[], issues: Issue[], lessonDays: string[], today: string): GridDay[] {
+export function activityGrid(projects: Project[], issues: Issue[], sources: GridSource[], today: string): GridDay[] {
   const from = addDays(today, -dayOfWeek(today) - 7);
   const days = Array.from({ length: 14 }, (_, i) => addDays(from, i));
   const archived = new Set(projects.filter((p) => p.status === 'archived').map((p) => p.key));
@@ -138,14 +144,21 @@ export function activityGrid(projects: Project[], issues: Issue[], lessonDays: s
     const doneDays = new Set((issue.transitions ?? []).filter((t) => t.from && t.to === 'done').map((t) => workDayOf(t.at)));
     for (const day of doneDays) done.set(day, (done.get(day) ?? 0) + 1);
   }
-  const lessons = new Map<string, number>();
-  for (const day of lessonDays) lessons.set(day, (lessons.get(day) ?? 0) + 1);
+  const counts = sources.map((s) => {
+    const byDay = new Map<string, number>();
+    for (const day of s.days) byDay.set(day, (byDay.get(day) ?? 0) + 1);
+    return byDay;
+  });
 
   const rows = days.map((day) => {
     const future = day > today;
     const d = future ? 0 : (done.get(day) ?? 0);
-    const l = future ? 0 : (lessons.get(day) ?? 0);
-    return { day, done: d, lessons: l, score: d + LESSON_WEIGHT * l, future };
+    const extra = sources.map((s, i) => {
+      const n = future ? 0 : (counts[i].get(day) ?? 0);
+      return { n, noun: n === 1 ? s.unit[0] : s.unit[1] };
+    });
+    const score = d + extra.reduce((sum, e, i) => sum + sources[i].weight * e.n, 0);
+    return { day, done: d, extra, score, future };
   });
   const max = Math.max(0, ...rows.map((r) => r.score));
   return rows.map(({ score, ...r }) => ({ ...r, level: score ? Math.ceil((score / max) * 4) : 0 }));

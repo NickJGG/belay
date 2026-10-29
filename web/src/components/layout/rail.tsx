@@ -4,27 +4,9 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import {
-  Activity,
-  Blend,
-  BookOpen,
-  CircleDot,
-  FileCode,
-  Layers,
-  LayoutDashboard,
-  ListChecks,
-  MapIcon,
-  MessagesSquare,
-  Moon,
-  NotebookPen,
-  PanelLeftClose,
-  PanelLeftOpen,
-  ScrollText,
-  Search,
-  Sun,
-  TriangleAlert,
-  type LucideIcon,
-} from "lucide-react";
+import { Activity, Blend, CircleDot, Moon, PanelLeftClose, PanelLeftOpen, ScrollText, Search, Sun, type LucideIcon } from "lucide-react";
+import { useLive } from "@/components/live/live-provider";
+import { activeClientSlots } from "@/lib/extensions.client";
 import { pageKind } from "@/lib/shell";
 import { sidebarSections } from "@/lib/sidebar";
 import { cn } from "@/lib/utils";
@@ -32,23 +14,20 @@ import { setGlow, useGlow } from "./ambient-glow";
 import { Mark } from "./logo";
 import { openPalette } from "./palette";
 import { useSlot } from "./shell-slot";
-import { NAV } from "./site-nav";
+import { useNav, type NavItem } from "./site-nav";
 import styles from "./rail.module.css";
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
   Issues: CircleDot,
-  Grills: MessagesSquare,
   Activity,
   Logs: ScrollText,
-  Overview: LayoutDashboard,
-  Syllabus: ListChecks,
-  Map: MapIcon,
-  Lessons: BookOpen,
-  Notes: NotebookPen,
-  Misconceptions: TriangleAlert,
-  Cards: Layers,
-  Work: FileCode,
 };
+
+/** The sidebar sections' icons: the core's and the active extensions'. */
+function useSectionIcons(): Record<string, LucideIcon> {
+  const { active } = useLive();
+  return React.useMemo(() => Object.assign({}, SECTION_ICONS, ...activeClientSlots(active).map((s) => s.sectionIcons)), [active]);
+}
 
 /**
  * The sidebar (>=768px; the phone keeps the dock), collapsed to icons or pinned `open` with labels: the mark and the
@@ -60,12 +39,13 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
   const slot = useSlot();
   const sections = sidebarSections({ kind: pageKind(pathname), project: slot.project, course: slot.course, section: slot.section }, pathname);
   const sectionLit = !!sections?.rows.some((r) => r.on);
-  const navRow = (item: (typeof NAV)[number]) => {
+  const icons = useSectionIcons();
+  const navRow = (item: NavItem) => {
     const Icon = item.icon;
-    const parent = item.href === "/p" ? !!slot.project : item.href === "/learn" && !!slot.course;
+    const parent = !!item.parent?.(slot);
     return <RailRow key={item.href} href={item.href} icon={<Icon size={16} aria-hidden />} label={item.label} title={item.label} on={item.on(pathname) && !(parent && sectionLit)} />;
   };
-  const [home, ...rest] = NAV;
+  const [home, ...rest] = useNav();
   return (
     <div className={cn(styles.railWrap, open && styles.open)}>
       <nav className={styles.rail} aria-label="Primary">
@@ -94,7 +74,7 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
               {sections.head}
             </span>
             {sections.rows.map((r) => {
-              const Icon = SECTION_ICONS[r.label];
+              const Icon = icons[r.label];
               return <RailRow key={r.label} href={r.href} icon={Icon ? <Icon size={16} aria-hidden /> : null} label={r.label} title={r.label} on={r.on} />;
             })}
           </>
