@@ -53,8 +53,6 @@ export function openPrompts(entries: ChatEntry[]): { choices: Set<string>; permi
   return { choices, permissions };
 }
 
-export const PLAN_READY = /^Plan ready\b/i;
-
 type Tone = "bad" | "warn";
 
 /**

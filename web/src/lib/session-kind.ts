@@ -2,12 +2,18 @@
  * A session kind: what an extension adds to the site's live sessions (`lib/extensions.ts` and `extensions.server.ts`
  * list the built-in ones). Its pure part, in its `manifest.ts`, is safe for the browser: its permission-card lines,
  * its focus parser and its reattach hint. Its server part, in `manifest.server.ts`, is light: its sessions' folder,
- * with `load()` bringing its session reader, list rows, Live Tabs and watchers the first time they're needed.
+ * with `load()` bringing its session reader, list rows, Live Tabs and watchers the first time they're needed. Its
+ * browser part, in `_components/manifest.client.tsx` (`lib/extensions.client.ts`), draws its Tabs and Drawer.
  */
 import type { FSWatcher } from "chokidar";
+import type { ReactNode } from "react";
 import type { ExtensionId } from "../../../src/extension-ids.ts";
+import type { LiveEvent } from "../components/live/event-hub.ts";
+import type { LinkState } from "../components/session/drawer.tsx";
+import type { ChatEntry } from "./chat.ts";
 import type { HubEvent } from "./hub.ts";
 import type { Issue } from "./issues.ts";
+import type { MarkdownContext } from "./markdown.ts";
 import type { SessionBase, SessionMemo } from "./sessions.ts";
 
 export type PureKind<F = unknown> = {
@@ -62,4 +68,31 @@ export type ServerKind = {
   /** Claims the live sessions no other kind reads as its own. */
   fallback?: boolean;
   load: () => Promise<KindRuntime>;
+};
+
+/** A composer a kind puts up in the Drawer: Send posts `message(text)` instead of a chat, and pictures can't go alone. */
+export type Composer = { message(text: string): Record<string, unknown>; placeholder: string; chip: ReactNode; cancel(): void };
+
+/** A kind's browser part, for its Tabs `L`. The shell draws an active kind's Drawer messages, refreshes and mounts. */
+export type ClientKind<L extends LiveBase = LiveBase> = {
+  id: ExtensionId;
+  /** Its Tabs' `kind`. */
+  kind: string;
+  title(s: L): string;
+  /** Its Tab's project or course, for the hover title. */
+  place(s: L): string;
+  mark(s: L): ReactNode;
+  /** A chat entry it draws its own way; undefined when the entry isn't its own. */
+  entry?(e: ChatEntry, ctx: { slug: string; md?: MarkdownContext }): ReactNode | undefined;
+  /** The Drawer's banner while its session can't be answered. */
+  banner(link: Exclude<LinkState, { state: "connected" }>, slug: string): ReactNode;
+  /** Wraps the Drawer to hand it the kind's composer, null while none is up. */
+  Composer?: (props: { children: (c: Composer | null) => ReactNode }) => ReactNode;
+  /** Its state around the shell, which its own hooks read. */
+  Provider?: (props: { children: ReactNode }) => ReactNode;
+  /** Whether a live event re-renders the page, beyond the events the core refreshes on. */
+  refresh?(e: LiveEvent): boolean;
+  /** Mounted in the shell: `Frame` before the nav, `Main` after the page. */
+  Frame?: () => ReactNode;
+  Main?: () => ReactNode;
 };

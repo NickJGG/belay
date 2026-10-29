@@ -3,13 +3,14 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { toastError } from "@/components/belay/toaster";
-import type { LinkState, PendingComment, Send } from "@/components/session/drawer";
+import type { LinkState, Send } from "@/components/session/drawer";
 import { applyResult, toStep, type ChatEntry, type OpenTurn } from "@/lib/chat";
 import type { DrawerSeed, LiveItem } from "@/lib/data";
-import { toShow, type LessonShow } from "@/lib/lesson";
+import { activeClientKinds, CLIENT_KINDS } from "@/lib/extensions.client";
+import type { ClientKind } from "@/lib/session-kind";
 import { DRAWER_DEFAULTS, DRAWER_KEY, fresh as freshTabs, markSeen, moveTab, orderTabs, pageTab, parseDrawer, parseSeen, parseTabOrder, SEEN_KEY, selectTab, TAB_KEY, TABS_KEY, type DrawerPrefs } from "@/lib/shell";
-import type { Queue } from "@/lib/start-queue";
 import type { Usage } from "@/lib/usage";
+import type { ExtensionId } from "../../../../src/extension-ids.ts";
 import { subscribeLive } from "./event-hub";
 
 type Live = {
@@ -35,13 +36,10 @@ type Live = {
   /** The narrow layout's full-screen Drawer, opened from the Strip. */
   sheet: boolean;
   setSheet: (open: boolean) => void;
-  /** A comment pinned on the selected grill's mock, waiting for its text in the Drawer. */
-  comment: PendingComment | null;
-  setComment: (c: PendingComment | null) => void;
-  /** The selected lesson's last `show`, for Follow along; null for a grill. */
-  focus: LessonShow | null;
-  /** The lesson start waiting for a fresh session (`/api/lesson/start`), on every page. */
-  start: Queue | null;
+  /** The selected Tab's seed from the server, for the state its kind keeps. */
+  seed: DrawerSeed | undefined;
+  /** The active session kinds, in built-in order. */
+  kinds: ClientKind[];
 };
 
 const LiveContext = React.createContext<Live | null>(null);
@@ -89,7 +87,17 @@ function usageTrail(line: string) {
 }
 
 /** The live Tabs, the one the Drawer shows, and its conversation kept current from the event stream. */
-export function LiveProvider({ live: incoming, seeds, children }: { live: LiveItem[]; seeds: Record<string, DrawerSeed>; children: React.ReactNode }) {
+export function LiveProvider({
+  live: incoming,
+  seeds,
+  active,
+  children,
+}: {
+  live: LiveItem[];
+  seeds: Record<string, DrawerSeed>;
+  active: ExtensionId[];
+  children: React.ReactNode;
+}) {
   const pathname = usePathname() ?? "/";
 
   const [last, setLast] = React.useState<string | null>(null);
@@ -165,19 +173,17 @@ export function LiveProvider({ live: incoming, seeds, children }: { live: LiveIt
     setSheet(false);
   }
 
-  // The selected grill's conversation: fetched when the selection changes, then re-read whenever chat.jsonl does.
+  // The selected session's conversation: fetched when the selection changes, then re-read whenever chat.jsonl does.
   const [chat, setChat] = React.useState<{ slug: string | null; entries: ChatEntry[] }>({ slug: null, entries: [] });
   const seed = slug ? seeds[slug] : undefined;
   const [turn, setTurn] = React.useState<{ slug: string | null; turn: OpenTurn | null }>({ slug, turn: seed?.turn ?? null });
   const [usage, setUsage] = React.useState<{ slug: string | null; usage: Usage | null }>({ slug, usage: seed?.usage ?? null });
-  const [focus, setFocus] = React.useState<{ slug: string | null; focus: LessonShow | null }>({ slug, focus: seed?.focus ?? null });
   // A new selection, or a refresh that brings the server's copy, starts from the seed.
   const [seedFor, setSeedFor] = React.useState({ slug, seed });
   if (seedFor.slug !== slug || seedFor.seed !== seed) {
     setSeedFor({ slug, seed });
     setTurn({ slug, turn: seed?.turn ?? null });
     setUsage({ slug, usage: seed?.usage ?? null });
-    setFocus({ slug, focus: seed?.focus ?? null });
   }
 
   React.useEffect(() => {
@@ -203,10 +209,6 @@ export function LiveProvider({ live: incoming, seeds, children }: { live: LiveIt
       if (e.type === "file" && e.slug === slug && e.name === "chat.jsonl") return void reload();
       if (e.type !== "bridge" || e.slug !== slug) return;
       const ev = e.event;
-      if (ev.type === "show") {
-        const f = toShow(ev);
-        return f ? setFocus({ slug, focus: f }) : undefined;
-      }
       if (ev.type === "steps") return setTurn({ slug, turn: { start: String(ev.start), steps: Array.isArray(ev.steps) ? ev.steps.map(toStep) : [] } });
       if (ev.type === "step") {
         const step = toStep(ev);
@@ -221,32 +223,6 @@ export function LiveProvider({ live: incoming, seeds, children }: { live: LiveIt
       unsubscribe();
     };
   }, [slug]);
-
-  const [start, setStart] = React.useState<Queue | null>(null);
-  React.useEffect(() => {
-    let alive = true;
-    const reload = () =>
-      fetch("/api/lesson/start", { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((q: Queue | null) => alive && setStart(q))
-        .catch(() => {});
-    void reload();
-    const unsubscribe = subscribeLive((e) => {
-      if (e.type === "start") setStart(e.queue);
-      else if (e.type === "reconnect") void reload();
-    });
-    return () => {
-      alive = false;
-      unsubscribe();
-    };
-  }, []);
-
-  const [comment, setComment] = React.useState<PendingComment | null>(null);
-  const [commentFor, setCommentFor] = React.useState(slug);
-  if (commentFor !== slug) {
-    setCommentFor(slug);
-    setComment(null);
-  }
 
   const send: Send = React.useCallback((msg) => (slug ? sendTo(slug, msg) : Promise.resolve("Nothing live is selected")), [slug]);
   const focusTerminal = React.useCallback(() => void send({ kind: "focus" }).then((err) => err && toastError(err)), [send]);
@@ -264,6 +240,9 @@ export function LiveProvider({ live: incoming, seeds, children }: { live: LiveIt
     }
   }, [slug, usage, shownUsage, link.state, seeds, seed]);
 
+  // Each server render sends a new array, so the ids keep `kinds` stable across refreshes.
+  const ids = active.join(",");
+  const kinds = React.useMemo(() => activeClientKinds(ids.split(",") as ExtensionId[]), [ids]);
   const value: Live = {
     live,
     selected,
@@ -280,10 +259,10 @@ export function LiveProvider({ live: incoming, seeds, children }: { live: LiveIt
     setDrawer,
     sheet,
     setSheet,
-    comment,
-    setComment,
-    focus: selected?.kind === "lesson" && focus.slug === slug ? focus.focus : null,
-    start,
+    seed,
+    kinds,
   };
-  return <LiveContext.Provider value={value}>{children}</LiveContext.Provider>;
+  // Every built-in kind's state stays mounted, so switching one doesn't remount the page under it.
+  const inner = CLIENT_KINDS.reduceRight<React.ReactNode>((c, k) => (k.Provider ? <k.Provider>{c}</k.Provider> : c), children);
+  return <LiveContext.Provider value={value}>{inner}</LiveContext.Provider>;
 }

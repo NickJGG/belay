@@ -3,16 +3,17 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FocusHighlight } from "@/components/content/focus-highlight";
 import { LiveProvider, useLive } from "@/components/live/live-provider";
-import { FollowAlong } from "@/components/live/follow";
 import { LiveRefresh } from "@/components/live/live-refresh";
 import { Drawer } from "@/components/session/drawer";
 import { TurnDot } from "@/components/turn-dot";
 import { Popover } from "@/components/ui/popover";
 import type { DrawerSeed, LiveItem } from "@/lib/data";
+import { clientKind } from "@/lib/extensions.client";
+import type { Composer } from "@/lib/session-kind";
 import { clampDrawer, COLLAPSED_DEFAULTS, pageKind, parseCollapsed, SIDEBAR_KEY, type Collapsed } from "@/lib/shell";
 import { cn } from "@/lib/utils";
+import type { ExtensionId } from "../../../../src/extension-ids.ts";
 import { AmbientGlow } from "./ambient-glow";
 import tabStyles from "./live-tabs.module.css";
 import { LiveTabs, TabMark, tabHover, tabTitle } from "./live-tabs";
@@ -25,10 +26,21 @@ import styles from "./shell.module.css";
 /**
  * Every page's chrome: the ambient glow, the sidebar (pinned open or collapsed to its rail, or a Workspace's own pane; the phone's dock), the live Tabs over the page, and the Drawer
  * docked beside it while a Tab is live, and the command palette. Re-renders the page on session and Live changes.
+ * `active` is the active extensions, whose session kinds draw into it.
  */
-export function AppShell({ live, seeds, children }: { live: LiveItem[]; seeds: Record<string, DrawerSeed>; children: React.ReactNode }) {
+export function AppShell({
+  live,
+  seeds,
+  active,
+  children,
+}: {
+  live: LiveItem[];
+  seeds: Record<string, DrawerSeed>;
+  active: ExtensionId[];
+  children: React.ReactNode;
+}) {
   return (
-    <LiveProvider live={live} seeds={seeds}>
+    <LiveProvider live={live} seeds={seeds} active={active}>
       <SlotProvider>
         <PaletteProvider>
           <Frame>{children}</Frame>
@@ -62,22 +74,21 @@ function Frame({ children }: { children: React.ReactNode }) {
   const kind = pageKind(pathname);
   const [collapsed, setCollapsed] = useCollapsed();
   const toggle = () => setCollapsed({ ...collapsed, [kind]: !collapsed[kind] });
-  const { selected } = useLive();
+  const { selected, kinds } = useLive();
   const { pane } = useSlot();
 
   return (
     <div className={cn(styles.shell, kind === "workspace" && styles.workspace, selected && styles.hasStrip)}>
       <AmbientGlow />
       <LiveRefresh />
-      {/* Only course pages anchor claims: a grill keeps its view (`#q-3`) in the hash. */}
-      {pathname.startsWith("/learn/") ? <FocusHighlight /> : null}
+      {kinds.map((k) => (k.Frame ? <k.Frame key={k.id} /> : null))}
       <SiteNav />
       {pane ?? <Rail open={!collapsed[kind]} onToggle={toggle} />}
       <div className={styles.col}>
         <LiveTabs />
         <main className={styles.main} data-kind={kind}>
           {children}
-          {selected?.kind === "lesson" ? <FollowAlong key={selected.slug} /> : null}
+          {kinds.map((k) => (k.Main ? <k.Main key={k.id} /> : null))}
         </main>
       </div>
       <ShellDrawer />
@@ -87,13 +98,16 @@ function Frame({ children }: { children: React.ReactNode }) {
 }
 
 function ShellDrawer() {
-  const { selected, chat, turn, usage, link, send, focusTerminal, drawer, setDrawer, sheet, setSheet, comment, setComment } = useLive();
+  const { selected, kinds, chat, turn, usage, link, send, focusTerminal, drawer, setDrawer, sheet, setSheet } = useLive();
   if (!selected) return null;
-  return (
+  const kind = clientKind(selected);
+  const drawerWith = (composer: Composer | null) => (
     <Drawer
       key={selected.slug}
       slug={selected.slug}
       course={selected.course}
+      kind={kind}
+      kinds={kinds}
       chat={chat}
       liveTurn={turn}
       usage={usage}
@@ -103,13 +117,13 @@ function ShellDrawer() {
       onOpen={(open) => setDrawer({ open })}
       width={drawer.width}
       onWidth={(w) => setDrawer({ width: clampDrawer(w) })}
-      comment={comment}
-      onComment={setComment}
+      composer={composer}
       onFocusTerminal={selected.wt ? focusTerminal : undefined}
       sheet={sheet}
       onSheet={setSheet}
     />
   );
+  return kind.Composer ? <kind.Composer>{drawerWith}</kind.Composer> : drawerWith(null);
 }
 
 /** The narrow layout's bar for the selected Tab, above the dock: tap it for the Drawer, or switch Tabs. */
