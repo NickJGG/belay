@@ -16,7 +16,6 @@
   flex-direction: column;
 }
 
-
 /* ---------- rail marks ---------- */
 
 .rq-done {
@@ -34,42 +33,7 @@
 
 /* ---------- outline ---------- */
 
-/* The shell draws it in the rail's place, full height. Collapsed it's just the key column: 6 + 40 + 6 = --rail-w. */
-.outline {
-  display: none;
-}
-
-@media (min-width: 768px) {
-  .outline {
-    position: sticky;
-    top: 0;
-    flex: none;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    width: 270px;
-    height: 100vh;
-    height: 100dvh;
-    padding: var(--space-3) 6px;
-    border-right: 1px solid var(--line);
-    font-size: var(--text-sm);
-    overflow: hidden;
-    transition: width 160ms var(--ease);
-  }
-
-  /* Content keeps its final width while the pane animates, so right-aligned bits are uncovered rather than riding the edge. */
-  .outline > * {
-    width: calc(270px - 12px);
-  }
-
-  .outlineShut {
-    width: var(--rail-w);
-  }
-
-  .outlineShut > * {
-    width: 40px;
-  }
-}
+/* Its container is the shared SidePane; `.outlineShut` marks it collapsed for the rows below. */
 
 /* Every row starts with its 40px key, flush left, so collapsing never moves one. */
 .olRow {

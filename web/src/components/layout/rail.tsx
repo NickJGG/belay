@@ -14,7 +14,8 @@ import { cn } from "@/lib/utils";
 import { Mark } from "./logo";
 import { openPalette } from "./palette";
 import { useSlot } from "./shell-slot";
-import { tip, useTip } from "./side-tip";
+import { SidePane } from "./side-pane";
+import { tip } from "./side-tip";
 import { useNav, type NavItem } from "./site-nav";
 import styles from "./rail.module.css";
 
@@ -31,7 +32,7 @@ function useSectionIcons(): Record<string, Icon> {
 }
 
 /**
- * The sidebar (>=768px; the phone keeps the dock), collapsed to icons (each labelled by a tip) or pinned `open` with labels: the mark and the
+ * The sidebar, in the shared SidePane: collapsed to icons (each labelled by a tip) or pinned `open` with labels: the mark and the
  * app nav on top, then a Reading page's project or course sections, and Theme, Settings and Collapse/Expand at the foot:
  * one line of icons when open, a stack of rows when collapsed.
  */
@@ -48,10 +49,9 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
     return <RailRow key={item.href} href={item.href} icon={<Icon size={16} aria-hidden />} label={item.label} title={item.label} shut={!open} on={item.on(pathname) && !(parent && sectionLit)} />;
   };
   const [home, ...rest] = useNav();
-  const [railRef, tipNode] = useTip<HTMLElement>();
   return (
-    <div className={cn(styles.railWrap, open && styles.open)}>
-      <nav ref={railRef} className={styles.rail} aria-label="Primary">
+    <SidePane open={open} label="Sidebar" className={cn(open && styles.open)} foot={<RailFoot open={open} onToggle={onToggle} label="sidebar" />}>
+      <nav className={styles.rail} aria-label="Primary">
         <Link href="/" className={cn(styles.railRow, styles.railLogo)} aria-label="Belay home">
           <span className={styles.railKey}>
             <Mark className={styles.railMark} />
@@ -83,10 +83,8 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
             })}
           </>
         ) : null}
-        <RailFoot open={open} onToggle={onToggle} label="sidebar" />
       </nav>
-      {tipNode}
-    </div>
+    </SidePane>
   );
 }
 

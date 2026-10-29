@@ -5,7 +5,8 @@ import Link from "next/link";
 import { History, LayoutTemplate } from "lucide-react";
 import { Mark } from "@/components/layout/logo";
 import { RailFoot } from "@/components/layout/rail";
-import { tip, useTip } from "@/components/layout/side-tip";
+import { SidePane } from "@/components/layout/side-pane";
+import { tip } from "@/components/layout/side-tip";
 import { useNav } from "@/components/layout/site-nav";
 import { families, statusChip, type Opt, type Question, type SessionDoc } from "../_lib/session-doc";
 import { cn } from "@/lib/utils";
@@ -33,10 +34,9 @@ type Props = {
  */
 export function Outline({ doc, here, opt, onOpt, pulse, open, onToggle }: Props) {
   const decided = doc.questions.filter((q) => q.status === "resolved").length;
-  const [paneRef, tipNode] = useTip();
   const nav = useNav();
   return (
-    <aside ref={paneRef} className={cn(styles.outline, !open && styles.outlineShut)} aria-label="Outline">
+    <SidePane open={open} label="Outline" className={cn(!open && styles.outlineShut)} foot={<RailFoot open={open} onToggle={onToggle} label="the outline ( | )" />}>
       <nav className={styles.olNav} aria-label="Primary">
         <Link href="/" className={cn(styles.olRow, styles.olKey)} aria-label="Belay home">
           <Mark className={styles.olMark} />
@@ -62,9 +62,7 @@ export function Outline({ doc, here, opt, onOpt, pulse, open, onToggle }: Props)
       <div className={styles.olScroll}>
         <Rows doc={doc} here={here} opt={opt} onOpt={onOpt} pulse={pulse} open={open} />
       </div>
-      <RailFoot open={open} onToggle={onToggle} label="the outline ( | )" />
-      {tipNode}
-    </aside>
+    </SidePane>
   );
 }
 

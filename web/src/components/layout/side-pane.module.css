@@ -1,0 +1,37 @@
+/* The left pane (side-pane.tsx). Collapsed it's just the key column: 6 + 40 + 6 = --rail-w. */
+.pane {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .pane {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: var(--side-w);
+    height: 100vh;
+    height: 100dvh;
+    padding: var(--space-3) 6px;
+    border-right: 1px solid var(--line);
+    font-size: var(--text-sm);
+    overflow: hidden;
+    transition: width 160ms var(--ease);
+  }
+
+  /* Content keeps its final width while the pane animates, so right-aligned bits are uncovered rather than riding the edge. */
+  .pane > * {
+    width: calc(var(--side-w) - 12px);
+  }
+
+  .shut {
+    width: var(--rail-w);
+  }
+
+  .shut > * {
+    width: 40px;
+  }
+}

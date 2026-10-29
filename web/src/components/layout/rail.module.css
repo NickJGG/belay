@@ -1,44 +1,16 @@
-/* The sidebar (≥768px): square 40×40 rows labelled by tips (side-tip.tsx), or pinned open at full width. */
-
-.railWrap {
-  position: relative;
-  flex: none;
-  z-index: 40;
-}
+/* The sidebar's contents (rail.tsx), in the shared SidePane: square 40×40 rows labelled by tips, or labelled rows when .open. */
 
 .rail {
-  display: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
 }
 
 @media (min-width: 768px) {
-  .railWrap {
-    position: sticky;
-    top: 0;
-    align-self: flex-start;
-    width: var(--rail-w);
-    height: 100vh;
-    height: 100dvh;
-  }
-
-  .rail {
-    position: absolute;
-    inset: 0 auto 0 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    width: var(--rail-w);
-    padding: var(--space-3) 6px;
-    border-right: 1px solid var(--line);
-    overflow: hidden;
-  }
-
   .open .railLabel {
     display: flex;
-  }
-
-  .railWrap.open,
-  .railWrap.open .rail {
-    width: var(--side-w);
   }
 
   .open .footLine .railLabel {

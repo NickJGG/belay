@@ -27,7 +27,7 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - `src/components/layout/shell.tsx` is every page's chrome, mounted by the root layout: the sidebar (`rail`, pinned
   open or collapsed to icons), the live Tabs, the Drawer and, on phones, the dock (`site-nav`) and Strip. Pages pass
   their project or owned place (a course) and section (a Reading page's section rows, `lib/sidebar.ts`) through `<ShellSlot>`, and a
-  Workspace may pass its own `pane`, drawn in the rail's place (a grill's Outline, its `_components/outline.tsx`). The Drawer's conversation is `live-provider.tsx`'s.
+  Workspace may pass its own `pane`, drawn in the rail's place (a grill's Outline, its `_components/outline.tsx`). Both sit in `side-pane.tsx`'s shared container, so they share its width, collapse and tips. The Drawer's conversation is `live-provider.tsx`'s.
 - `layout/palette.tsx` is belay's cmdk command palette, mounted by the shell. A page lists its own commands first with
   `<PageCommands>` (an issue's status keys and !, a grill's resume command, a course's starts, a lesson note's Resume
   conversation). Its New issue and Log what you did reach
