@@ -125,7 +125,7 @@ export function LiveProvider({
     const bySlug = new Map(incoming.map((l) => [l.slug, l]));
     return orderTabs([...bySlug.keys()], order).map((s) => bySlug.get(s)!);
   }, [incoming, order]);
-  const page = pageTab(pathname, live);
+  const page = pageTab(pathname, live, active);
 
   const slug = selectTab(
     live.map((l) => l.slug),

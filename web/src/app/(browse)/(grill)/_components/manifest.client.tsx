@@ -1,15 +1,20 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { MessagesSquare, X } from "lucide-react";
+import { openLinkedFile } from "@/app/actions";
+import belay from "@/components/belay/belay.module.css";
+import { None } from "@/components/belay/facts";
 import { Prose } from "@/components/content/prose";
 import { ProjectMark } from "@/components/project-mark";
 import { imagesOf, SentPics, Speaker, str } from "@/components/session/drawer";
 import styles from "@/components/session/session.module.css";
+import { grillHref } from "@/lib/hrefs";
 import type { ClientKind, Composer as ComposerT } from "@/lib/session-kind";
 import type { ClientSlots } from "@/lib/slots";
 import { cn } from "@/lib/utils";
-import type { GrillSearch } from "../_lib/manifest.server";
+import type { GrillIssue, GrillSearch } from "../_lib/manifest.server";
 import type { GrillLive } from "../_lib/runtime.server";
 import { GrillsFound } from "./palette";
 import { PendingCommentProvider, usePendingComment, type PendingComment } from "./pending-comment";
@@ -104,8 +109,31 @@ export const client: ClientKind<GrillLive> = {
   Provider: PendingCommentProvider,
 };
 
-export const slots: ClientSlots<GrillSearch> = {
+export const slots: ClientSlots<GrillSearch, GrillIssue> = {
   id: "grill",
   sectionIcons: { Grills: MessagesSquare },
   Found: GrillsFound,
+  issueFacts: (id, { grill, plan }, run, pending) => [
+    [
+      "Grill",
+      grill ? (
+        <Link href={grillHref(grill)} title={grill}>
+          {grill}
+        </Link>
+      ) : (
+        <None />
+      ),
+    ],
+    [
+      "Plan",
+      plan ? (
+        <button type="button" className={belay.linkish} title={plan} onClick={() => run(() => openLinkedFile(id, "plan"))} disabled={pending}>
+          {plan.split(/[\\/]/).pop()}
+        </button>
+      ) : (
+        <None />
+      ),
+    ],
+  ],
+  issueActions: (id, { plan }) => (plan ? [{ id: "plan", label: "Open plan", run: () => openLinkedFile(id, "plan") }] : []),
 };

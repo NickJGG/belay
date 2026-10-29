@@ -10,8 +10,9 @@ import { StatusIcon } from "@/components/belay/status-icon";
 import { useLive } from "@/components/live/live-provider";
 import { ProjectMark } from "@/components/project-mark";
 import type { SearchIndex } from "@/lib/data";
+import { pseudoOwner } from "@/lib/extensions";
 import { activeClientSlots } from "@/lib/extensions.client";
-import { issueHref, projectHref, UNFILED } from "@/lib/hrefs";
+import { issueHref, projectHref } from "@/lib/hrefs";
 import { setGlow, useGlow } from "./ambient-glow";
 import { tabTitle } from "./live-tabs";
 import { useSlot } from "./shell-slot";
@@ -148,7 +149,7 @@ function Palette({ commands }: { commands: PageCommandGroup | null }) {
       const href = projectHref(key, a.section);
       if (pathname !== href) router.push(href);
     });
-  const here = slot.project && slot.project.key !== UNFILED ? slot.project : null;
+  const here = slot.project && !pseudoOwner(slot.project.key) ? slot.project : null;
   const slots = activeClientSlots(active);
   const searching = query.trim() !== "";
 

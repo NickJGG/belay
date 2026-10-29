@@ -5,7 +5,7 @@ import { courseColor, hues, root as learningRoot } from "../../../../lib/courses
 import { lessonHref, lessonTopic } from "../../../../lib/lesson.ts";
 import type { HubEvent } from "../../../../lib/hub.ts";
 import type { KindRuntime, LiveBase } from "../../../../lib/session-kind.ts";
-import { courseIgnored, courseLocate } from "../../../../lib/watch-paths.ts";
+import { courseIgnored, courseLocate } from "./watch-paths.ts";
 import { readLesson, type LessonSession } from "./sessions.ts";
 import type { SessionMemo } from "../../../../lib/sessions.ts";
 

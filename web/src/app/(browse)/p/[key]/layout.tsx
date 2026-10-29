@@ -4,16 +4,18 @@ import { ProjectHead } from "@/components/belay/project-head";
 import { ShellSlot } from "@/components/layout/shell-slot";
 import { projectColor } from "@/components/project-mark";
 import { projectHead } from "@/lib/data";
-import { UNFILED } from "@/lib/hrefs";
+import { shellRules } from "@/lib/extensions";
+import { activeIds } from "@/lib/extensions.server";
 
-/** Every project section's header and chips; Unfiled, which only gathers grills, gets no actions. */
+/** Every project section's header and chips; an active extension's pseudo-project (Unfiled) gets no actions. */
 export default async function ProjectLayout({ children, params }: { children: React.ReactNode; params: Promise<{ key: string }> }) {
   const key = decodeURIComponent((await params).key);
-  if (key === UNFILED) {
+  const pseudo = shellRules(activeIds()).find((r) => r.pseudo?.key === key)?.pseudo;
+  if (pseudo) {
     return (
       <div className={styles.page}>
-        <ShellSlot project={{ key: UNFILED, name: "Unfiled" }} />
-        <ProjectHead project={{ key: UNFILED, name: "Unfiled", status: "active", focus: false }} mark={null} />
+        <ShellSlot project={pseudo} />
+        <ProjectHead project={{ ...pseudo, status: "active", focus: false }} mark={null} />
         {children}
       </div>
     );

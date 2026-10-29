@@ -88,7 +88,7 @@ const under = (base: string) => (p: string) => p === base || p.startsWith(`${bas
 
 export const slots: ClientSlots<LearnSearch> = {
   id: "learn",
-  nav: [{ href: "/learn", label: "Learn", icon: LibraryBig, on: under("/learn"), parent: (slot) => !!slot.course }],
+  nav: [{ href: "/learn", label: "Learn", icon: LibraryBig, on: under("/learn"), parent: (slot) => slot.owner?.id === "learn" }],
   sectionIcons: {
     Overview: LayoutDashboard,
     Syllabus: ListChecks,

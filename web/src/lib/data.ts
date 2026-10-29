@@ -4,9 +4,9 @@ import path from "node:path";
 import { connection } from "next/server";
 import { cache } from "react";
 import { dataDir } from "../../../src/config.ts";
+import type { ExtensionId } from "../../../src/extension-ids.ts";
 import { activity, activityGrid, doingSince, inFlight, type ActivityDay, type GridDay } from "../../../src/home.ts";
 import { loadLog, type DatedEntry, type LogEntry } from "../../../src/logs.ts";
-import { linkedPath } from "../../../src/open.ts";
 import { Ctx as BelayCtx, bodyHash, logDays } from "../../../src/ops.ts";
 import { linkCandidates } from "../../../src/picker.ts";
 import { projectBoard, type Board } from "../../../src/query.ts";
@@ -17,9 +17,12 @@ import type { ChatEntry, OpenTurn } from "./chat";
 import type { Focus } from "./extensions";
 import {
   claim,
+  flightGroups,
   gridSources,
+  issueParts,
   liveItems,
   loadKinds,
+  projectEntries,
   runtimeOf,
   searchParts,
   sessionRoots,
@@ -29,17 +32,16 @@ import {
   type SessionItem,
 } from "./extensions.server";
 import { parseFrontmatter } from "./frontmatter";
-import { flightGrills } from "./belay-view";
-import { issuesByGrill, STAGES, type Issue, type Stage } from "./issues";
-import { UNFILED } from "./hrefs";
+import { issuesByGrill, type Issue } from "./issues";
 import { MOCK_FILES, type MockFile } from "./mock";
 import type { SessionDoc } from "./session-doc";
 import { readChat } from "./session-files";
-import { accountUsage, focusFor, liveSessions, openTurn, usageFor, type LiveSession } from "./hub";
+import { accountUsage, focusFor, liveSessions, openTurn, usageFor } from "./hub";
 import { fileSessions, projectsOf, type Project } from "./projects";
 import type { ItemContext, Mark } from "./session-kind";
+import type { FlightGroup, ProjectEntry } from "./slots";
 import type { Usage } from "./usage";
-import { byUpdated, isSlug, type SessionMemo } from "./sessions";
+import { isSlug, type SessionMemo } from "./sessions";
 
 // On globalThis so dev-mode module reloads keep the parsed sessions.
 const g = globalThis as typeof globalThis & { __belayMemo?: SessionMemo };
@@ -48,31 +50,15 @@ const memo = () => (g.__belayMemo ??= new Map());
 /** Belay's data, loaded once per request. Lenient: pages render what loaded rather than failing on a bad file. */
 export const belay = cache(() => new BelayCtx(dataDir(), { lenient: true }));
 
-export { UNFILED };
-
 export type { LiveItem, Mark, SessionItem };
-
-/** A row of the work lists (Home, a project's stages); `working` is set on the live ones. */
-export type WorkItem = SessionItem & Partial<Pick<LiveSession, "working">>;
-
-export type ProjectNode = {
-  /** A belay key, or `UNFILED`. */
-  key: string;
-  name: string;
-  group?: string;
-  focus?: boolean;
-  status?: string;
-  /** Null for Unfiled. */
-  mark: Mark | null;
-  sessions: SessionItem[];
-};
 
 /** What the Drawer starts from for a live session: a turn in progress, the status line's meters, its focus (a lesson's last show). */
 export type DrawerSeed = { turn: OpenTurn | null; usage: Usage | null; focus: Focus | null };
 
 export type Nav = { live: LiveItem[]; seeds: Record<string, DrawerSeed> };
 
-function mark(p: Project): Mark {
+/** A project's mark, with its icon's mtime as a cache-buster. */
+export function markOf(p: Project): Mark {
   let iconV: number | undefined;
   try {
     if (p.icon) iconV = Math.round(statSync(p.icon).mtimeMs);
@@ -84,7 +70,7 @@ function mark(p: Project): Mark {
 function marks(sessions: ListedSession[], projects: Project[], byGrill: Map<string, Issue[]>): Map<string, Mark> {
   const out = new Map<string, Mark>();
   for (const { project, tagged, byIssues, matched } of fileSessions(sessions, projects, byGrill).projects) {
-    const m = mark(project);
+    const m = markOf(project);
     for (const s of [...tagged, ...byIssues, ...matched]) if (!out.has(s.slug)) out.set(s.slug, m);
   }
   return out;
@@ -97,7 +83,7 @@ const byGrill = () => issuesByGrill(belay().issues);
  * progress. `/clear` leaves the bridge running but disconnected, and a plan accepted with a clear leaves it attached to
  * a `planned` session.
  */
-async function load() {
+export async function sessionLists() {
   await connection();
   const kinds = await loadKinds();
   const rows = new Map<string, (s: ListedSession, ctx: ItemContext) => SessionItem>();
@@ -118,64 +104,25 @@ async function load() {
   return { live, sessions, projects, ctx, claims, item };
 }
 
-function tree(sessions: ListedSession[], projects: Project[], ctx: ItemContext, item: (s: ListedSession) => SessionItem) {
-  const filed = fileSessions(sessions, projects, ctx.byGrill);
-  return {
-    projects: filed.projects
-      // archived projects only show while they still have sessions
-      .filter((p) => p.project.status !== "archived" || p.tagged.length + p.byIssues.length + p.matched.length > 0)
-      .map(({ project, tagged, byIssues, matched }) => ({
-        key: project.key,
-        name: project.name,
-        group: project.group,
-        focus: project.focus,
-        status: project.status,
-        mark: mark(project),
-        sessions: [...tagged, ...byIssues, ...matched].sort(byUpdated).map(item),
-      })),
-    unfiled: { key: UNFILED, name: "Unfiled", mark: null, sessions: filed.unfiled.map(item) },
-  };
-}
-
 /** What every page's chrome needs: the live tabs, and what the Drawer starts from for each. */
 export async function navData(): Promise<Nav> {
-  const { live, ctx, claims } = await load();
+  const { live, ctx, claims } = await sessionLists();
   const items = await liveItems(live, claims, ctx);
   const seed = (slug: string): DrawerSeed => ({ turn: openTurn(slug), usage: usageFor(slug), focus: focusFor(slug) });
   return { live: items, seeds: Object.fromEntries(items.map((l) => [l.slug, seed(l.slug)])) };
 }
 
 export type FlightIssue = Pick<BelayIssue, "id" | "title" | "status" | "priority"> & { mark: Mark | null };
-export type FlightGrill = Pick<WorkItem, "slug" | "topic" | "updated" | "live" | "working" | "mark">;
 
-/**
- * Home's In flight: belay's rule, doing issues then grills no issue links to yet, with live grills first.
- * Legacy grills never count: most were left `in-progress`, and none can be resumed with `/grill resume`.
- */
-export async function homeFlight(): Promise<{ issues: FlightIssue[]; grills: FlightGrill[] }> {
-  const { live, sessions, projects, ctx } = await load();
+/** Home's In flight: belay's rule for doing issues, then the active extensions' groups. */
+export async function homeFlight(): Promise<{ issues: FlightIssue[]; groups: FlightGroup[] }> {
+  const { live, sessions, projects, ctx } = await sessionLists();
   const c = belay();
   const today = workDay();
   // Back to the oldest doing issue's start, so each one's latest linked log entry is in range.
   const logsFrom = c.issues.filter((t) => t.status === "doing").reduce((min, t) => (doingSince(t) < min ? doingSince(t) : min), today);
-  const flight = inFlight(c.projects, c.issues, c.logs(logsFrom, today), sessions.filter((s) => !s.legacy), today);
-  const marks = new Map(projects.map((p) => [p.key, mark(p)]));
-  const bySlug = new Map(sessions.map((s) => [s.slug, s]));
-  const working = new Map(live.map((l) => [l.slug, l.working]));
-  const grills = flightGrills(
-    flight.grill,
-    live.flatMap((l) => bySlug.get(l.slug) ?? []),
-  ).map((g): FlightGrill => {
-    const s = bySlug.get(g.slug)!;
-    return {
-      slug: s.slug,
-      topic: s.topic,
-      updated: s.updated,
-      live: working.has(s.slug),
-      working: working.get(s.slug),
-      mark: ctx.marks.get(s.slug) ?? null,
-    };
-  });
+  const flight = inFlight(c.projects, c.issues, c.logs(logsFrom, today), today);
+  const marks = new Map(projects.map((p) => [p.key, markOf(p)]));
   const issues = flight.issues.map(({ issue }): FlightIssue => ({
     id: issue.id,
     title: issue.title,
@@ -183,7 +130,7 @@ export async function homeFlight(): Promise<{ issues: FlightIssue[]; grills: Fli
     priority: issue.priority,
     mark: marks.get(issue.project) ?? null,
   }));
-  return { issues, grills };
+  return { issues, groups: await flightGroups({ sessions, projects, ctx, live }) };
 }
 
 export type HomePulse = { today: string; grid: GridDay[]; usage: Usage | null };
@@ -196,37 +143,15 @@ export async function homePulse(): Promise<HomePulse> {
   return { today, grid: activityGrid(c.projects, c.issues, await gridSources(), today), usage: accountUsage() };
 }
 
-const byStage = (sessions: WorkItem[]) =>
-  Object.fromEntries(STAGES.map((st) => [st, sessions.filter((s) => s.stage === st)])) as Record<Stage, WorkItem[]>;
-
-/**
- * One project's (or Unfiled's) sessions, all and split by stage, with which ones are tagged; null for a key
- * belay doesn't know.
- */
-export async function projectData(
-  key: string,
-): Promise<(ProjectNode & { tagged: Set<string>; stages: Record<Stage, WorkItem[]> }) | null> {
-  const { live, sessions, projects, ctx, item } = await load();
-  const t = tree(sessions, projects, ctx, item);
-  const working = new Map(live.map((l) => [l.slug, l.working]));
-  const stages = (node: ProjectNode) =>
-    byStage(node.sessions.map((s) => (working.has(s.slug) ? { ...s, working: working.get(s.slug) } : s)));
-  if (key === UNFILED) return { ...t.unfiled, tagged: new Set(), stages: stages(t.unfiled) };
-  const node = t.projects.find((p) => p.key === key.toUpperCase());
-  if (!node) return null;
-  const tagged = new Set(sessions.filter((s) => s.project === node.key).map((s) => s.slug));
-  return { ...node, tagged, stages: stages(node) };
-}
-
 export type ProjectCard = Pick<Project, "key" | "name" | "group" | "status" | "focus"> & {
   mark: Mark;
   /** Its todo and doing issues. */
   open: number;
 };
 
-/** The Projects page: every project in belay's order, and how many grills nothing files. */
-export async function projectsIndex(): Promise<{ projects: ProjectCard[]; unfiled: number }> {
-  const { sessions, projects, ctx } = await load();
+/** The Projects page: every project in belay's order, and the active extensions' cards. */
+export async function projectsIndex(): Promise<{ projects: ProjectCard[]; entries: ProjectEntry[] }> {
+  const { live, sessions, projects, ctx } = await sessionLists();
   const open = new Map<string, number>();
   for (const i of belay().issues) if (i.status === "todo" || i.status === "doing") open.set(i.project, (open.get(i.project) ?? 0) + 1);
   return {
@@ -236,10 +161,10 @@ export async function projectsIndex(): Promise<{ projects: ProjectCard[]; unfile
       group: p.group,
       status: p.status,
       focus: p.focus,
-      mark: mark(p),
+      mark: markOf(p),
       open: open.get(p.key) ?? 0,
     })),
-    unfiled: fileSessions(sessions, projects, ctx.byGrill).unfiled.length,
+    entries: await projectEntries({ sessions, projects, ctx, live }),
   };
 }
 
@@ -250,10 +175,10 @@ export type SearchIndex = SearchParts & {
 
 /** The command palette's names: every non-archived project and issue, and what the active extensions add. */
 export async function searchIndex(): Promise<SearchIndex> {
-  const { sessions, projects, ctx } = await load();
+  const { sessions, projects, ctx } = await sessionLists();
   return {
     ...(await searchParts({ sessions, ctx })),
-    projects: projects.filter((p) => p.status !== "archived").map((p) => ({ ...mark(p), status: p.status })),
+    projects: projects.filter((p) => p.status !== "archived").map((p) => ({ ...markOf(p), status: p.status })),
     issues: belay().issues.map(({ id, title, status, project }) => ({ id, title, status, project })),
   };
 }
@@ -340,7 +265,7 @@ export async function projectHead(key: string): Promise<ProjectHead | null> {
   const project = c.projects.find((p) => p.key === key.toUpperCase());
   if (!project) return null;
   const listed = projectsOf(c).find((p) => p.key === project.key)!;
-  return { project, mark: mark(listed), ...sectionNeighbours(sidebarSections(c.projects), project.key) };
+  return { project, mark: markOf(listed), ...sectionNeighbours(sidebarSections(c.projects), project.key) };
 }
 
 /** A project's Issues section: its board, with every done issue when `older`, and open issues for a new one's blockers. */
@@ -365,7 +290,7 @@ export async function homeActivity(days: number): Promise<{ today: string; feed:
   const c = belay();
   const today = workDay();
   const from = addDays(today, -(days - 1));
-  const marks = Object.fromEntries(projectsOf(c).map((p) => [p.key, mark(p)]));
+  const marks = Object.fromEntries(projectsOf(c).map((p) => [p.key, markOf(p)]));
   return { today, feed: activity(c.projects, c.issues, [], from, today, { doneOnly: true }), marks };
 }
 
@@ -389,7 +314,8 @@ export type IssueDetail = {
   blocks: Ref[];
   candidates: Ref[];
   hash: string;
-  plan?: string;
+  /** What the active extensions' issue facts and actions draw from. */
+  ext: Partial<Record<ExtensionId, unknown>>;
 };
 
 /** Everything the issue page shows; null for an id belay doesn't know. */
@@ -405,7 +331,7 @@ export async function issueDetail(id: string): Promise<IssueDetail | null> {
     blocks: c.issues.filter((t) => t.blocked_by.includes(issue.id)).map((t) => ref(c, t.id)),
     candidates: openRefs(c, issue.id),
     hash: bodyHash(issue.body),
-    plan: linkedPath(issue, "plan", { data: c.dir }),
+    ext: await issueParts(issue, c.dir),
   };
 }
 

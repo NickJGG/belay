@@ -1,19 +1,19 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import { EXTENSION_IDS } from "../../../../src/extension-ids.ts";
 import { terrain } from "../course-art.ts";
-import { COLLAPSED_DEFAULTS, DRAWER_DEFAULTS, fresh, markSeen, missing, moveTab, orderTabs, pageKind, parseCollapsed, parseDrawer, parseGlow, parseOutline, parseSeen, parseTabOrder, selectTab, sessionSlug } from "../shell.ts";
+import { MANIFESTS } from "../extensions.ts";
+import { COLLAPSED_DEFAULTS, DRAWER_DEFAULTS, fresh, markSeen, missing, moveTab, orderTabs, pageKind, pageTab, parseCollapsed, parseDrawer, parseGlow, parseOutline, parseSeen, parseTabOrder, selectTab } from "../shell.ts";
+import type { ShellRules } from "../slots.ts";
+
+// Each extension's own cases are in its `_lib/test/shell.test.ts`.
+const ALL = EXTENSION_IDS;
 
 describe("page kinds", () => {
-  test("a grill page is a workspace; everything else reads", () => {
-    assert.equal(pageKind("/s/one-grills-root"), "workspace");
-    assert.equal(pageKind("/s/x/"), "workspace");
-    for (const p of ["/", "/p", "/p/KILN", "/learn", "/nope"]) assert.equal(pageKind(p), "reading");
-  });
-
-  test("sessionSlug reads /s/<slug> only", () => {
-    assert.equal(sessionSlug("/s/a-b"), "a-b");
-    assert.equal(sessionSlug("/p/a-b"), null);
-    assert.equal(sessionSlug("/s/"), null);
+  test("only an active extension makes a page a workspace or a Tab's", () => {
+    for (const p of ["/", "/p", "/p/KILN", "/learn", "/nope"]) assert.equal(pageKind(p, ALL), "reading");
+    for (const p of ["/s/x", "/learn/c/work"]) assert.equal(pageKind(p, []), "reading");
+    assert.equal(pageTab("/s/x", [{ slug: "x" }], []), null);
   });
 
   test("the sidebar remembers each kind, falling back per field", () => {
@@ -125,32 +125,30 @@ describe("seen Tabs", () => {
 });
 
 test("Not found names what's missing and the nearest real page", () => {
-  assert.deepEqual(missing("/s/nope"), { what: "No grill nope.", back: { href: "/", label: "Back home" } });
-  assert.deepEqual(missing("/p/zzz"), { what: "No project ZZZ.", back: { href: "/p", label: "Back to Projects" } });
-  assert.deepEqual(missing("/p/kiln/plans"), { what: "No page at /p/kiln/plans.", back: { href: "/", label: "Back home" } });
-  assert.deepEqual(missing("/p/zzz/logs"), { what: "No project ZZZ.", back: { href: "/p", label: "Back to Projects" } });
-  assert.deepEqual(missing("/i/kiln-99"), { what: "No issue KILN-99.", back: { href: "/p/KILN", label: "Back to KILN's issues" } });
-  assert.deepEqual(missing("/i/nonsense"), { what: "No issue NONSENSE.", back: { href: "/p", label: "Back to Projects" } });
-  assert.deepEqual(missing("/l/2026-10-25/9"), { what: "No log entry there.", back: { href: "/p", label: "Back to Projects" } });
+  for (const active of [ALL, []]) {
+    assert.deepEqual(missing("/p/zzz", active), { what: "No project ZZZ.", back: { href: "/p", label: "Back to Projects" } });
+    assert.deepEqual(missing("/p/kiln/plans", active), { what: "No page at /p/kiln/plans.", back: { href: "/", label: "Back home" } });
+    assert.deepEqual(missing("/p/zzz/logs", active), { what: "No project ZZZ.", back: { href: "/p", label: "Back to Projects" } });
+    assert.deepEqual(missing("/i/kiln-99", active), { what: "No issue KILN-99.", back: { href: "/p/KILN", label: "Back to KILN's issues" } });
+    assert.deepEqual(missing("/i/nonsense", active), { what: "No issue NONSENSE.", back: { href: "/p", label: "Back to Projects" } });
+    assert.deepEqual(missing("/l/2026-10-25/9", active), { what: "No log entry there.", back: { href: "/p", label: "Back to Projects" } });
+  }
 });
 
-test("Not found on a course page names the course, the note or the file", () => {
-  const courses = { href: "/learn", label: "Back to Learn" };
-  assert.deepEqual(missing("/learn/nope"), { what: "No course nope.", back: courses });
-  assert.deepEqual(missing("/learn/nope/cards"), { what: "No course nope.", back: courses });
-  assert.deepEqual(missing("/learn/llm/knowledge/x"), { what: "No note x.", back: { href: "/learn/llm/notes", label: "Back to Notes" } });
-  assert.deepEqual(missing("/learn/llm/sources/y"), { what: "No source y.", back: { href: "/learn/llm/notes", label: "Back to Notes" } });
-  assert.deepEqual(missing("/learn/llm/lessons/2026-10-24-x"), {
-    what: "No lesson 2026-10-24-x.",
-    back: { href: "/learn/llm/lessons", label: "Back to Lessons" },
-  });
-  assert.deepEqual(missing("/learn/llm/work/a/b.py"), { what: "No file work/a/b.py.", back: { href: "/learn/llm/work", label: "Back to Work" } });
-  assert.deepEqual(missing("/learn/llm/nope"), { what: "No page at /learn/llm/nope.", back: { href: "/learn/llm", label: "Back to the course" } });
-});
-
-test("a course's Work tab is a workspace; its other tabs read", () => {
-  for (const p of ["/learn/llm/work", "/learn/llm/work/", "/learn/llm/work/a.py"]) assert.equal(pageKind(p), "workspace");
-  for (const p of ["/learn/llm", "/learn/llm/notes", "/learn/llm/workshop"]) assert.equal(pageKind(p), "reading");
+test("an inactive extension's project sections and pseudo-project get the generic line", () => {
+  for (const m of MANIFESTS) {
+    const rules = m.shell as ShellRules;
+    const others = ALL.filter((id) => id !== m.id);
+    for (const { suffix } of rules.sections ?? []) {
+      assert.equal(missing(`/p/zzz${suffix}`, ALL).what, "No project ZZZ.");
+      assert.equal(missing(`/p/zzz${suffix}`, others).what, `No page at /p/zzz${suffix}.`);
+    }
+    if (rules.pseudo) {
+      for (const p of [`/p/${rules.pseudo.key}`, `/p/${rules.pseudo.key}/activity`]) {
+        assert.deepEqual(missing(p, others), { what: `No page at ${p}.`, back: { href: "/", label: "Back home" } });
+      }
+    }
+  }
 });
 
 test("drawer prefs default and clamp the width", () => {

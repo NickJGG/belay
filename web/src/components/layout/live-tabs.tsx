@@ -37,8 +37,8 @@ const SLOP = 5;
  * Drag a Tab along the row to reorder: it rides under the cursor and the others slide aside to open its gap.
  */
 export function LiveTabs() {
-  const { live, selected, select, move, fresh } = useLive();
-  const here = pageTab(usePathname() ?? "/", live);
+  const { live, selected, select, move, fresh, active } = useLive();
+  const here = pageTab(usePathname() ?? "/", live, active);
   const drag = React.useRef<Drag | null>(null);
   const dropped = React.useRef(false);
   if (!live.length) return null;

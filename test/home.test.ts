@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { GrillSession } from '../src/grill.ts';
 import { activity, activityGrid, doingSince, IDLE_DAYS, inFlight, lastTouch } from '../src/home.ts';
 import type { DatedEntry } from '../src/logs.ts';
 import type { Issue, IssueStatus, Project } from '../src/store.ts';
@@ -48,7 +47,7 @@ test('doingSince: last move to doing, else updated', () => {
 
 test('inFlight: idle from IDLE_DAYS work days, counting the 4am edge', () => {
   const at = (day: string, time: string) => issue('BEL-1', { transitions: started(`${day}T${time}`) });
-  const row = (t: Issue) => inFlight([project('BEL')], [t], [], [], TODAY).issues[0];
+  const row = (t: Issue) => inFlight([project('BEL')], [t], [], TODAY).issues[0];
   assert.equal(IDLE_DAYS, 3);
   assert.equal(row(at('2026-10-04', '10:00')).idleDays, undefined);
   assert.equal(row(at('2026-10-03', '10:00')).idleDays, 3);
@@ -59,10 +58,10 @@ test('inFlight: idle from IDLE_DAYS work days, counting the 4am edge', () => {
 
 test('inFlight: commits and updated do not keep an issue busy, comments and log entries do', () => {
   const t = issue('BEL-1', { updated: TODAY, transitions: started('2026-09-28T10:00') });
-  assert.equal(inFlight([project('BEL')], [t], [], [], TODAY).issues[0].idleDays, 8);
+  assert.equal(inFlight([project('BEL')], [t], [], TODAY).issues[0].idleDays, 8);
   const commented = { ...t, comments: [{ at: '2026-10-05T10:00', by: 'claude' as const, text: 'x' }] };
-  assert.equal(inFlight([project('BEL')], [commented], [], [], TODAY).issues[0].idleDays, undefined);
-  assert.equal(inFlight([project('BEL')], [t], [entry('2026-10-05', { issue: 'BEL-1' })], [], TODAY).issues[0].idleDays, undefined);
+  assert.equal(inFlight([project('BEL')], [commented], [], TODAY).issues[0].idleDays, undefined);
+  assert.equal(inFlight([project('BEL')], [t], [entry('2026-10-05', { issue: 'BEL-1' })], TODAY).issues[0].idleDays, undefined);
 });
 
 test('inFlight: active projects only, idle first then most recent activity', () => {
@@ -73,15 +72,8 @@ test('inFlight: active projects only, idle first then most recent activity', () 
     issue('BEL-3', { transitions: started('2026-09-20T10:00') }),
     issue('OLD-1'),
   ];
-  const { issues: rows } = inFlight(projects, issues, [], [], TODAY);
+  const { issues: rows } = inFlight(projects, issues, [], TODAY);
   assert.deepEqual(rows.map((r) => r.issue.id), ['BEL-3', 'BEL-2', 'BEL-1']);
-});
-
-test('inFlight: grill sessions in progress, tagged and not yet linked', () => {
-  const g = (slug: string, over: Partial<GrillSession> = {}): GrillSession => ({ slug, topic: '', status: 'in-progress', project: 'bel', ...over });
-  const sessions = [g('open'), g('linked'), g('untagged', { project: undefined }), g('planned', { status: 'planned' })];
-  const { grill } = inFlight([project('BEL')], [issue('BEL-1', { status: 'todo', grill: 'linked' })], [], sessions, TODAY);
-  assert.deepEqual(grill.map((s) => [s.slug, s.project]), [['open', 'BEL']]);
 });
 
 test('activity: each issue once, at its latest move to doing/done/dropped in the window, plus log entries, newest first', () => {

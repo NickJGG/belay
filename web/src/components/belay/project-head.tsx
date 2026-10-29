@@ -6,6 +6,7 @@ import { MoreHorizontal, Star } from "lucide-react";
 import type { Project } from "../../../../src/store.ts";
 import { moveProjectBy, setProjectColor, setProjectFocus, setProjectGroup, setProjectKinds, setProjectName, setProjectStatus } from "@/app/actions";
 import { PageHeader } from "@/components/layout/page-header";
+import { useLive } from "@/components/live/live-provider";
 import { ProjectMark } from "@/components/project-mark";
 import type { Mark } from "@/lib/data";
 import { projectHref } from "@/lib/hrefs";
@@ -18,10 +19,11 @@ const PROJECT_STATUSES: Project["status"][] = ["active", "paused", "archived"];
 
 /** The project's sections as chips under its header, on phones only: the sidebar lists them from 768px. */
 function SectionChips({ projectKey }: { projectKey: string }) {
+  const { active } = useLive();
   const pathname = usePathname();
   return (
     <nav className={styles.secChips} aria-label="Project sections">
-      {sectionsOf(projectKey).map((s) => {
+      {sectionsOf(projectKey, active).map((s) => {
         const href = projectHref(projectKey, s.suffix);
         // /p/bel reaches BEL too.
         const on = pathname?.toLowerCase() === href.toLowerCase();

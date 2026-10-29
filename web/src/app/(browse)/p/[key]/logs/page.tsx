@@ -8,7 +8,9 @@ import { MoreLink } from "@/components/belay/more-link";
 import styles from "@/components/belay/belay.module.css";
 import { belay, projectLogs } from "@/lib/data";
 import { dayLabel, kindTotals } from "@/lib/belay-view";
-import { issueHref, logHref, projectHref, UNFILED } from "@/lib/hrefs";
+import { activeIds } from "@/lib/extensions.server";
+import { issueHref, logHref, projectHref } from "@/lib/hrefs";
+import { pseudoProject } from "@/lib/sidebar";
 import { cn } from "@/lib/utils";
 
 type Props = { params: Promise<{ key: string }>; searchParams: Promise<{ all?: string }> };
@@ -47,8 +49,9 @@ function Entry({ e }: { e: DatedEntry }) {
 
 /** A project's Logs: the "Log what you did" composer, then its entries newest first, by work day. */
 export default async function ProjectLogs({ params, searchParams }: Props) {
-  const key = decodeURIComponent((await params).key).toUpperCase();
-  if (key === UNFILED.toUpperCase()) notFound();
+  const raw = decodeURIComponent((await params).key);
+  if (pseudoProject(raw, activeIds())) notFound();
+  const key = raw.toUpperCase();
   const all = (await searchParams).all === "1";
   const { today, entries, older } = await projectLogs(key, all);
   const kinds = belay().projects.find((p) => p.key === key)?.kinds ?? [];

@@ -9,9 +9,6 @@ export const logHref = (day: string, n: number, at: string) => `/l/${day}/${n}?a
 
 export const grillHref = (slug: string) => `/s/${encodeURIComponent(slug)}`;
 
-/** The pseudo-project for grills nothing files. */
-export const UNFILED = "unfiled";
-
 /** A course page; `suffix` is a section (`/map`) or a detail (`/knowledge/<topic>`). */
 export const courseHref = (course: string, suffix = "") => `/learn/${encodeURIComponent(course)}${suffix}`;
 

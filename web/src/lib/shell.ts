@@ -1,4 +1,7 @@
 /** The shell's rules: what kind of page is open, the sidebar each kind opens with, and the Tab the Drawer shows. */
+import type { ExtensionId } from "../../../src/extension-ids.ts";
+import { pseudoOwner, shellRules } from "./extensions.ts";
+import type { LiveRef, Missing } from "./slots.ts";
 
 /** A Workspace opens with the sidebar collapsed to the rail; a Reading page opens it expanded. */
 export type PageKind = "workspace" | "reading";
@@ -33,24 +36,18 @@ export const parseOutline = parseToggle;
 /** Whether the dark theme's ambient glow shows: it does unless the last toggle turned it off. */
 export const parseGlow = parseToggle;
 
-/** The grill a `/s/<slug>` page shows, else null. */
-export function sessionSlug(pathname: string): string | null {
-  const m = /^\/s\/([^/?#]+)/.exec(pathname);
-  return m ? decodeURIComponent(m[1]) : null;
+/** A page is a Workspace when an active extension says so (a grill, a lesson's Now); every other page is a Reading page. */
+export function pageKind(pathname: string, active: readonly ExtensionId[]): PageKind {
+  return shellRules(active).some((r) => r.workspace?.(pathname)) ? "workspace" : "reading";
 }
 
-/** Grills, a lesson's Now page and a course's Work tab are Workspaces; every other page is a Reading page. */
-export function pageKind(pathname: string): PageKind {
-  return sessionSlug(pathname) || /^\/learn\/[^/]+\/(work(\/|$)|now\/?$)/.test(pathname) ? "workspace" : "reading";
-}
-
-/** The live Tab a page belongs to: its grill on `/s/<slug>`, or a live lesson on any page of that lesson's course. */
-export function pageTab(pathname: string, live: { slug: string; course?: string }[]): string | null {
-  const grill = sessionSlug(pathname);
-  if (grill) return grill;
-  const course = /^\/learn\/([^/?#]+)/.exec(pathname)?.[1];
-  if (!course) return null;
-  return live.find((l) => l.course === decodeURIComponent(course))?.slug ?? null;
+/** The live Tab a page belongs to, by the first active extension that places it. */
+export function pageTab(pathname: string, live: readonly LiveRef[], active: readonly ExtensionId[]): string | null {
+  for (const r of shellRules(active)) {
+    const tab = r.tab?.(pathname, live);
+    if (tab) return tab;
+  }
+  return null;
 }
 
 export function parseCollapsed(raw: string | null): Collapsed {
@@ -129,14 +126,24 @@ export function fresh(live: string[], seen: string[]): string[] {
   return live.filter((s) => !known.has(s));
 }
 
-const COURSE_TABS = new Set(["map", "lessons", "notes", "misconceptions", "cards", "work", "now"]);
-
-/** Not found's one line: what's missing, and the nearest real page to go back to. */
-export function missing(pathname: string): { what: string; back: { href: string; label: string } } {
-  const grill = sessionSlug(pathname);
-  if (grill) return { what: `No grill ${grill}.`, back: { href: "/", label: "Back home" } };
-  const project = /^\/p\/([^/?#]+)(\/(grills|activity|logs))?\/?$/.exec(pathname)?.[1];
-  if (project) return { what: `No project ${decodeURIComponent(project).toUpperCase()}.`, back: { href: "/p", label: "Back to Projects" } };
+/**
+ * Not found's one line: what's missing, and the nearest real page to go back to. An inactive extension's addresses,
+ * its project sections and pseudo-project included, get the generic line.
+ */
+export function missing(pathname: string, active: readonly ExtensionId[]): Missing {
+  const rules = shellRules(active);
+  for (const r of rules) {
+    const m = r.missing?.(pathname);
+    if (m) return m;
+  }
+  const generic = { what: `No page at ${pathname}.`, back: { href: "/", label: "Back home" } };
+  const sections = ["activity", "logs", ...rules.flatMap((r) => r.sections ?? []).map((s) => s.suffix.slice(1))];
+  const project = new RegExp(`^/p/([^/?#]+)(/(${sections.join("|")}))?/?$`).exec(pathname)?.[1];
+  if (project) {
+    const owner = pseudoOwner(decodeURIComponent(project));
+    if (owner && !active.includes(owner)) return generic;
+    return { what: `No project ${decodeURIComponent(project).toUpperCase()}.`, back: { href: "/p", label: "Back to Projects" } };
+  }
   const issue = /^\/i\/([^/?#]+)\/?$/.exec(pathname)?.[1];
   if (issue) {
     const id = decodeURIComponent(issue).toUpperCase();
@@ -144,21 +151,8 @@ export function missing(pathname: string): { what: string; back: { href: string;
     const back = key ? { href: `/p/${key}`, label: `Back to ${key}'s issues` } : { href: "/p", label: "Back to Projects" };
     return { what: `No issue ${id}.`, back };
   }
-  const course = /^\/learn\/([^/?#]+)(?:\/([^/?#]+)(?:\/([^?#]+?))?)?\/?$/.exec(pathname);
-  if (course) {
-    const [c, kind, rest] = course.slice(1).map((p) => p && decodeURIComponent(p));
-    const base = `/learn/${encodeURIComponent(c)}`;
-    // A tab 404s only when its course is missing.
-    if (!kind || (!rest && COURSE_TABS.has(kind))) return { what: `No course ${c}.`, back: { href: "/learn", label: "Back to Learn" } };
-    const notes = { href: `${base}/notes`, label: "Back to Notes" };
-    if (kind === "knowledge") return { what: `No note ${rest}.`, back: notes };
-    if (kind === "sources") return { what: `No source ${rest}.`, back: notes };
-    if (kind === "lessons") return { what: `No lesson ${rest}.`, back: { href: `${base}/lessons`, label: "Back to Lessons" } };
-    if (kind === "work") return { what: `No file work/${rest}.`, back: { href: `${base}/work`, label: "Back to Work" } };
-    return { what: `No page at ${pathname}.`, back: { href: base, label: "Back to the course" } };
-  }
   if (pathname.startsWith("/l/")) return { what: "No log entry there.", back: { href: "/p", label: "Back to Projects" } };
-  return { what: `No page at ${pathname}.`, back: { href: "/", label: "Back home" } };
+  return generic;
 }
 
 export type DrawerPrefs = { open: boolean; width: number };
