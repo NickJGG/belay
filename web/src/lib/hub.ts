@@ -3,20 +3,23 @@ import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { watch, type FSWatcher } from "chokidar";
 import { dataDir } from "../../../src/config.ts";
+import type { ExtensionId } from "../../../src/extension-ids.ts";
 import type { OpenTurn } from "./chat";
-import type { LessonShow } from "./lesson";
+import type { Focus } from "./extensions";
+import { activeKinds, runtimeOf, SERVER_KINDS } from "./extensions.server";
+import type { KindRuntime, LiveSession } from "./session-kind";
 import type { Queue } from "./start-queue";
-import { grillsDir, lessonsDir } from "./config";
 import { isSlug } from "./sessions";
+import { Switchboard } from "./switchboard";
 import { connectUpstream, readBridgeFile, sameBridge, type BridgeEvent, type Upstream } from "./upstream";
 import { UsageStore, type StatusLine, type Usage } from "./usage";
-import { root as learningRoot } from "./courses";
-import { belayIgnored, belayWatched, courseIgnored, courseLocate, isSettings, locate, sessionIgnored } from "./watch-paths";
+import { belayIgnored, belayWatched, isSettings, locate, sessionIgnored } from "./watch-paths";
 
 /*
- * The server's one event hub, started by its first user. It watches the grills and lessons roots and holds an
- * upstream to every attached bridge (a `bridge.json` appearing or changing reconnects it), and fans
- * everything out to `/api/events`:
+ * The server's one event hub, started by its first user. It watches each active session kind's folder (and whatever
+ * else the kind watches), starting and stopping them as `settings.yaml` switches kinds on and off, holds an upstream
+ * to every attached bridge (a `bridge.json` appearing or changing reconnects it), and fans everything out to
+ * `/api/events`:
  *   sessions  a session's session.json, <slug>.md or bridge.json changed, or its folder came or went
  *   file      another file of a session folder changed (chat.jsonl, the mock files)
  *   live      a bridge's stream opened or closed, or its working/connected state changed
@@ -29,8 +32,7 @@ import { belayIgnored, belayWatched, courseIgnored, courseLocate, isSettings, lo
  *   start     the queued lesson start (start-queue.ts) was set or cleared, by `/api/lesson/start`
  */
 
-/** `wt`: its terminal is a Windows Terminal tab, which the bridge can focus. */
-export type LiveSession = { slug: string; working: boolean; connected: boolean; sessionId: string | null; wt: boolean };
+export type { LiveSession };
 
 export type HubEvent =
   | { type: "sessions"; slug: string }
@@ -47,7 +49,9 @@ export type HubEvent =
 type Listener = (e: HubEvent) => void;
 type Hub = {
   watchers: FSWatcher[];
-  bridges: Map<string, Upstream>;
+  kinds: Switchboard<ExtensionId>;
+  /** `dir`: the session folder its bridge.json is in. */
+  bridges: Map<string, Upstream & { dir: string }>;
   listeners: Set<Listener>;
   usage: UsageStore;
   emit: (e: HubEvent) => void;
@@ -62,33 +66,39 @@ const SESSION_FILES = new Set(["session.json", "bridge.json"]);
 
 function start(): Hub {
   const listeners = new Set<Listener>();
-  const bridges = new Map<string, Upstream>();
+  const bridges: Hub["bridges"] = new Map();
   const emit = (e: HubEvent) => {
     for (const l of listeners) l(e);
   };
 
+  const dropBridge = (slug: string) => {
+    const old = bridges.get(slug);
+    if (!old) return;
+    old.close();
+    bridges.delete(slug);
+    if (old.state().up) emit({ type: "live", slug, up: false, working: false, connected: false, sessionId: null });
+  };
   /** Re-reads the slug's bridge.json under `root` and (re)connects, drops or keeps its upstream to match. */
   const syncBridge = (root: string, slug: string): Promise<void> => {
-    const file = readBridgeFile(path.join(root, slug));
+    const dir = path.join(root, slug);
+    const file = readBridgeFile(dir);
     const old = bridges.get(slug);
     if (old && file && sameBridge(old.file, file)) return old.ready;
-    if (old) {
-      old.close();
-      bridges.delete(slug);
-      if (old.state().up) emit({ type: "live", slug, up: false, working: false, connected: false, sessionId: null });
-    }
+    dropBridge(slug);
     if (!file) return Promise.resolve();
     const up = connectUpstream(file, {
       onEvent: (event) => emit({ type: "bridge", slug, event }),
       onChange: (s) => emit({ type: "live", slug, ...s }),
     });
-    bridges.set(slug, up);
+    bridges.set(slug, { ...up, dir });
     return up.ready;
   };
 
-  const roots = [grillsDir(), lessonsDir()];
-  const sessionWatches = roots.map((root) => {
-    const w = watch(root, { ignoreInitial: true, depth: 1, ignored: sessionIgnored(root) });
+  const data = dataDir();
+  /** Each kind's folder watcher, upstreams to its sessions' existing bridges, and its own watchers; returns their stop. */
+  const startKind = async (id: ExtensionId) => {
+    const root = SERVER_KINDS.find((k) => k.id === id)!.root(data);
+    const sessions = watch(root, { ignoreInitial: true, depth: 1, ignored: sessionIgnored(root) });
     const onSession = (abs: string) => {
       const hit = locate(root, abs);
       if (!hit) return;
@@ -97,40 +107,39 @@ function start(): Hub {
       if (!name || SESSION_FILES.has(name) || name === `${slug}.md`) emit({ type: "sessions", slug });
       else emit({ type: "file", slug, name });
     };
-    for (const ev of ["add", "change", "unlink", "addDir", "unlinkDir"] as const) w.on(ev, onSession);
-    return w;
-  });
-  const data = dataDir();
+    for (const ev of ["add", "change", "unlink", "addDir", "unlinkDir"] as const) sessions.on(ev, onSession);
+    const attached = existsSync(root)
+      ? readdirSync(root).filter((s) => isSlug(s) && existsSync(path.join(root, s, "bridge.json"))).map((s) => syncBridge(root, s))
+      : [];
+    const runtime: KindRuntime = await runtimeOf(id);
+    const own = runtime.watch?.(emit) ?? [];
+    const ws = [sessions, ...own];
+    for (const w of ws) w.on("error", (err) => console.error("[belay] watcher:", err));
+    await Promise.all(attached);
+    return () => {
+      for (const w of ws) void w.close();
+      for (const [slug, up] of bridges) if (path.dirname(up.dir) === root) dropBridge(slug);
+    };
+  };
+  const kinds = new Switchboard(startKind, (id, err) => console.error(`[belay] ${id} watchers:`, err));
+  const syncKinds = () => kinds.sync(activeKinds(data).map((k) => k.id));
+
   const belayWatch = watch(data, { ignoreInitial: true, depth: 1, ignored: belayIgnored(data) });
   for (const ev of ["add", "change", "unlink"] as const) {
     belayWatch.on(ev, (abs) => {
       if (belayWatched(data, abs)) emit({ type: "belay" });
-      else if (isSettings(data, abs)) emit({ type: "settings" });
+      else if (isSettings(data, abs)) {
+        void syncKinds();
+        emit({ type: "settings" });
+      }
     });
   }
-
-  const learning = learningRoot();
-  const courseWatch = watch(learning, { ignoreInitial: true, ignored: courseIgnored(learning) });
-  for (const ev of ["add", "change", "unlink", "addDir", "unlinkDir"] as const) {
-    courseWatch.on(ev, (abs) => {
-      const hit = courseLocate(learning, abs);
-      if (hit) emit({ type: "course", course: hit[0], path: hit[1] });
-    });
-  }
-
-  const watchers = [...sessionWatches, belayWatch, courseWatch];
-  for (const w of watchers) w.on("error", (err) => console.error("[belay] watcher:", err));
+  belayWatch.on("error", (err) => console.error("[belay] watcher:", err));
 
   // The first page render waits for the existing bridges' first connection attempts, so Live isn't empty.
-  const attached = roots.flatMap((root) =>
-    existsSync(root)
-      ? readdirSync(root).filter((s) => isSlug(s) && existsSync(path.join(root, s, "bridge.json"))).map((s) => syncBridge(root, s))
-      : [],
-  );
-  const initial = Promise.all(attached).then(() => {});
-  const ready = Promise.race([initial, new Promise<void>((r) => setTimeout(r, READY_TIMEOUT_MS).unref())]);
+  const ready = Promise.race([syncKinds(), new Promise<void>((r) => setTimeout(r, READY_TIMEOUT_MS).unref())]);
 
-  return { watchers, bridges, listeners, usage: new UsageStore(), emit, ready };
+  return { watchers: [belayWatch], kinds, bridges, listeners, usage: new UsageStore(), emit, ready };
 }
 
 const hub = () => (g.__belayHub ??= start());
@@ -159,8 +168,8 @@ export function announceStart(queue: Queue | null) {
   hub().emit({ type: "start", queue });
 }
 
-/** A live lesson's last `show`, as its bridge last reported it. */
-export function focusFor(slug: string): LessonShow | null {
+/** A live session's focus (a lesson's last `show`), as its bridge last reported it. */
+export function focusFor(slug: string): Focus | null {
   return hub().bridges.get(slug)?.focus() ?? null;
 }
 

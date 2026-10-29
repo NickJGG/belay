@@ -1,15 +1,11 @@
 /**
- * Session folders on disk, read-only: `<root>/<slug>/session.json` (plugin/references/session-format.md), or for a
- * legacy grill only `<slug>.md`.
+ * Session folders on disk, read-only: `<root>/<slug>/session.json` (plugin/references/session-format.md). The core
+ * reads what every session has; each session kind reads the rest of its own folders through a `SessionFormat`.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { parseFrontmatter, readHead } from "./frontmatter.ts";
 
-export type QuestionStatus = "open" | "resolved" | "deferred" | "dropped" | "see";
-export type QuestionSummary = { n: number; title: string; short: string; status: QuestionStatus };
-
-export type SessionSummary = {
+export type SessionBase = {
   slug: string;
   topic: string;
   status: string;
@@ -18,24 +14,13 @@ export type SessionSummary = {
   updated?: string;
   /** The session's "next question" line. */
   open?: string;
-  /** Null for a legacy grill. */
-  questions: QuestionSummary[] | null;
-  mock: boolean;
-  /** A grill from before session.json: only its `<slug>.md`, shown read-only. */
-  legacy: boolean;
-  /** Set, with `course`, on a lesson's folder (session-format.md's Lessons); unset on a grill. */
-  kind?: "lesson";
-  course?: string;
 };
 
 export const isSlug = (s: string): boolean => /^[a-z0-9][a-z0-9-]*$/.test(s);
 
-const QUESTION_STATUSES = new Set<string>(["open", "resolved", "deferred", "dropped", "see"]);
+export const str = (v: unknown): string | undefined => (typeof v === "string" && v ? v : undefined);
 
-const str = (v: unknown): string | undefined => (typeof v === "string" && v ? v : undefined);
-
-function fromJson(slug: string, j: Record<string, unknown>): SessionSummary {
-  const qs = Array.isArray(j.questions) ? (j.questions as Record<string, unknown>[]) : [];
+export function baseFromJson(slug: string, j: Record<string, unknown>): SessionBase {
   return {
     slug,
     topic: str(j.topic) ?? slug,
@@ -44,83 +29,66 @@ function fromJson(slug: string, j: Record<string, unknown>): SessionSummary {
     started: str(j.started),
     updated: str(j.updated) ?? str(j.started),
     open: str(j.open),
-    questions: qs
-      .filter((q) => typeof q?.n === "number")
-      .map((q) => ({
-        n: q.n as number,
-        title: str(q.title) ?? "",
-        short: str(q.short) ?? str(q.title) ?? `Q${q.n}`,
-        status: QUESTION_STATUSES.has(q.status as string) ? (q.status as QuestionStatus) : "open",
-      })),
-    mock: j.mock != null && typeof j.mock === "object",
-    legacy: false,
-    ...(j.kind === "lesson" ? { kind: "lesson" as const, course: str(j.course) ?? "" } : {}),
   };
 }
 
-function fromMarkdown(slug: string, head: string): SessionSummary {
-  const { data } = parseFrontmatter(head);
-  return {
-    slug,
-    topic: data.topic ?? slug,
-    status: data.status ?? "in-progress",
-    project: data.project?.toUpperCase(),
-    started: data.started,
-    updated: data.updated ?? data.started,
-    questions: null,
-    mock: false,
-    legacy: true,
-  };
-}
+/**
+ * How a kind reads its session folders: its session.json; a bare `bridge.json`, which a session attached before its
+ * first save leaves; and, failing both, another file of the folder (a legacy grill's `<slug>.md`). Null: not one of
+ * its sessions.
+ */
+export type SessionFormat<S extends SessionBase> = {
+  json: (slug: string, j: Record<string, unknown>) => S | null;
+  bare: (slug: string) => S | null;
+  fallback?: { file: (slug: string) => string; read: (slug: string, file: string) => S | null };
+};
+
+const BASE: SessionFormat<SessionBase> = {
+  json: baseFromJson,
+  bare: (slug) => ({ slug, topic: slug, status: "in-progress" }),
+};
 
 /** Parsed sessions keyed by file path, reused while the file's mtime is unchanged. */
-export type SessionMemo = Map<string, { mtimeMs: number; session: SessionSummary }>;
+export type SessionMemo = Map<string, { mtimeMs: number; session: unknown }>;
 
-function memoized(memo: SessionMemo | undefined, path: string, read: () => SessionSummary): SessionSummary {
+function memoized<S>(memo: SessionMemo | undefined, path: string, read: () => S): S {
   if (!memo) return read();
   const { mtimeMs } = statSync(path);
   const hit = memo.get(path);
-  if (hit?.mtimeMs === mtimeMs) return hit.session;
+  if (hit?.mtimeMs === mtimeMs) return hit.session as S;
   const session = read();
   memo.set(path, { mtimeMs, session });
   return session;
 }
 
-/**
- * One session folder of `root`: session.json, else a bare `bridge.json`, which a session attached before its first
- * save leaves, else a legacy `<slug>.md`. Null when the folder holds none of these or they don't parse.
- */
-export function readSession(root: string, slug: string, memo?: SessionMemo): SessionSummary | null {
+/** One session folder of `root`, read with `format`; null when it holds none of its files or they don't parse. */
+export function readSession<S extends SessionBase = SessionBase>(
+  root: string,
+  slug: string,
+  memo?: SessionMemo,
+  format: SessionFormat<S> = BASE as SessionFormat<S>,
+): S | null {
   const dir = join(root, slug);
   const json = join(dir, "session.json");
-  const md = join(dir, `${slug}.md`);
   try {
-    if (existsSync(json)) return memoized(memo, json, () => fromJson(slug, JSON.parse(readFileSync(json, "utf8"))));
-    if (existsSync(join(dir, "bridge.json"))) {
-      return { slug, topic: slug, status: "in-progress", questions: [], mock: false, legacy: false };
-    }
-    if (existsSync(md)) return memoized(memo, md, () => fromMarkdown(slug, readHead(md)));
+    if (existsSync(json)) return memoized(memo, json, () => format.json(slug, JSON.parse(readFileSync(json, "utf8"))));
+    if (existsSync(join(dir, "bridge.json"))) return format.bare(slug);
+    const other = format.fallback && join(dir, format.fallback.file(slug));
+    if (other && existsSync(other)) return memoized(memo, other, () => format.fallback!.read(slug, other));
   } catch {
     // a half-written or malformed file: skip the session until it parses
   }
   return null;
 }
 
-function slugsIn(dir: string): string[] {
+export function slugsIn(dir: string): string[] {
   if (!existsSync(dir)) return [];
   return readdirSync(dir, { withFileTypes: true })
     .filter((e) => e.isDirectory() && isSlug(e.name))
     .map((e) => e.name);
 }
 
-/** Every grill under `root`. Lessons only show as live Tabs. */
-export function listSessions(root: string, memo?: SessionMemo): SessionSummary[] {
-  return slugsIn(root)
-    .map((slug) => readSession(root, slug, memo))
-    .filter((s): s is SessionSummary => s != null && s.kind !== "lesson");
-}
-
 /** Most recently updated first; ties by slug. */
-export function byUpdated(a: SessionSummary, b: SessionSummary): number {
+export function byUpdated(a: SessionBase, b: SessionBase): number {
   return (b.updated ?? "").localeCompare(a.updated ?? "") || a.slug.localeCompare(b.slug);
 }

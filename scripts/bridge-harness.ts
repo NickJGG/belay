@@ -61,7 +61,11 @@ const { readBridgeFile, connectUpstream } = await site.load('upstream');
 const { postToBridge } = await site.load('bridgePost');
 const { writeQueue } = await site.load('startQueue');
 const { parseChat } = await site.load('chat');
-const { readSession } = await site.load('sessions');
+// From phase 4a a lesson reads with learn's own reader; master's core reader reads it whole.
+const readLesson = await site.load('lessonSessions').then(
+  (m) => m.readLesson,
+  async () => (await site.load('sessions')).readSession,
+);
 const { sessionDir } = await site.load('webConfig');
 
 const SESSION_ID = '0000aaaa-1111-2222-3333-444455556666';
@@ -293,14 +297,15 @@ await lesson.step('reply', () => lesson.call('reply', { text: 'A $x^2$ reply' })
 expect(!existsSync(join(runDir, 'start.json')), 'no start is queued before restart');
 if (!existsSync(join(runDir, 'start.json'))) await lesson.step('restart, nothing queued', () => lesson.call('restart'));
 await lesson.step('re-attach with a topic', () => lesson.call('attach', { course: 'demo-course', topic: 'Card review', sessionId: SESSION_ID }));
-const doc = readSession(lessons, lslug);
+const doc = readLesson(lessons, lslug);
 log.push({ step: 'lesson session', result: doc && { kind: doc.kind, topic: doc.topic, status: doc.status } });
 expect(doc?.kind === 'lesson', 'the site reads the lesson session.json');
 expect(readBridgeFile(ldir), 'bridge.json is there while attached');
 chatParses(ldir);
 await lesson.step('detach', () => lesson.call('detach'));
-log.push({ step: 'lesson session after detach', result: readSession(lessons, lslug)?.status });
+log.push({ step: 'lesson session after detach', result: readLesson(lessons, lslug)?.status });
 await lesson.step('tools after detach', lesson.tools);
+await lesson.step('post after detach', () => post(lslug, { kind: 'chat', text: 'anyone?' }));
 expect(!existsSync(join(ldir, 'bridge.json')), 'detach removes the lesson bridge.json');
 writeQueue(runDir, { ...QUICK, label: 'Card review', command: '/learn:review demo-course', routine: 'review' });
 await lesson.step('queued start while idle', () => waitFor('a later queued start', () => lesson.notes.some(isCommand)));
@@ -317,6 +322,7 @@ mkdirSync(join(grills, 'both'), { recursive: true });
 mkdirSync(join(lessons, 'both'), { recursive: true });
 expect(sessionDir('both') === join(grills, 'both'), 'sessionDir looks in grills before lessons');
 expect(sessionDir(lslug) === ldir, 'sessionDir finds a lesson');
+log.push({ step: 'post, no such session', result: await post('no-such-session', { kind: 'chat', text: 'anyone?' }) });
 
 // --- normalise and write --------------------------------------------------------
 

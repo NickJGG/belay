@@ -140,8 +140,13 @@ open. The core message kinds live in `bridge/protocol.mts`, event types in `brid
   `~/.claude/projects/<cwd>/`, and then any newer transcript there disconnects, a second session's included.
 
 ## Site data
-- `sessions.ts` reads `<data>/grills/*`: session.json, else a bare `bridge.json` (in progress), else `<slug>.md`
-  frontmatter (`legacy`). A legacy grill is read-only and renders its `.md`, with its old preview at
+- Session kinds: each extension's `(browse)/(<id>)/_lib/manifest.ts` adds its permission-card lines, focus parser
+  and reattach hint (`lib/extensions.ts`, browser-safe), and its `manifest.server.ts` its sessions' folder and a
+  lazily loaded runtime: its session reader, list rows, live Tabs and extra watchers (`lib/extensions.server.ts`).
+  Only active kinds count: `sessionRoots()`, `sessionDir`, `data.ts`'s lists and the hub's watchers, which the hub
+  starts and stops on the `settings` event. A live session is the first kind's that reads its folder, else grill's.
+- `sessions.ts` reads a session folder in its kind's format: session.json, else a bare `bridge.json` (in progress),
+  else, for a grill, `<slug>.md` frontmatter (`legacy`). A legacy grill is read-only and renders its `.md`, with its old preview at
   `/legacy/sessions/<slug>/preview.html`; the shared shell it loads is served from `web/legacy/`. Lessons come from
   `<data>/lessons/*`. `/api/s/<slug>/*` routes find a slug's folder with `sessionDir` (grills, then lessons).
 - The site sends a bridge `X-Belay-Token`, read from that session's `bridge.json`.

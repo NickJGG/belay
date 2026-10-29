@@ -1,4 +1,5 @@
 /** A session's chat.jsonl (format: plugin/references/session-format.md) and which of its prompts still take an answer. */
+import { KIND_TOOLS } from "./extensions.ts";
 
 export type ChatEntry = { at: string; from: "site" | "claude" | "terminal"; kind: string } & Record<string, unknown>;
 
@@ -125,7 +126,7 @@ export function toolLabel(name: string): { label: string; server?: string; tool:
 const BELAY_TOOL_LINES: Record<string, string> = {
   reply: "Post a message to this drawer.",
   choice: "Post a choice to this drawer as buttons.",
-  show: "Point the page at a question.",
+  ...KIND_TOOLS,
   attach: "Attach this terminal session to Belay.",
   detach: "Detach this terminal session from Belay.",
 };

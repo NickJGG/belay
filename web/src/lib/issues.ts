@@ -1,6 +1,6 @@
 /** Belay issues, as belay's store loads them, and the session stage they decide. */
 import { compareIds, type Issue as BelayIssue } from "../../../src/store.ts";
-import type { SessionSummary } from "./sessions.ts";
+import type { SessionBase } from "./sessions.ts";
 
 export type Issue = Pick<BelayIssue, "id" | "title" | "project" | "status" | "grill" | "updated">;
 
@@ -26,7 +26,7 @@ export const isClosed = (i: Issue): boolean => i.status === "done" || i.status =
  * In progress is grilling; planned with any open issue is building; everything else (planned with every issue
  * closed or none at all, abandoned) is shipped.
  */
-export function stage(session: Pick<SessionSummary, "status">, issues: Issue[]): Stage {
+export function stage(session: Pick<SessionBase, "status">, issues: Issue[]): Stage {
   if (session.status === "in-progress") return "grilling";
   if (session.status === "planned" && issues.some((i) => !isClosed(i))) return "building";
   return "shipped";

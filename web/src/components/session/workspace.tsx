@@ -34,7 +34,7 @@ import {
   type SessionDoc,
   type View,
 } from "@/lib/session-doc";
-import type { QuestionSummary } from "@/lib/sessions";
+import type { QuestionSummary } from "@/app/(browse)/(grill)/_lib/sessions";
 import { OUTLINE_KEY, parseOutline } from "@/lib/shell";
 import { cn } from "@/lib/utils";
 import { Bar, type CommentProps, type PickProps } from "./bar";

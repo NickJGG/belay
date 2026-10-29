@@ -2,7 +2,7 @@
 /** Thin wrappers: validate the untyped input, call one op on a fresh strict load, revalidate. */
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { dataDir, grillsDir } from "../../../src/config.ts";
+import { dataDir } from "../../../src/config.ts";
 import { logFile } from "../../../src/logs.ts";
 import { isLinked, linkedPath, openFile } from "../../../src/open.ts";
 import {
@@ -26,6 +26,7 @@ import {
   setStatus,
 } from "../../../src/ops.ts";
 import { isDay } from "../../../src/workday.ts";
+import { sessionRoots } from "@/lib/extensions.server";
 import { projectHref } from "@/lib/hrefs";
 
 export interface Result {
@@ -234,7 +235,7 @@ export async function openLinkedFile(id: unknown, kind: unknown): Promise<Result
   try {
     if (!isLinked(kind)) throw new Error("kind must be file|grill|plan");
     const data = dataDir();
-    const path = linkedPath(new Ctx(data).issue(str(id, "id")), kind, { data, grills: grillsDir(data) });
+    const path = linkedPath(new Ctx(data).issue(str(id, "id")), kind, { data, grills: sessionRoots(data).grill });
     if (!path) throw new Error(`no ${kind} on ${id}`);
     openFile(path);
   } catch (e) {

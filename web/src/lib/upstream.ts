@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import http from "node:http";
 import { join } from "node:path";
 import { applyResult, toStep, type OpenTurn } from "./chat.ts";
-import { toShow, type LessonShow } from "./lesson.ts";
+import { parseFocus, type Focus } from "./extensions.ts";
 
 /** `wt`: the session runs under Windows Terminal. */
 export type BridgeFile = { port: number; token: string; sessionId: string | null; pid: number; at: string; wt: boolean };
@@ -42,8 +42,8 @@ export type Upstream = {
   state: () => UpstreamState;
   /** The bridge's turn in progress, so a page opened mid-turn can draw it; null between turns. */
   turn: () => OpenTurn | null;
-  /** A lesson's last `show`, so a page opened later can follow it; null for a grill. */
-  focus: () => LessonShow | null;
+  /** The last `show` a kind reads as its focus (a lesson's), so a page opened later can follow it. */
+  focus: () => Focus | null;
   /** Resolves once the first connection attempt has opened the stream or failed. */
   ready: Promise<void>;
   close: () => void;
@@ -62,7 +62,7 @@ export function connectUpstream(
 ): Upstream {
   let state: UpstreamState = { up: false, working: false, connected: true, sessionId: file.sessionId };
   let turn: OpenTurn | null = null;
-  let focus: LessonShow | null = null;
+  let focus: Focus | null = null;
   let closed = false;
   let req: http.ClientRequest | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -94,7 +94,7 @@ export function connectUpstream(
     } else if (e.type === "result") {
       if (turn) turn = applyResult(turn, e);
     } else if (e.type === "turn" || e.type === "disconnected") turn = null;
-    if (e.type === "show") focus = toShow(e) ?? focus;
+    if (e.type === "show") focus = parseFocus(e) ?? focus;
     if (!closed) onEvent(e);
   };
 

@@ -7,7 +7,7 @@ import { extname, isAbsolute, join, resolve } from "node:path";
 import type { Ctx } from "../../../src/ops.ts";
 import { COLOR_RE } from "../../../src/store.ts";
 import type { Issue } from "./issues.ts";
-import type { SessionSummary } from "./sessions.ts";
+import type { SessionBase } from "./sessions.ts";
 
 export type Project = {
   key: string;
@@ -71,16 +71,16 @@ export function projectTerms(p: Project): string[] {
 }
 
 /** True when the slug or topic has a word starting with `term`. */
-function sessionMentions(s: SessionSummary, term: string): boolean {
+function sessionMentions(s: SessionBase, term: string): boolean {
   return new RegExp(`(^|[^a-z0-9])${term}`).test(`${s.slug} ${s.topic}`.toLowerCase());
 }
 
-export type ProjectSessions = {
+export type ProjectSessions<S extends SessionBase = SessionBase> = {
   project: Project;
-  tagged: SessionSummary[];
+  tagged: S[];
   /** Untagged, filed by the projects of its belay issues. */
-  byIssues: SessionSummary[];
-  matched: SessionSummary[];
+  byIssues: S[];
+  matched: S[];
 };
 
 /**
@@ -88,11 +88,11 @@ export type ProjectSessions = {
  * known projects (filed under each of them); else mentioning one of its terms (a session can match several).
  * Unfiled: the sessions none of these place, and those tagged with a key belay doesn't know.
  */
-export function fileSessions(
-  sessions: SessionSummary[],
+export function fileSessions<S extends SessionBase>(
+  sessions: S[],
   projects: Project[],
   byGrill: Map<string, Issue[]> = new Map(),
-): { projects: ProjectSessions[]; unfiled: SessionSummary[] } {
+): { projects: ProjectSessions<S>[]; unfiled: S[] } {
   const known = new Set(projects.map((p) => p.key));
   const issueProjects = new Map<string, Set<string>>();
   for (const s of sessions) {
