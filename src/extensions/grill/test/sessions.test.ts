@@ -3,8 +3,8 @@ import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
-import { grillFile, grillPreview, grillStatus, isGrillSlug, loadGrillSession, loadGrillSessions, type GrillMemo } from '../src/grill.ts';
-import { splitFrontmatter } from '../src/store.ts';
+import { grillFile, grillPreview, grillStatus, isGrillSlug, loadGrillSession, loadGrillSessions, type GrillMemo } from '../sessions.ts';
+import { splitFrontmatter } from '../../../store.ts';
 
 let grillDir: string;
 

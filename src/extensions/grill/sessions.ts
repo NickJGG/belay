@@ -3,7 +3,7 @@
  */
 import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { splitFrontmatter, type Project } from './store.ts';
+import { splitFrontmatter, type Project } from '../../store.ts';
 
 export interface GrillSession {
   slug: string;

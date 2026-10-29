@@ -1,8 +1,9 @@
 /** Belay issues, as belay's store loads them, and the session stage they decide. */
+import { owned } from "../../../src/extensions.ts";
 import { compareIds, type Issue as BelayIssue } from "../../../src/store.ts";
 import type { SessionBase } from "./sessions.ts";
 
-export type Issue = Pick<BelayIssue, "id" | "title" | "project" | "status" | "grill" | "updated">;
+export type Issue = Pick<BelayIssue, "id" | "title" | "project" | "status" | "extra" | "updated">;
 
 export type Stage = "grilling" | "building" | "shipped";
 
@@ -12,10 +13,11 @@ export const STAGES: Stage[] = ["grilling", "building", "shipped"];
 export function issuesByGrill(issues: Issue[]): Map<string, Issue[]> {
   const out = new Map<string, Issue[]>();
   for (const i of [...issues].sort((a, b) => compareIds(a.id, b.id))) {
-    if (!i.grill) continue;
-    const list = out.get(i.grill);
+    const { grill } = owned(i, "grill");
+    if (!grill) continue;
+    const list = out.get(grill);
     if (list) list.push(i);
-    else out.set(i.grill, [i]);
+    else out.set(grill, [i]);
   }
   return out;
 }

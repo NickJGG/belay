@@ -4,8 +4,9 @@ import { join } from 'node:path';
 import { args, print } from '../../argv.ts';
 import { dataDir, grillsDir } from '../../config.ts';
 import { clip, plural } from '../../digest.ts';
+import { owned } from '../../extensions.ts';
 import { commitPathsOrThrow, hasChanges, hasHistory } from '../../gitlog.ts';
-import { grillForProject, grillMatches, grillStatus, isGrillSlug, loadGrillSessions, projectTerms, type GrillSession } from '../../grill.ts';
+import { grillForProject, grillMatches, grillStatus, isGrillSlug, loadGrillSessions, projectTerms, type GrillSession } from './sessions.ts';
 import { commentAuthor } from '../../ops.ts';
 import { normalizeStoredPath, type Issue, type Project } from '../../store.ts';
 
@@ -59,7 +60,7 @@ export function digestSection(project: Project, issues: Issue[], data: string): 
 
 /** The project's grill sessions that no issue links to yet, as one line, or none. */
 export function digestLines(project: Project, issues: Issue[], grill: GrillSession[]): string[] {
-  const linked = new Set(issues.map((t) => t.grill));
+  const linked = new Set(issues.map((t) => owned(t, 'grill').grill));
   const { tagged, matched } = grillForProject(grill.filter((g) => !linked.has(g.slug)), project);
   const parts: string[] = [];
   if (tagged.length) {

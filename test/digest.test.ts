@@ -33,7 +33,7 @@ test('digestLines', () => {
     issue('ELV-2', { created: '2026-09-01' }),
     issue('ELV-3', { priority: 'high', created: '2026-10-02' }),
     issue('ELV-4', { blocked_by: ['ELV-1'] }),
-    issue('ELV-5', { status: 'idea', grill: 'linked-elevator' }),
+    issue('ELV-5', { status: 'idea' }),
     issue('OTH-1'),
   ];
   const sessions: Session[] = [

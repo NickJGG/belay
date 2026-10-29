@@ -1,6 +1,6 @@
 /**
  * Belay projects, as belay's store loads them, and the fuzzy match that files untagged sessions under them,
- * ported from belay's src/grill.ts so the counts agree with belay's digest.
+ * ported from belay's src/extensions/grill/sessions.ts so the counts agree with belay's digest.
  */
 import { existsSync } from "node:fs";
 import { extname, isAbsolute, join, resolve } from "node:path";

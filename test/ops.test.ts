@@ -119,14 +119,12 @@ test('setPriority and setFocus round-trip', () => {
 
 test('editIssue sets, clears and validates fields like the old cmdEdit', () => {
   createIssue(dir, issue({ title: 'blocker' }));
-  createIssue(dir, issue({ grill: 'g', plan: 'p.md' }));
-  const t = editIssue(new Ctx(dir), 'PIX-2', { title: ' New ', blockers: ['PIX-1'], priority: 'high', grill: '' });
+  createIssue(dir, issue());
+  const t = editIssue(new Ctx(dir), 'PIX-2', { title: ' New ', blockers: ['PIX-1'], priority: 'high' });
   assert.deepEqual(loadIssues(dir)[1], t);
   assert.equal(t.title, 'New');
   assert.deepEqual(t.blocked_by, ['PIX-1']);
   assert.equal(t.priority, 'high');
-  assert.equal(t.grill, undefined);
-  assert.equal(t.plan, 'p.md');
   assert.match(t.updated, AT_RE);
 
   assert.equal(editIssue(new Ctx(dir), 'PIX-2', { priority: 'none' }).priority, undefined);
@@ -506,13 +504,13 @@ test('ops keep an issue\'s plain unknown keys in place', () => {
   createIssue(dir, issue({ title: 'other' }));
   setStatus(new Ctx(dir), 'PIX-1', 'doing');
   addComment(new Ctx(dir), 'PIX-1', 'hi', USER);
-  editIssue(new Ctx(dir), 'PIX-1', { title: 'New', priority: 'high', grill: 'g', plan: 'p.md' });
+  editIssue(new Ctx(dir), 'PIX-1', { title: 'New', priority: 'high' });
   replaceBody(new Ctx(dir), 'PIX-1', 'body');
   editIssue(new Ctx(dir), 'PIX-2', { blockers: ['PIX-1'] });
   rekeyProject(new Ctx(dir), 'PIX', 'PXL');
   const src = readFileSync(join(dir, 'issues', 'pxl-1.md'), 'utf8');
   assert.match(src, /^---\nfirst: true\nid: PXL-1\ntitle: New\n/);
-  assert.match(src, /^blocked_by: \[\]\nestimate: 3\npriority: high\nsource: user\ngrill: g\nplan: p\.md\n/m);
+  assert.match(src, /^blocked_by: \[\]\nestimate: 3\npriority: high\nsource: user\ncreated: /m);
   assert.match(src, /^updated: \S+\nmeta:\n {2}a:\n {4}- x\n {4}- y\ncomments:\n/m);
 });
 

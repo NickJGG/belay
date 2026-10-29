@@ -16,7 +16,7 @@ test("grills in flight: in progress, tagged, not yet linked, not legacy", () => 
   });
   const grills = [g("open"), g("linked"), g("untagged", { project: undefined }), g("planned", { status: "planned" }), g("old", { legacy: true })];
   assert.deepEqual(
-    unlinkedGrills([{ grill: "linked" }, { grill: undefined }], grills).map((s) => s.slug),
+    unlinkedGrills([{ extra: [{ key: "grill", value: "linked", after: "source" }] }, {}], grills).map((s) => s.slug),
     ["open"],
   );
 });

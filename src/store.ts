@@ -14,7 +14,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync,
 import { join, resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { YAMLError, isAlias, isMap, isPair, isScalar, isSeq, parse, parseDocument, stringify, type Document } from 'yaml';
-import { ownedFields } from './extensions.ts';
+import { ownedFields, type OwnedField } from './extensions.ts';
 
 export const ISSUE_STATUSES = ['idea', 'todo', 'doing', 'done', 'dropped'] as const;
 export const PROJECT_STATUSES = ['active', 'paused', 'archived'] as const;
@@ -57,32 +57,43 @@ export interface Issue {
   blocked_by: string[];
   priority?: 'high';
   source: Source;
-  grill?: string;
-  plan?: string;
   created: string;
   updated: string;
   /** Oldest first. */
   comments: Comment[];
   /** Oldest first; absent on issues from before transitions were recorded. */
   transitions?: Transition[];
-  /** Frontmatter keys the store doesn't know, in file order; absent when there are none. */
+  /** Extensions' owned fields and the frontmatter keys the store doesn't know, in file order; absent when there are none. */
   extra?: ExtraKey[];
   body: string;
 }
 
-/** `after` is the nearest known key before it in the file, `null` when none is: it's written back after that key. */
+/**
+ * `after` is the nearest known key before it in the file, `null` when none is: it's written back after that key. An
+ * owned field's `after` is its slot's, and it's always written in that slot.
+ */
 export interface ExtraKey {
   key: string | number;
   value: unknown;
   after: string | null;
 }
 
-/** The keys `serializeIssue` writes, in the order it writes them. */
-export const ISSUE_FIELDS = ['id', 'title', 'project', 'status', 'blocked_by', 'priority', 'source', 'grill', 'plan', 'created', 'updated', 'comments', 'transitions'] as const;
-type IssueField = (typeof ISSUE_FIELDS)[number];
+/** The core keys `serializeIssue` writes, in the order it writes them. */
+export const ISSUE_FIELDS = ['id', 'title', 'project', 'status', 'blocked_by', 'priority', 'source', 'created', 'updated', 'comments', 'transitions'] as const;
 
-/** The core fields and every built-in extension's owned fields, on or off. The rest are unknown, though still kept. */
-export const KNOWN_ISSUE_KEYS: readonly string[] = [...ISSUE_FIELDS, ...ownedFields(ISSUE_FIELDS).map((f) => f.key)];
+/** Every built-in extension's owned fields, on or off: they're kept and validated whether or not it's active. */
+const OWNED: ReadonlyMap<string, OwnedField> = new Map(ownedFields(ISSUE_FIELDS).map((f) => [f.key, f]));
+
+/** The core fields and the owned ones. The rest are unknown, though still kept. */
+export const KNOWN_ISSUE_KEYS: readonly string[] = [...ISSUE_FIELDS, ...OWNED.keys()];
+
+/** The order `serializeIssue` writes known keys in: each owned field after its `after`, behind any field already there. */
+const ISSUE_ORDER: readonly string[] = [...OWNED.values()].reduce<string[]>((order, f) => {
+  let i = order.indexOf(f.after);
+  if (i < 0) throw new Error(`the owned issue field '${f.key}' goes after '${f.after}', which isn't a known key before it`);
+  while (OWNED.has(order[i + 1])) i++;
+  return order.toSpliced(i + 1, 0, f.key);
+}, [...ISSUE_FIELDS]);
 
 interface Transition {
   at: string;
@@ -312,8 +323,11 @@ function notPlain(node: unknown, big: unknown, doc: Document, bigDoc: Document):
   }
 }
 
-/** The top-level keys outside `ISSUE_FIELDS`. Throws, saying what to quote, on one that isn't plain. */
-function extraKeys(yaml: string, doc: Document, where: string): ExtraKey[] {
+/**
+ * The owned fields, validated like the core's optional text, and the top-level keys outside `ISSUE_FIELDS`. Throws,
+ * saying what to quote, on an unknown one that isn't plain.
+ */
+function extraKeys(yaml: string, doc: Document, d: Data, where: string): ExtraKey[] {
   if (!isMap(doc.contents)) return [];
   const known = new Set<unknown>(ISSUE_FIELDS);
   const extra: ExtraKey[] = [];
@@ -323,6 +337,13 @@ function extraKeys(yaml: string, doc: Document, where: string): ExtraKey[] {
     const key = isScalar(pair.key) ? pair.key.value : pair.key;
     if (typeof key === 'string' && known.has(key)) {
       after = key;
+      return;
+    }
+    const field = typeof key === 'string' ? OWNED.get(key) : undefined;
+    if (field) {
+      const value = optText(d, field.key, where);
+      if (value !== undefined) extra.push({ key: field.key, value, after: field.after });
+      after = field.key;
       return;
     }
     bigDoc ??= parseDocument(yaml, { intAsBigInt: true });
@@ -349,7 +370,7 @@ export function parseIssue(src: string, where: string): Issue {
   const project = canon(text(d, 'project', where));
   if (parseId(id)?.key !== project) throw new Error(`${where}: id '${id}' does not match project '${project}'`);
   const priority = d.priority == null ? undefined : oneOf(d, 'priority', ['high'] as const, where);
-  const extra = extraKeys(yaml, doc, where);
+  const extra = extraKeys(yaml, doc, d, where);
   return {
     id,
     title: text(d, 'title', where),
@@ -358,8 +379,6 @@ export function parseIssue(src: string, where: string): Issue {
     blocked_by: textList(d, 'blocked_by', where).map(canon),
     priority,
     source: oneOf(d, 'source', SOURCES, where, 'user'),
-    grill: optText(d, 'grill', where),
-    plan: optText(d, 'plan', where),
     created: text(d, 'created', where),
     updated: text(d, 'updated', where),
     comments: commentList(d, where),
@@ -369,10 +388,13 @@ export function parseIssue(src: string, where: string): Issue {
   };
 }
 
-/** Each extra key goes after its `after` field, or the nearest set field before that one; runs keep their order. */
+/**
+ * Owned fields go in their slot. Each unknown key goes after its `after` field, or the nearest set field before that
+ * one; runs keep their order.
+ */
 export function serializeIssue(t: Issue): string {
-  const { id, title, project, status, blocked_by, priority, source, grill, plan, created, updated, comments, transitions, extra = [], body } = t;
-  const fields: Record<IssueField, unknown> = {
+  const { id, title, project, status, blocked_by, priority, source, created, updated, comments, transitions, extra = [], body } = t;
+  const fields: Record<string, unknown> = {
     id,
     title,
     project,
@@ -380,23 +402,26 @@ export function serializeIssue(t: Issue): string {
     blocked_by,
     priority,
     source,
-    grill,
-    plan,
     created,
     updated,
     comments: comments.length ? comments : undefined,
     transitions,
   };
+  const unknown: ExtraKey[] = [];
+  for (const e of extra) {
+    if (typeof e.key === 'string' && OWNED.has(e.key)) fields[e.key] = e.value;
+    else unknown.push(e);
+  }
   const anchor = (after: string | null): string | null => {
-    for (let i = ISSUE_FIELDS.indexOf(after as IssueField); i >= 0; i--) if (fields[ISSUE_FIELDS[i]] !== undefined) return ISSUE_FIELDS[i];
+    for (let i = ISSUE_ORDER.indexOf(after as string); i >= 0; i--) if (fields[ISSUE_ORDER[i]] !== undefined) return ISSUE_ORDER[i];
     return null;
   };
   const data = new Map<unknown, unknown>();
   const place = (after: string | null) => {
-    for (const e of extra) if (anchor(e.after) === after) data.set(e.key, e.value);
+    for (const e of unknown) if (anchor(e.after) === after) data.set(e.key, e.value);
   };
   place(null);
-  for (const k of ISSUE_FIELDS) {
+  for (const k of ISSUE_ORDER) {
     if (fields[k] === undefined) continue;
     data.set(k, fields[k]);
     place(k);
@@ -480,7 +505,7 @@ export function loadProjects(dir: string, { bad }: LoadOptions = {}): Project[] 
  * Bump `CACHE_SHAPE` when the parsed `Issue` shape changes, so old entries aren't served. The known keys are hashed in
  * too, and the version is a string so it never equals the integer that code from before `extra` wrote.
  */
-const CACHE_SHAPE = 2;
+const CACHE_SHAPE = 3;
 const ISSUE_CACHE_VERSION = `${CACHE_SHAPE}-${createHash('sha256').update(KNOWN_ISSUE_KEYS.join()).digest('hex').slice(0, 12)}`;
 
 /** Only an issue that writes the same bytes after a trip through JSON may be served from the cache. */

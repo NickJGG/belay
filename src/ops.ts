@@ -211,8 +211,6 @@ export interface NewIssue {
   blockers?: string[];
   priority?: string;
   source?: string;
-  grill?: string;
-  plan?: string;
   /** Owned fields; empty values are skipped. */
   fields?: OwnedValue[];
   body?: string;
@@ -222,6 +220,7 @@ export interface NewIssue {
 function setOwned(extra: ExtraKey[], { field, value }: OwnedValue): ExtraKey[] {
   const i = extra.findIndex((e) => e.key === field.key);
   if (!value) return extra.filter((_, j) => j !== i);
+  if (!value.trim()) throw new Error(`'${field.key}' must be a non-empty string`);
   return i < 0 ? [...extra, { key: field.key, value, after: field.after }] : extra.with(i, { ...extra[i], value });
 }
 
@@ -242,8 +241,6 @@ export function addIssue(ctx: Ctx, t: NewIssue, author = USER): Issue {
         blocked_by: blockers,
         priority: t.priority ? oneOf(t.priority, ['high'] as const, 'priority') : undefined,
         source: oneOf(t.source ?? 'user', SOURCES, 'source'),
-        grill: t.grill,
-        plan: t.plan,
         created: today(d),
         updated: now(d),
         comments: [],
@@ -272,10 +269,6 @@ export interface IssuePatch {
   blockers?: string[];
   /** `high` or `none`. */
   priority?: string;
-  /** Empty clears. */
-  grill?: string;
-  /** Empty clears. */
-  plan?: string;
   /** Owned fields; an empty value clears one. */
   fields?: OwnedValue[];
   /** Replaces the body. */
@@ -304,8 +297,6 @@ export function editIssue(ctx: Ctx, id: string, patch: IssuePatch): Issue {
       if (patch.priority !== undefined) {
         issue.priority = oneOf(patch.priority, ['high', 'none'] as const, 'priority') === 'high' ? 'high' : undefined;
       }
-      if (patch.grill !== undefined) issue.grill = patch.grill || undefined;
-      if (patch.plan !== undefined) issue.plan = patch.plan || undefined;
       if (patch.fields?.length) {
         const extra = patch.fields.reduce(setOwned, issue.extra ?? []);
         issue.extra = extra.length ? extra : undefined;
@@ -316,8 +307,8 @@ export function editIssue(ctx: Ctx, id: string, patch: IssuePatch): Issue {
       return issue;
     },
     (issue) => {
-      const { fields = [], ...rest } = patch;
-      return `edit ${issue.id} ${patched({ ...rest, ...Object.fromEntries(fields.map((f) => [f.field.key, f.value])) })}`.trimEnd();
+      const { fields = [], body, ...rest } = patch;
+      return `edit ${issue.id} ${patched({ ...rest, ...Object.fromEntries(fields.map((f) => [f.field.key, f.value])), body })}`.trimEnd();
     },
   );
 }

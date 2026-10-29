@@ -21,7 +21,6 @@ const SOURCE = /\.(ts|tsx|mts)$/;
 
 /** Files and folders (ending in `/`) an extension owns before they move into its folders. */
 export const OWNED_UNMOVED: Record<string, ExtensionId> = {
-  'src/grill.ts': 'grill',
   'web/src/app/s/': 'grill',
   'web/src/app/legacy/': 'grill',
   'web/src/app/api/s/[slug]/files/': 'grill',
