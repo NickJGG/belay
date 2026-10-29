@@ -3,16 +3,16 @@
 import type * as React from "react";
 import { Command } from "cmdk";
 import { BookOpen, CircleAlert, FileText, GraduationCap } from "lucide-react";
-import { Mark } from "@/components/layout/logo";
 import styles from "@/components/layout/palette.module.css";
 import { shortDate } from "@/lib/format";
 import { courseHref } from "@/app/(browse)/(learn)/_lib/hrefs";
 import type { PaletteProps } from "@/lib/slots";
 import type { LearnSearch } from "../_lib/manifest.server";
+import { LearnIcon } from "./mark";
 
 const CourseMark = ({ color }: { color: string }) => (
   <span style={{ "--hue": color } as React.CSSProperties}>
-    <Mark tone="current" className={styles.courseMark} />
+    <LearnIcon size={14} className={styles.courseMark} />
   </span>
 );
 

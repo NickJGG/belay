@@ -4,10 +4,11 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Activity, CircleDot, Cog, Moon, PanelLeftClose, PanelLeftOpen, ScrollText, Search, Sun, type LucideIcon } from "lucide-react";
+import { Activity, CircleDot, Cog, Moon, PanelLeftClose, PanelLeftOpen, ScrollText, Search, Sun } from "lucide-react";
 import { useLive } from "@/components/live/live-provider";
 import { activeClientSlots } from "@/lib/extensions.client";
 import { pageKind } from "@/lib/shell";
+import type { Icon } from "@/lib/slots";
 import { sidebarSections } from "@/lib/sidebar";
 import { cn } from "@/lib/utils";
 import { Mark } from "./logo";
@@ -16,14 +17,14 @@ import { useSlot } from "./shell-slot";
 import { useNav, type NavItem } from "./site-nav";
 import styles from "./rail.module.css";
 
-const SECTION_ICONS: Record<string, LucideIcon> = {
+const SECTION_ICONS: Record<string, Icon> = {
   Issues: CircleDot,
   Activity,
   Logs: ScrollText,
 };
 
 /** The sidebar sections' icons: the core's and the active extensions'. */
-function useSectionIcons(): Record<string, LucideIcon> {
+function useSectionIcons(): Record<string, Icon> {
   const { active } = useLive();
   return React.useMemo(() => Object.assign({}, SECTION_ICONS, ...activeClientSlots(active).map((s) => s.sectionIcons)), [active]);
 }

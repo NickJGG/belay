@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { MessagesSquare, X } from "lucide-react";
+import { X } from "lucide-react";
 import { openLinkedFile } from "@/app/actions";
 import belay from "@/components/belay/belay.module.css";
 import { None } from "@/components/belay/facts";
@@ -17,7 +17,7 @@ import type { ClientSlots } from "@/lib/slots";
 import { cn } from "@/lib/utils";
 import type { GrillIssue, GrillSearch } from "../_lib/manifest.server";
 import type { GrillLive } from "../_lib/runtime.server";
-import { GrillMark } from "./mark";
+import { GrillIcon, GrillMark } from "./mark";
 import { GrillsFound } from "./palette";
 import { PendingCommentProvider, usePendingComment, type PendingComment } from "./pending-comment";
 
@@ -116,7 +116,7 @@ export const slots: ClientSlots<GrillSearch, GrillIssue> = {
   name: "Grill",
   summary: "Design interviews with /grill, their pages, Tabs and the grill and plan fields on issues.",
   Mark: GrillMark,
-  sectionIcons: { Grills: MessagesSquare },
+  sectionIcons: { Grills: GrillIcon },
   Found: GrillsFound,
   issueFacts: (id, { grill, plan }, run, pending) => [
     [

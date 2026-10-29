@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { BookOpen, FileCode, Layers, LayoutDashboard, LibraryBig, ListChecks, MapIcon, NotebookPen, TriangleAlert } from "lucide-react";
+import { BookOpen, FileCode, Layers, LayoutDashboard, ListChecks, MapIcon, NotebookPen, TriangleAlert } from "lucide-react";
 import { FocusHighlight } from "@/components/content/focus-highlight";
 import { FollowAlong } from "./follow";
 import { useLive } from "@/components/live/live-provider";
@@ -15,15 +15,15 @@ import { cn } from "@/lib/utils";
 import type { LearnSearch } from "../_lib/manifest.server";
 import type { LessonLive } from "../_lib/runtime.server";
 import { LessonProvider } from "./lesson-state";
-import { LearnMark } from "./mark";
+import { LearnIcon, LearnMark } from "./mark";
 import { CoursesBrowse, CoursesFound } from "./palette";
 
-/** A 14px open book in its course's colour: a lesson's marker where a grill shows its ProjectMark. Decorative. */
+/** Learn's mark at 14px in its course's colour: a lesson's marker where a grill shows its ProjectMark. Decorative. */
 export function CourseBook({ color, className }: { color?: string; className?: string }) {
   return (
-    <svg className={cn(styles.mark, className)} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinejoin="round" style={{ color }} aria-hidden>
-      <path d="M2 3.5c2-.8 4-.8 6 .5v9c-2-1.3-4-1.3-6-.5zM14 3.5c-2-.8-4-.8-6 .5v9c2-1.3 4-1.3 6-.5z" />
-    </svg>
+    <span className={cn(styles.mark, className)} style={{ color }}>
+      <LearnIcon size={14} />
+    </span>
   );
 }
 
@@ -91,7 +91,7 @@ export const slots: ClientSlots<LearnSearch> = {
   name: "Learn",
   summary: "Courses and /learn lessons from ~/Learning, with their pages and Tabs.",
   Mark: LearnMark,
-  nav: [{ href: "/learn", label: "Learn", icon: LibraryBig, on: under("/learn"), parent: (slot) => slot.owner?.id === "learn" }],
+  nav: [{ href: "/learn", label: "Learn", icon: LearnIcon, on: under("/learn"), parent: (slot) => slot.owner?.id === "learn" }],
   sectionIcons: {
     Overview: LayoutDashboard,
     Syllabus: ListChecks,

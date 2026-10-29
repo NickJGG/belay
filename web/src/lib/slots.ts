@@ -7,12 +7,11 @@
  * lists them all.
  */
 import type { ComponentType, ReactNode } from "react";
-import type { LucideIcon } from "lucide-react";
 import type { ExtensionId } from "../../../src/extension-ids.ts";
 import type { GridSource } from "../../../src/home.ts";
 import type { Issue } from "../../../src/store.ts";
 import type { Fact } from "../components/belay/facts.tsx";
-import type { MarkProps } from "../components/layout/logo.tsx";
+import type { IconProps, MarkProps } from "../components/layout/logo.tsx";
 import type { Slot } from "../components/layout/shell-slot.tsx";
 import type { LiveSession } from "./hub.ts";
 import type { Project } from "./projects.ts";
@@ -76,10 +75,13 @@ export type ServerSlots = {
   issue?(issue: Issue, data: string): Promise<unknown>;
 };
 
+/** A nav or section icon: a lucide icon, or an Extension mark at icon size. */
+export type Icon = ComponentType<IconProps>;
+
 export type NavItem = {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: Icon;
   on: (pathname: string) => boolean;
   /** Whether the open page is one of its sections', which the sidebar lights instead. */
   parent?: (slot: Slot) => boolean;
@@ -104,7 +106,7 @@ export type ClientSlots<I = unknown, D = unknown> = {
   /** Its app nav entries, after the core's. */
   nav?: NavItem[];
   /** The icons of the sidebar sections its pages list, by label. */
-  sectionIcons?: Record<string, LucideIcon>;
+  sectionIcons?: Record<string, Icon>;
   /** Its palette groups: `Browse` after Projects, `Found` after Issues once there's a query. */
   Browse?(props: PaletteProps<I>): ReactNode;
   Found?(props: PaletteProps<I>): ReactNode;

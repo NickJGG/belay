@@ -1,4 +1,4 @@
-import { StrokeMark, type MarkProps } from "@/components/layout/logo";
+import { StrokeMark, type IconProps, type MarkProps } from "@/components/layout/logo";
 
 /** Grill's Extension mark: an open flame outline with the ember dot inside. */
 export function GrillMark(props: MarkProps) {
@@ -9,4 +9,9 @@ export function GrillMark(props: MarkProps) {
       {...props}
     />
   );
+}
+
+/** The flame as a section icon, in currentColor. */
+export function GrillIcon(props: IconProps) {
+  return <GrillMark tone="current" {...props} />;
 }

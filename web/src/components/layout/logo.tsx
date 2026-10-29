@@ -8,25 +8,33 @@ export const MARK_PATH =
 
 export type MarkTone = "brand" | "current";
 
-/** A mark's props: Dusk gradient or currentColor, sized by className. */
-export type MarkProps = { tone?: MarkTone; className?: string };
+/** What a nav or section icon is drawn with: lucide's props, which a mark takes too. */
+export type IconProps = { size?: number; "aria-hidden"?: boolean; className?: string };
+
+/** A mark's props: Dusk gradient or currentColor, sized by `size` or className. */
+export type MarkProps = IconProps & { tone?: MarkTone };
+
+/** 7.5 of 60 is ~2px at 16px, heavier than lucide's 1.33px, so a mark drawn at icon `size` thins to this. */
+const ICON_STROKE = 5.5;
 
 /**
  * A mark in the Belay mark's grammar: one 7.5-wide round-capped stroke and a solid dot, in the Dusk gradient (or
  * currentColor). `box` is the square viewBox's corner and side; the gradient runs across it bottom-left to top-right.
+ * Given a `size`, it's an icon: that many px square, with a thinner stroke.
  */
 export function StrokeMark({
   path,
   dot,
   box = [2, 2, 60],
   tone = "brand",
+  size,
   className,
 }: MarkProps & { path: string; dot: { x: number; y: number; r: number }; box?: [number, number, number] }) {
   const id = React.useId();
   const [x, y, side] = box;
   const paint = tone === "brand" ? `url(#${id})` : "currentColor";
   return (
-    <svg viewBox={`${x} ${y} ${side} ${side}`} className={className} aria-hidden>
+    <svg viewBox={`${x} ${y} ${side} ${side}`} width={size} height={size} className={className} aria-hidden>
       {tone === "brand" ? (
         <defs>
           <linearGradient id={id} gradientUnits="userSpaceOnUse" x1={x} y1={y + side} x2={x + side} y2={y}>
@@ -36,7 +44,7 @@ export function StrokeMark({
           </linearGradient>
         </defs>
       ) : null}
-      <path d={path} fill="none" stroke={paint} strokeWidth="7.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={path} fill="none" stroke={paint} strokeWidth={size ? ICON_STROKE : 7.5} strokeLinecap="round" strokeLinejoin="round" />
       <circle cx={dot.x} cy={dot.y} r={dot.r} fill={paint} />
     </svg>
   );
