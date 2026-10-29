@@ -348,3 +348,70 @@ test("a grill refuses lesson messages and tools", async () => {
     await other.close();
   }
 });
+
+test("learn off: no lesson tools or instructions, an attach by course is refused, and no queued start is polled", async () => {
+  const settings = path.join(data, "settings.yaml");
+  const learning = path.join(root, "learning");
+  mkdirSync(path.join(learning, "demo-course"), { recursive: true });
+  writeFileSync(path.join(learning, "demo-course", "course.md"), "# Demo\n");
+  const queue = path.join(data, ".run", "start.json");
+  mkdirSync(path.dirname(queue), { recursive: true });
+  writeFileSync(settings, "extensions: { learn: off }\n");
+  writeFileSync(queue, JSON.stringify({ label: "Quick review", command: "/learn demo-course --quick", course: "demo-course", routine: "quick", at: Date.now() }));
+
+  const got: Note[] = [];
+  const off = new Client({ name: "learn-off-test", version: "0" });
+  off.fallbackNotificationHandler = async (n) => void got.push(n as Note);
+  const env4 = { ...env, LEARNING_ROOT: learning };
+  await off.connect(new StdioClientTransport({ command: process.execPath, args: [SERVER], cwd: learning, env: env4, stderr: "ignore" }));
+  try {
+    assert.doesNotMatch(off.getInstructions() ?? "", /lesson|\/learn/i);
+    const { tools } = await off.listTools();
+    assert.deepEqual(tools.map((t) => t.name), ["attach"]);
+    assert.deepEqual(Object.keys((tools[0].inputSchema as { properties: object }).properties).sort(), ["sessionId", "slug"]);
+    assert.doesNotMatch(tools[0].description ?? "", /lesson/);
+
+    const r = await off.callTool({ name: "attach", arguments: { course: "demo-course" } });
+    assert.ok(r.isError);
+    assert.match(textOf(r), /lessons are switched off/);
+
+    // Past the idle poller's startup delay and a poll: nothing is sent and the queue stays.
+    await new Promise((resolve) => setTimeout(resolve, 3500));
+    assert.ok(!got.some((n) => (n.params?.meta as Record<string, string> | undefined)?.kind === "command"));
+    assert.ok(existsSync(queue));
+  } finally {
+    await off.close();
+    rmSync(queue, { force: true });
+  }
+});
+
+test("a lesson attached when learn goes off keeps its tools and can re-attach until it detaches", async () => {
+  const settings = path.join(data, "settings.yaml");
+  const learning = path.join(root, "learning");
+  writeFileSync(settings, "extensions: { learn: on }\n");
+  const got: Note[] = [];
+  const lc = new Client({ name: "learn-switch-test", version: "0" });
+  lc.fallbackNotificationHandler = async (n) => void got.push(n as Note);
+  const env5 = { ...env, LEARNING_ROOT: learning };
+  await lc.connect(new StdioClientTransport({ command: process.execPath, args: [SERVER], cwd: learning, env: env5, stderr: "ignore" }));
+  const names = async () => (await lc.listTools()).tools.map((t) => t.name).sort();
+  const changes = () => got.filter((n) => n.method === "notifications/tools/list_changed").length;
+  try {
+    assert.ok(!(await lc.callTool({ name: "attach", arguments: { course: "demo-course" } })).isError);
+    const before = changes();
+    writeFileSync(settings, "extensions: { learn: off }\n");
+    await waitFor("list_changed", () => changes() > before);
+    assert.deepEqual(await names(), ["attach", "choice", "detach", "reply", "restart", "show"]);
+    assert.equal(textOf(await lc.callTool({ name: "show", arguments: { target: "whiteboard" } })), "shown");
+    assert.match(textOf(await lc.callTool({ name: "attach", arguments: { course: "demo-course" } })), /^re-attached/);
+
+    assert.match(textOf(await lc.callTool({ name: "detach", arguments: {} })), /^detached/);
+    assert.deepEqual(await names(), ["attach"]);
+    const again = await lc.callTool({ name: "attach", arguments: { course: "demo-course" } });
+    assert.ok(again.isError);
+    assert.match(textOf(again), /lessons are switched off/);
+  } finally {
+    await lc.close();
+    writeFileSync(settings, "extensions: { learn: on }\n");
+  }
+});

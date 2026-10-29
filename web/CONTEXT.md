@@ -21,6 +21,9 @@ _Avoid_: session (for this meaning)
 **Build**:
 A Session working on a project's Issues, with no Grill or Lesson.
 
+**Extension**:
+An optional part of the app beyond projects and Issues: grill (Grills) or learn (Courses and Lessons), switched on and off in `settings.yaml`. While it's off, its pages, nav, palette and search entries, home and project sections and Tabs are gone; its data isn't.
+
 ### Shell
 
 **Tab**:

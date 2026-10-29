@@ -14,7 +14,7 @@ import { ALWAYS } from "../kind.mjs";
 export const learningRoot = () => process.env.LEARNING_ROOT || path.join(os.homedir(), "Learning");
 /** Whether `dir` is the Learning root, where a queued lesson start may run. */
 export const inLearningRoot = (dir) => path.relative(path.resolve(learningRoot()), path.resolve(dir)) === "";
-/** The site's queued lesson start (`web/src/lib/start-queue.ts` writes it). */
+/** The site's queued lesson start (`web/src/app/(browse)/(learn)/_lib/start-queue.ts` writes it). */
 export const queueFile = () => path.join(runDir(), "start.json");
 /** While this exists when `claude` exits, `belay claude`'s loop starts it again. */
 export const restartFile = () => path.join(runDir(), "restart");

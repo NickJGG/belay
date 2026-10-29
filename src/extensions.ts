@@ -119,10 +119,13 @@ export function enabledExtensions(dir: string): Enabled {
 }
 
 /** Extensions whose switch takes effect; the rest are active whatever the settings say. */
-const GATED: ReadonlySet<ExtensionId> = new Set();
+const GATED: ReadonlySet<ExtensionId> = new Set(['learn']);
 
+/** An extension is active while it's switched on, or while one of its sessions is attached (until that detaches). */
 export function isActive(id: ExtensionId, dir?: string): boolean {
-  return !GATED.has(id) || enabledExtensions(dir ?? dataDir())[id];
+  if (!GATED.has(id)) return true;
+  const data = dir ?? dataDir();
+  return enabledExtensions(data)[id] || hasAttached(data, id);
 }
 
 /** The active manifests, in built-in order. Reads the settings, so only command handlers call it. */
@@ -180,6 +183,36 @@ async function portAnswers(port: number): Promise<boolean> {
   try {
     await fetch(`http://127.0.0.1:${port}/`, { signal: AbortSignal.timeout(1000) });
     return true;
+  } catch {
+    return false;
+  }
+}
+
+const bridgePids = new Map<string, { stamp: string; pids: number[] }>();
+
+/**
+ * Whether a `bridge.json` under `id`'s session folder names a live pid. Synchronous, for `isActive`, so unlike
+ * `attachedSessions` it doesn't ask the port. The files are re-read only when a session folder's mtime changes, which a
+ * bridge.json appearing or going does.
+ */
+function hasAttached(dir: string, id: ExtensionId): boolean {
+  const root = SESSION_ROOTS[id](dir);
+  try {
+    const slugs = readdirSync(/*turbopackIgnore: true*/ root);
+    const stamp = slugs.map((s) => `${s}:${statSync(/*turbopackIgnore: true*/ join(root, s)).mtimeMs}`).join('|');
+    let cached = bridgePids.get(root);
+    if (cached?.stamp !== stamp) {
+      const pids = slugs.flatMap((slug) => {
+        try {
+          const b = JSON.parse(readFileSync(/*turbopackIgnore: true*/ join(root, slug, 'bridge.json'), 'utf8'));
+          return Number.isInteger(b?.pid) ? [b.pid as number] : [];
+        } catch {
+          return [];
+        }
+      });
+      bridgePids.set(root, (cached = { stamp, pids }));
+    }
+    return cached.pids.some(pidAlive);
   } catch {
     return false;
   }

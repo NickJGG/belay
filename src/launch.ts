@@ -1,10 +1,9 @@
 /**
- * `belay claude` and `belay learn`: Claude Code with the Belay channel loaded. A lesson's restart (bridge/kinds/learn.runtime.mts)
- * leaves `<runDir>/restart` and ends claude, and the loop starts a fresh session.
+ * `belay claude`: Claude Code with the Belay channel loaded. Extensions launch it too (`belay learn`). A lesson's
+ * restart (bridge/kinds/learn.runtime.mts) leaves `<runDir>/restart` and ends claude, and the loop starts a fresh session.
  */
 import { spawn } from 'node:child_process';
 import { existsSync, rmSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dataDir, runDir } from './config.ts';
@@ -37,16 +36,14 @@ export interface LaunchSpec {
 
 export interface LaunchContext {
   env: NodeJS.ProcessEnv;
-  home: string;
   cwd: string;
   data: string;
   platform: NodeJS.Platform;
 }
 
-/** `learn` runs in the Learning root, for lessons. */
-export function launchSpec(mode: 'claude' | 'learn', argv: string[], c: LaunchContext): LaunchSpec {
+export function launchSpec(argv: string[], c: LaunchContext): LaunchSpec {
   return {
-    cwd: mode === 'learn' ? c.env.LEARNING_ROOT || join(c.home, 'Learning') : c.cwd,
+    cwd: c.cwd,
     args: [...CHANNEL_ARGS, ...argv],
     // BELAY_CHANNEL tells /grill and /learn the channel is loaded, so site messages can reach this session.
     env: { ...c.env, BELAY_CHANNEL: '1' },
@@ -79,10 +76,10 @@ export async function runLauncher(spec: LaunchSpec, deps: LaunchDeps): Promise<n
   }
 }
 
-/** The command: everything after it goes to claude untouched. Never rejects; a failure goes to stderr. */
-export async function launchCommand(mode: 'claude' | 'learn', argv: string[]): Promise<void> {
+/** The command, run in `cwd`: everything after it goes to claude untouched. Never rejects; a failure goes to stderr. */
+export async function launchCommand(argv: string[], cwd = process.cwd()): Promise<void> {
   try {
-    const spec = launchSpec(mode, argv, { env: process.env, home: homedir(), cwd: process.cwd(), data: dataDir(), platform: process.platform });
+    const spec = launchSpec(argv, { env: process.env, cwd, data: dataDir(), platform: process.platform });
     process.exitCode = await runLauncher(spec, realDeps);
   } catch (e) {
     console.error(`belay: ${(e as Error).message}`);

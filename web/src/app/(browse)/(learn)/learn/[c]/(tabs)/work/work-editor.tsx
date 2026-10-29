@@ -12,7 +12,7 @@ import { courseHref } from "@/app/(browse)/(learn)/_lib/hrefs";
 import type { LearnMarkdown } from "@/app/(browse)/(learn)/_lib/markdown";
 import { runCommand } from "@/app/(browse)/(learn)/_lib/run";
 import type { WorkEntry } from "@/app/(browse)/(learn)/_lib/work";
-import { draftKey, encodeDraft, restoreDraft } from "@/app/(browse)/(learn)/_lib/work-draft";
+import { draftKey, encodeDraft, restoreDraft, saveOutcome, type SaveResponse } from "@/app/(browse)/(learn)/_lib/work-draft";
 import { cn } from "@/lib/utils";
 import { CodeEditor, type CodeEditorHandle } from "./code-editor";
 import { RunSplit, useInput, useRun } from "./run-panel";
@@ -245,27 +245,20 @@ function Editor({
         setStatus("saving");
         const run = (async () => {
           const res = await put(body, forced).catch(() => null);
-          const data = (await res?.json().catch(() => null)) as
-            | { ok: true; mtime: number }
-            | { ok: false; error: string; text?: string; mtime?: number }
-            | null;
+          const data = ((await res?.json().catch(() => null)) ?? null) as SaveResponse;
           sendingRef.current = null;
-          if (data?.ok) {
+          const outcome = saveOutcome(res?.status ?? null, data);
+          if (outcome.kind === "saved") {
             savedRef.current = body;
-            baseRef.current = data.mtime;
+            baseRef.current = outcome.mtime;
             keepDraft();
             markConflict(null);
             setError(null);
             setStatus(textRef.current === body ? "saved" : "unsaved");
             return true;
           }
-          if (res?.status === 409 && data && "text" in data && data.text !== undefined) {
-            markConflict({ kind: "changed", text: data.text, mtime: data.mtime! });
-          } else if (res?.status === 404) {
-            markConflict({ kind: "deleted" });
-          } else {
-            setError(data && !data.ok ? data.error : "The site server didn't answer.");
-          }
+          if (outcome.kind === "error") setError(outcome.error);
+          else markConflict(outcome);
           setStatus("error");
           return false;
         })();
@@ -316,7 +309,9 @@ function Editor({
     const res = await fetch(`/api/work?${new URLSearchParams({ course, path: rel })}`).catch(() => null);
     if (!res) return;
     if (res.status === 404) {
-      if (!saving.current) markConflict({ kind: "deleted" });
+      // The proxy's plain 404 (learn off) says nothing about the file.
+      const fromRoute = (await res.json().catch(() => null)) !== null;
+      if (fromRoute && !saving.current) markConflict({ kind: "deleted" });
       return;
     }
     if (!res.ok) return;

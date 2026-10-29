@@ -29,3 +29,23 @@ export function restoreDraft(raw: string | null, disk: string): string | null {
     return null;
   }
 }
+
+/** `PUT /api/work`'s JSON body (`writeWork`'s result); null when there was no JSON. */
+export type SaveResponse = { ok: true; mtime: number } | { ok: false; error: string; text?: string; mtime?: number } | null;
+
+export type SaveOutcome =
+  | { kind: "saved"; mtime: number }
+  | { kind: "changed"; text: string; mtime: number }
+  | { kind: "deleted" }
+  | { kind: "error"; error: string };
+
+export const WORK_OFF = "Not saved: the site isn't serving Work (is learn switched off?). Your text is kept in this tab.";
+
+/** What a save's response means. `status` is null when the request failed outright. */
+export function saveOutcome(status: number | null, data: SaveResponse): SaveOutcome {
+  if (data?.ok) return { kind: "saved", mtime: data.mtime };
+  if (status === 409 && data?.text !== undefined) return { kind: "changed", text: data.text, mtime: data.mtime! };
+  // Only the route's own 404 is JSON; the proxy's plain one means the route itself is off.
+  if (status === 404) return data ? { kind: "deleted" } : { kind: "error", error: WORK_OFF };
+  return { kind: "error", error: data ? data.error : "The site server didn't answer." };
+}

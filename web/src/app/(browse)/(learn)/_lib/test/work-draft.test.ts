@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { contentHash, draftKey, encodeDraft, restoreDraft } from "../work-draft.ts";
+import { contentHash, draftKey, encodeDraft, restoreDraft, saveOutcome, WORK_OFF } from "../work-draft.ts";
 
 test("a draft comes back over the file it was typed over", () => {
   assert.equal(restoreDraft(encodeDraft("edited", "disk"), "disk"), "edited");
@@ -26,4 +26,18 @@ test("drafts are per course and path, and the hash tells close texts apart", () 
   assert.notEqual(draftKey("a", "work/x.md"), draftKey("a", "work/y.md"));
   assert.notEqual(contentHash("ab"), contentHash("ba"));
   assert.match(contentHash(""), /^[0-9a-f]{8}$/);
+});
+
+test("a save's response: saved, changed on disk, deleted, or an error", () => {
+  assert.deepEqual(saveOutcome(200, { ok: true, mtime: 5 }), { kind: "saved", mtime: 5 });
+  assert.deepEqual(saveOutcome(409, { ok: false, error: "Changed on disk.", text: "disk", mtime: 6 }), { kind: "changed", text: "disk", mtime: 6 });
+  assert.deepEqual(saveOutcome(409, { ok: false, error: "A file with that name exists." }), { kind: "error", error: "A file with that name exists." });
+  assert.deepEqual(saveOutcome(404, { ok: false, error: "Deleted on disk." }), { kind: "deleted" });
+  assert.deepEqual(saveOutcome(null, null), { kind: "error", error: "The site server didn't answer." });
+});
+
+test("a save the proxy refuses (learn off) is an error that keeps the text, not a deletion", () => {
+  assert.deepEqual(saveOutcome(404, null), { kind: "error", error: WORK_OFF });
+  const draft = encodeDraft("typed", "disk");
+  assert.equal(restoreDraft(draft, "disk"), "typed");
 });
