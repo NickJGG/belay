@@ -10,7 +10,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "build:bridge": "tsc -p ../bridge",
-    "test:bridge": "tsc -p ../bridge && node --test \"../bridge/test/*.test.mts\"",
+    "test:bridge": "tsc -p ../bridge && node --test \"../bridge/test/*.test.mts\" \"../bridge/test/kinds/*.test.mts\"",
     "test:plugin": "node --test \"../plugin/scripts/test/*.test.js\"",
     "test:site": "node --test \"src/lib/test/*.test.ts\""
   },

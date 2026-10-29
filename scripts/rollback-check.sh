@@ -8,7 +8,9 @@
 #   3. each copy differs from pristine only by its ops' edits;
 #   4. the branch reads twice (cold, warm) and master reads lenient and strict; the reports are kept for review,
 #      and the branch's two must match;
-#   5. the tripwire never fired.
+#   5. the bridge harness on copies of both roots' plugin/ (built, with node_modules), each bridge with each root's
+#      site helpers: no failed assertions, and all four transcripts equal;
+#   6. the tripwire never fired.
 # Prints the real data dir's commits since the start, to check by eye that they're ordinary ops.
 set -uo pipefail
 
@@ -64,6 +66,18 @@ env_w node "$S/rollback-read.ts" "$B" --out "$T/read-branch-2.json" "${PB[@]}" 2
 env_w node "$S/rollback-read.ts" "$M" --strict --out "$T/read-master.json" "${PM[@]}" 2>&1 | quiet
 check diff "$T/read-branch-1.json" "$T/read-branch-2.json"
 echo "reports: $T/read-*.json"
+
+step "bridge"
+cp -a "$M/plugin" "$T/plugin-master"
+cp -a "$B/plugin" "$T/plugin-branch"
+for b in master branch; do
+  for s in master branch; do
+    if [ $s = master ]; then root=$M paths=("${PM[@]}"); else root=$B paths=("${PB[@]}"); fi
+    env_w node "$S/bridge-harness.ts" "$T/plugin-$b" "$root" --out "$T/bridge-$b-$s.json" "${paths[@]}"
+  done
+done
+check node -e "for (const f of process.argv.slice(1)) if (require(f).failed.length) process.exit(1)" "$T"/bridge-*.json
+for f in "$T"/bridge-{master-branch,branch-master,branch-branch}.json; do check diff "$T/bridge-master-master.json" "$f"; done
 
 step "tripwire"
 trip_after=$(wc -c <"$trip" 2>/dev/null || echo 0)

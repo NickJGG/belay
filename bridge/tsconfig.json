@@ -12,5 +12,5 @@
     "outDir": "../plugin/bridge",
     "types": ["node"]
   },
-  "include": ["*.mts"]
+  "include": ["*.mts", "kinds/*.mts"]
 }

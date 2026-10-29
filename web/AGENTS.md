@@ -18,7 +18,7 @@ root `CONTEXT.md`).
 ## Commands
 All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - `pnpm typecheck`, `pnpm lint`, `pnpm test:site`, `pnpm test:plugin`.
-- `pnpm build:bridge` compiles `../bridge/*.mts` into `../plugin/bridge/*.mjs`. Run it after every bridge change and
+- `pnpm build:bridge` compiles `../bridge/*.mts` and `../bridge/kinds/*.mts` into `../plugin/bridge/`. Run it after every bridge change and
   commit the output: the plugin runs the compiled files in place, so a stale `.mjs` ships the old bridge.
 - `pnpm test:bridge` builds first; its lifecycle test drives the compiled server over stdio.
 - After a fresh clone, run `npm install` in `plugin/`: nothing else installs the plugin's runtime deps.
@@ -85,7 +85,7 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   palette, `GET /api/search`) listens too. `p` is Pick, so an option keyed `p` has no shortcut.
 - Follow along never jumps while a comment or pick note is being written: the jump would discard it. A lesson's
   Follow along waits in its pill while a text field has text.
-- `bridge/lesson.mts`'s start queue and `lib/start-queue.ts` agree on `<data>/.run/start.json`, and the restart marker
+- `bridge/kinds/learn.mts`'s start queue and `lib/start-queue.ts` agree on `<data>/.run/start.json`, and the restart marker
   is `<data>/.run/restart` for the bridge and `src/launch.ts` alike.
 
 ## Plugin loading
@@ -106,8 +106,12 @@ Idle, the server lists only `attach`: a grill by `slug` (`/grill`) or a lesson b
 Attaching binds a free 127.0.0.1 port with a fresh token, writes `bridge.json` in the session's folder
 `{port, token, sessionId, pid, at, wt}`, and announces `reply`, `show`, `choice` and `detach`, plus `restart` for a
 lesson. The site's hub holds an upstream to every `bridge.json`'s `/events`; a session is Live while that stream is
-open. Message kinds live in `bridge/protocol.mts`, event types in `bridge/http.mts`.
-- Lessons (`bridge/lesson.mts`): attach makes up `lesson-<course>-<yyyymmdd>-<hhmm>` and writes its
+open. The core message kinds live in `bridge/protocol.mts`, event types in `bridge/http.mts`.
+- Session kinds (`bridge/kinds/`, listed in `kinds/index.mts`): each extension's descriptor (`<id>.mts`: INSTRUCTIONS,
+  tool JSON, attach arguments, wording) loads at startup, and its runtime (`<id>.runtime.mts`: messages, handlers,
+  notifications, files, step labels) on attach. `bridge/settings.mts` reads `settings.yaml`'s `extensions:` as
+  `src/extensions.ts` does: INSTRUCTIONS at startup, the tools on every request.
+- Lessons (`bridge/kinds/learn.mts`, `learn.runtime.mts`): attach makes up `lesson-<course>-<yyyymmdd>-<hhmm>` and writes its
   `<data>/lessons/<slug>/session.json` (`kind: "lesson"`). `show` takes `{target: claim|whiteboard|work|source,
   topic?, id?, path?}`, checked against the course folder; the upstream keeps the last one for pages opened later.
   The site sends `attempt` (a `work/` file) and `restart` (a start button). A start: the site writes

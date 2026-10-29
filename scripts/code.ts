@@ -19,6 +19,11 @@ export const DEFAULT_PATHS: Record<string, string> = {
   images: 'web/src/lib/images.ts',
   shell: 'web/src/lib/shell.ts',
   sidebar: 'web/src/lib/sidebar.ts',
+  webConfig: 'web/src/lib/config.ts',
+  bridgePost: 'web/src/lib/bridge-post.ts',
+  upstream: 'web/src/lib/upstream.ts',
+  chat: 'web/src/lib/chat.ts',
+  sessions: 'web/src/lib/sessions.ts',
 };
 
 export interface Code {
