@@ -29,6 +29,10 @@ export const BUILT_IN_LISTS = new Set([
   'web/src/lib/extensions.server.ts',
   'web/src/lib/extensions.client.ts',
   'web/src/lib/extensions.markdown.ts',
+  'web/src/lib/extensions.generated.ts',
+  'web/src/lib/extensions.server.generated.ts',
+  'web/src/lib/extensions.client.generated.ts',
+  'web/src/lib/extensions.markdown.generated.ts',
   'bridge/kinds/index.mts',
 ]);
 

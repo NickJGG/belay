@@ -48,7 +48,7 @@ ${entry('claude [args]', `Claude Code with the Belay channel (args go to claude)
                                     one of its sessions is attached. Its data is never touched
   serve [--port <n>] [--no-open] [--dev]
                                     dashboard at http://127.0.0.1:4747/ (Ctrl+C to stop); builds web/
-                                    first when it or src/ changed (needs 'npm install' in web/);
+                                    first when it, src/ or extensions/ changed (needs 'pnpm install');
                                     --dev skips the build and runs next dev, so edits show up live
   digest                            SessionStart hook: reads the hook JSON on stdin, prints a summary
                                     if its cwd is in a registered project, else nothing

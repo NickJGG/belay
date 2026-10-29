@@ -12,7 +12,8 @@
   },
   "scripts": {
     "test": "node --test \"test/**/*.test.ts\" \"src/extensions/*/test/*.test.ts\"",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "postinstall": "node scripts/generate.ts"
   },
   "dependencies": {
     "yaml": "2.9.1"

@@ -1,6 +1,6 @@
 /**
- * The site's built-in session kinds and slots on the server: each extension's `(browse)/(<id>)/_lib/manifest.server.ts`,
- * and the core's ways of reaching them. Only active ones count, so an inactive kind's folder is never read.
+ * The site's session kinds and slots on the server: each installed extension's `_lib/manifest.server.ts` (listed by the
+ * generated `extensions.server.generated.ts`), and the core's ways of reaching them. Only active ones count, so an inactive kind's folder is never read.
  */
 import "server-only";
 import { dataDir } from "../../../src/config.ts";
@@ -9,19 +9,20 @@ import { isActive } from "../../../src/extensions.ts";
 import type { ComponentType } from "react";
 import type { GridSource } from "../../../src/home.ts";
 import type { Issue } from "../../../src/store.ts";
-import { server as grill, slots as grillSlots, type GrillSearch } from "../app/(browse)/(grill)/_lib/manifest.server.ts";
+import type { GrillSearch } from "../app/(browse)/(grill)/_lib/manifest.server.ts";
 import type { GrillItem, GrillLive, runtime as grillRuntime } from "../app/(browse)/(grill)/_lib/runtime.server.ts";
 import type { GrillSession } from "../app/(browse)/(grill)/_lib/sessions.ts";
-import { server as learn, slots as learnSlots, type LearnSearch } from "../app/(browse)/(learn)/_lib/manifest.server.ts";
+import type { LearnSearch } from "../app/(browse)/(learn)/_lib/manifest.server.ts";
 import type { LessonLive, runtime as learnRuntime } from "../app/(browse)/(learn)/_lib/runtime.server.ts";
+import { KINDS, SLOTS } from "./extensions.server.generated.ts";
 import { sessionKind, shellRules } from "./extensions.ts";
 import type { ItemContext, KindRuntime, LiveSession, ServerKind } from "./session-kind.ts";
 import { pseudoProject } from "./sidebar.ts";
 import type { FlightGroup, ListsContext, ProjectEntry, SearchContext, ServerSlots } from "./slots.ts";
 import type { SessionBase, SessionMemo } from "./sessions.ts";
 
-export const SERVER_KINDS: readonly ServerKind[] = [grill, learn];
-export const SERVER_SLOTS: readonly ServerSlots[] = [grillSlots, learnSlots];
+export const SERVER_KINDS: readonly ServerKind[] = KINDS;
+export const SERVER_SLOTS: readonly ServerSlots[] = SLOTS;
 
 /** What the kinds' lists and Tabs add up to. */
 export type ListedSession = GrillSession;

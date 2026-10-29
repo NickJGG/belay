@@ -1,15 +1,15 @@
 /**
- * The site's built-in extension list: each extension's pure descriptor from `(browse)/(<id>)/_lib/manifest.ts`, safe
- * for the browser, and what their session kinds add up to. Their server parts are listed in `extensions.server.ts`.
+ * The site's extension list: each installed extension's pure descriptor from its `_lib/manifest.ts` (listed by the
+ * generated `extensions.generated.ts`), safe for the browser, and what their session kinds add up to. Their server
+ * parts are listed in `extensions.server.ts`.
  */
 import type { ExtensionId } from "../../../src/extension-ids.ts";
-import { manifest as grill } from "../app/(browse)/(grill)/_lib/manifest.ts";
-import { manifest as learn } from "../app/(browse)/(learn)/_lib/manifest.ts";
+import { MANIFESTS } from "./extensions.generated.ts";
 import type { LessonShow } from "../app/(browse)/(learn)/_lib/lesson.ts";
 import type { PureKind } from "./session-kind.ts";
 import type { ShellRules } from "./slots.ts";
 
-export const MANIFESTS = [grill, learn] as const;
+export { MANIFESTS };
 
 /** The active extensions' page rules, in built-in order. */
 export const shellRules = (active: readonly ExtensionId[]): (ShellRules & { id: ExtensionId })[] =>

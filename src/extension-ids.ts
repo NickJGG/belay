@@ -36,7 +36,7 @@ export interface ExtensionInfo {
 // Next bundles this module, so its own location means nothing there; the site's server always runs in web/.
 export const REPO = process.env.NEXT_RUNTIME ? resolve(/*turbopackIgnore: true*/ process.cwd(), '..') : resolve(import.meta.dirname, '..');
 
-const ID = /^[a-z][a-z0-9-]*$/;
+export const ID = /^[a-z][a-z0-9-]*$/;
 /** The data dir's own folders, which no extension's sessions may take. */
 const CORE_FOLDERS = new Set(['projects', 'issues', 'log', 'cache']);
 

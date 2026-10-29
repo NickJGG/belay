@@ -1,0 +1,14 @@
+packages:
+  - web
+  - extensions/*
+
+allowBuilds:
+  esbuild: true
+  sharp: false
+  unrs-resolver: true
+
+# Its types import typescript without declaring it, which in the workspace finds the root's TS 7 (no API types).
+packageExtensions:
+  '@valtown/codemirror-ts':
+    peerDependencies:
+      typescript: '*'

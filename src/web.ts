@@ -1,6 +1,7 @@
 /**
- * `belay serve`: builds `web/` when its sources changed, then runs `next start` on loopback.
- * `--dev` runs `next dev` instead, which picks up edits live; its output goes to `.next/dev`, apart from the build.
+ * `belay serve`: writes the site's generated files (`generate.ts`), builds `web/` when its sources changed, then runs
+ * `next start` on loopback. `--dev` runs `next dev` instead, which picks up edits live, and regenerates as `extensions/`
+ * changes; its output goes to `.next/dev`, apart from the build.
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
@@ -26,12 +27,12 @@ function newestMtime(dir: string): number {
   return newest;
 }
 
-/** True when `web/.next/BUILD_ID` is missing or older than any source under `web/` or `src/`. */
+/** True when `web/.next/BUILD_ID` is missing or older than any file under `web/`, `src/` or `extensions/`. */
 export function buildStale(root: string): boolean {
   const buildId = join(root, 'web', '.next', 'BUILD_ID');
   if (!existsSync(buildId)) return true;
   const built = statSync(buildId).mtimeMs;
-  return newestMtime(join(root, 'web')) > built || newestMtime(join(root, 'src')) > built;
+  return ['web', 'src', 'extensions'].some((d) => existsSync(join(root, d)) && newestMtime(join(root, d)) > built);
 }
 
 function portFree(port: number): Promise<boolean> {
@@ -71,11 +72,15 @@ export async function serve({ port, open, dev }: { port: number; open: boolean; 
   const web = join(ROOT, 'web');
   // Run Next's JS entry with this Node rather than `.bin/next`, which is a .cmd shim on Windows.
   const next = join(web, 'node_modules', 'next', 'dist', 'bin', 'next');
-  if (!existsSync(next)) throw new Error(`web/ dependencies missing — run 'pnpm install' in ${web}`);
+  if (!existsSync(next)) throw new Error(`web/ dependencies missing — run 'pnpm install' in ${ROOT}`);
   if (!(await portFree(port))) throw new Error(`port ${port} is in use — already running? (try --port)`);
 
   // dataDir() resolves BELAY_DATA to an absolute path, so a relative one survives the cwd change.
   const env = { ...process.env, BELAY_DATA: dataDir(), PORT: String(port) };
+  const { describe, generate, watchExtensions } = await import('./generate.ts');
+  const line = describe(generate(ROOT));
+  if (line) console.log(line);
+  if (dev) watchExtensions(ROOT);
   if (!dev && buildStale(ROOT)) {
     console.log('belay: building the dashboard…');
     const build = spawnSync(process.execPath, [next, 'build'], { cwd: web, env, stdio: 'inherit' });

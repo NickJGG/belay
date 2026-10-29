@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev -H 127.0.0.1 -p 4747",
+    "dev": "node ../scripts/generate.ts --watch node node_modules/next/dist/bin/next dev -H 127.0.0.1 -p 4747",
     "build": "next build",
     "start": "next start -H 127.0.0.1 -p 4747",
     "lint": "eslint",

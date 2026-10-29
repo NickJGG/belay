@@ -21,6 +21,8 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - `pnpm build:bridge` compiles `../bridge/*.mts` and `../bridge/kinds/*.mts` into `../plugin/bridge/`. Run it after every bridge change and
   commit the output: the plugin runs the compiled files in place, so a stale `.mjs` ships the old bridge.
 - `pnpm test:bridge` builds first; its lifecycle test drives the compiled server over stdio.
+- `pnpm dev` runs `../scripts/generate.ts --watch`, which writes the generated extension files, then runs `next dev` and
+  regenerates as `extensions/` changes.
 - After a fresh clone, run `npm install` in `plugin/`: nothing else installs the plugin's runtime deps.
 
 ## Layout
@@ -150,6 +152,8 @@ open. The core message kinds live in `bridge/protocol.mts`, event types in `brid
   `~/.claude/projects/<cwd>/`, and then any newer transcript there disconnects, a second session's included.
 
 ## Site data
+- The layer lists (`lib/extensions*.ts`) read each installed extension's manifests from the generated
+  `lib/extensions*.generated.ts`.
 - Session kinds: each extension's `(browse)/(<id>)/_lib/manifest.ts` adds its permission-card lines, focus parser
   and reattach hint (`lib/extensions.ts`, browser-safe), and its `manifest.server.ts` its sessions' folder and a
   lazily loaded runtime: its session reader, list rows, live Tabs and extra watchers (`lib/extensions.server.ts`).

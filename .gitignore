@@ -1,3 +1,5 @@
 node_modules/
 *.stackdump
 extensions/installed.json
+web/src/lib/extensions*.generated.ts
+web/tsconfig.extensions.json

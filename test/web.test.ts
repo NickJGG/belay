@@ -42,6 +42,14 @@ test('a newer file in web/ or src/ makes it stale', () => {
   assert.equal(buildStale(root), true);
 });
 
+test('a newer file in extensions/, such as the Installed record, makes it stale', () => {
+  touch('web/.next/BUILD_ID', 50);
+  touch('extensions/learn/belay.json', 100);
+  assert.equal(buildStale(root), false);
+  touch('extensions/installed.json', 10);
+  assert.equal(buildStale(root), true);
+});
+
 test('generated files and dependencies are ignored', () => {
   touch('web/.next/BUILD_ID', 50);
   touch('web/.next/cache/x', 10);
