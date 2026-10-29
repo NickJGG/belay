@@ -1,6 +1,6 @@
 /**
  * `belay claude`: Claude Code with the Belay channel loaded. Extensions launch it too (`belay learn`). A lesson's
- * restart (bridge/kinds/learn.runtime.mts) leaves `<runDir>/restart` and ends claude, and the loop starts a fresh session.
+ * restart (extensions/learn/bridge/learn.runtime.mts) leaves `<runDir>/restart` and ends claude, and the loop starts a fresh session.
  */
 import { spawn } from 'node:child_process';
 import { existsSync, rmSync } from 'node:fs';
@@ -46,7 +46,7 @@ export function launchSpec(argv: string[], c: LaunchContext): LaunchSpec {
   return {
     cwd: c.cwd,
     args: [...CHANNEL_ARGS, ...argv],
-    // BELAY_CHANNEL tells /grill and /learn the channel is loaded, so site messages can reach this session.
+    // BELAY_CHANNEL tells /grill:grill and /learn:learn the channel is loaded, so site messages can reach this session.
     // BELAY_REPO tells the bridge, which runs from Claude Code's plugin cache, which clone's extensions are installed.
     env: { ...c.env, BELAY_CHANNEL: '1', BELAY_REPO: REPO },
     marker: join(runDir(c.data), 'restart'),

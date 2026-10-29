@@ -15,6 +15,11 @@
       "name": "grill",
       "source": "./extensions/grill/plugin",
       "description": "Grill: design interviews (/grill:grill) you can read, answer and steer from the Belay site."
+    },
+    {
+      "name": "learn",
+      "source": "./extensions/learn/plugin",
+      "description": "Learn: a research-backed tutor (/learn:learn) that builds verified courses, runs Socratic sessions and schedules spaced review, followed on the Belay site."
     }
   ]
 }

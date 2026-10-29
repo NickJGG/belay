@@ -13,9 +13,9 @@ export const DEFAULT_PATHS: Record<string, string> = {
   ops: 'src/ops.ts',
   config: 'src/config.ts',
   cli: 'src/cli.ts',
-  work: 'web/src/app/(browse)/(learn)/_lib/work.ts',
-  courses: 'web/src/app/(browse)/(learn)/_lib/courses.ts',
-  startQueue: 'web/src/app/(browse)/(learn)/_lib/start-queue.ts',
+  work: 'extensions/learn/web/_lib/work.ts',
+  courses: 'extensions/learn/web/_lib/courses.ts',
+  startQueue: 'extensions/learn/web/_lib/start-queue.ts',
   images: 'web/src/lib/images.ts',
   shell: 'web/src/lib/shell.ts',
   sidebar: 'web/src/lib/sidebar.ts',
@@ -24,9 +24,9 @@ export const DEFAULT_PATHS: Record<string, string> = {
   upstream: 'web/src/lib/upstream.ts',
   chat: 'web/src/lib/chat.ts',
   sessions: 'web/src/lib/sessions.ts',
-  lessonSessions: 'web/src/app/(browse)/(learn)/_lib/sessions.ts',
+  lessonSessions: 'extensions/learn/web/_lib/sessions.ts',
   webExtensions: 'web/src/lib/extensions.ts',
-  lesson: 'web/src/app/(browse)/(learn)/_lib/lesson.ts',
+  lesson: 'extensions/learn/web/_lib/lesson.ts',
 };
 
 export interface Code {

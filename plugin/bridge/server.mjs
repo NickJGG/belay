@@ -1,7 +1,7 @@
 /*
  * Belay bridge: the `plugin:belay@belay` Claude Code channel, spawned over stdio by the belay plugin. It carries the
- * live sessions the Belay site shows, each of a session kind an extension registers (kinds/): grills (`/grill`) and
- * lessons (`/learn`).
+ * live sessions the Belay site shows, each of a session kind an extension registers (kinds/): grills (`/grill:grill`) and
+ * lessons (`/learn:learn`).
  *
  * Idle it is MCP only, listing one tool, `attach`, which names a session by its kind's argument (a grill's `slug`, a
  * lesson's `course`). Attaching loads the rest (HTTP, zod, files, the kinds' runtimes), binds a free 127.0.0.1 port

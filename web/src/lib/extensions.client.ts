@@ -10,7 +10,8 @@ import type { ClientKind } from "./session-kind";
 import type { ClientSlots } from "./slots";
 
 export const CLIENT_KINDS = KINDS as readonly ClientKind[];
-export const CLIENT_SLOTS = SLOTS as readonly ClientSlots<SearchIndex>[];
+// Each palette is handed the merged index and reads its own extension's part of it.
+export const CLIENT_SLOTS = SLOTS as unknown as readonly ClientSlots<SearchIndex>[];
 
 export const clientKind = (s: Pick<LiveItem, "kind">): ClientKind<LiveItem> => CLIENT_KINDS.find((k) => k.kind === s.kind)! as ClientKind<LiveItem>;
 

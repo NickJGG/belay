@@ -5,7 +5,6 @@
  */
 import type { ExtensionId } from "../../../src/extension-ids.ts";
 import { MANIFESTS } from "./extensions.generated.ts";
-import type { LessonShow } from "../app/(browse)/(learn)/_lib/lesson.ts";
 import type { PureKind } from "./session-kind.ts";
 import type { ShellRules } from "./slots.ts";
 
@@ -18,8 +17,8 @@ export const shellRules = (active: readonly ExtensionId[]): (ShellRules & { id: 
 /** The extension whose pseudo-project `key` is, active or not. */
 export const pseudoOwner = (key: string): ExtensionId | undefined => MANIFESTS.find((m) => (m.shell as ShellRules).pseudo?.key === key)?.id;
 
-/** What a live session's page can follow: the focus types of every kind that has one. */
-export type Focus = LessonShow;
+/** What a live session's page can follow, as its kind's `focus` parsed it; the kind reads its own. */
+export type Focus = Readonly<Record<string, unknown>>;
 
 /** The Belay MCP tools the kinds add, with their permission-card lines. */
 export const KIND_TOOLS: Readonly<Record<string, string>> = Object.assign({}, ...MANIFESTS.map((m) => m.session.tools));

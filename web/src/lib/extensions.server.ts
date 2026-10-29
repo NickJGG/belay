@@ -9,8 +9,6 @@ import { isActive } from "../../../src/extensions.ts";
 import type { ComponentType } from "react";
 import type { GridSource } from "../../../src/home.ts";
 import type { Issue } from "../../../src/store.ts";
-import type { LearnSearch } from "../app/(browse)/(learn)/_lib/manifest.server.ts";
-import type { LessonLive, runtime as learnRuntime } from "../app/(browse)/(learn)/_lib/runtime.server.ts";
 import { KINDS, SLOTS } from "./extensions.server.generated.ts";
 import { sessionKind, shellRules } from "./extensions.ts";
 import type { ItemBase, ItemContext, KindRuntime, LiveBase, LiveSession, ServerKind } from "./session-kind.ts";
@@ -24,16 +22,10 @@ export const SERVER_SLOTS: readonly ServerSlots[] = SLOTS;
 /** What the kinds' lists and Tabs add up to. */
 export type ListedSession = SessionBase;
 export type SessionItem = ItemBase;
-export type LiveItem = Widen<LiveBase, LessonLive> | LessonLive;
+export type LiveItem = LiveBase;
 
-/** The palette's names the extensions add, merged flat. */
-export type SearchParts = Partial<Record<string, unknown>> & LearnSearch;
-
-/** One kind's Tab, with the other kinds' fields readable as undefined. */
-type Widen<T, U> = T & { [K in Exclude<keyof U, keyof T>]?: undefined };
-
-type Runtimes = { learn: typeof learnRuntime };
-type RuntimeOf<K extends ExtensionId> = K extends keyof Runtimes ? Runtimes[K] : KindRuntime;
+/** The palette's names the extensions add, merged flat; each reads its own. */
+export type SearchParts = Partial<Record<string, unknown>>;
 
 export const activeIds = (data = dataDir()): ExtensionId[] => installedIds().filter((id) => isActive(id, data));
 
@@ -46,12 +38,12 @@ export const sessionRoots = (data = dataDir()): Partial<Record<ExtensionId, stri
 // On globalThis so dev-mode module reloads keep the loaded runtimes.
 const g = globalThis as typeof globalThis & { __belayKinds?: Map<ExtensionId, Promise<KindRuntime>> };
 
-/** A kind's runtime, loaded on first use. */
-export function runtimeOf<K extends ExtensionId>(id: K): Promise<RuntimeOf<K>> {
+/** A kind's runtime, loaded on first use; the kind narrows it to its own. */
+export function runtimeOf(id: ExtensionId): Promise<KindRuntime> {
   const loaded = (g.__belayKinds ??= new Map());
   let p = loaded.get(id);
   if (!p) loaded.set(id, (p = SERVER_KINDS.find((k) => k.id === id)!.load()));
-  return p as Promise<RuntimeOf<K>>;
+  return p;
 }
 
 export type Loaded = { id: ExtensionId; root: string; fallback: boolean; runtime: KindRuntime };

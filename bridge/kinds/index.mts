@@ -13,9 +13,10 @@ import type { LabelContext } from "../transcript.mts";
 // Run from source (the tests) the descriptors are .mts; compiled, they're .mjs beside this file's tree.
 const EXT = import.meta.url.endsWith(".mts") ? "mts" : "mjs";
 
-/** Extension `id`'s descriptor in this bridge's tree: its own folder, else kinds/ until its code moves there. */
+/** Extension `id`'s descriptor in this bridge's tree. */
 export function kindFile(id: string): string | undefined {
-  return [`../../extensions/${id}/bridge/${id}.${EXT}`, `./${id}.${EXT}`].map((p) => fileURLToPath(new URL(p, import.meta.url))).find((f) => existsSync(f));
+  const file = fileURLToPath(new URL(`../../extensions/${id}/bridge/${id}.${EXT}`, import.meta.url));
+  return existsSync(file) ? file : undefined;
 }
 
 /** The installed extensions' kinds, and why any is missing. Outside a Belay clone, none. */

@@ -63,21 +63,22 @@ test("stubs re-export each installed extension's route files, skipping private f
   assert.equal(read(`${STUBS}/(demo)/.gitignore`).split('\n')[1], '*');
 });
 
-test("the layer lists import each installed extension's manifests, from its web/ or else its folder in the site", () => {
+test("the layer lists import each installed extension's manifests from its web/, never from its folder in the site", () => {
   extension('alpha');
   extension('beta-two');
   extension('gamma');
   put('extensions/alpha/web/_lib/manifest.ts', '');
   put('extensions/alpha/web/_lib/markdown.ts', '');
-  put(`${STUBS}/(beta-two)/_lib/manifest.ts`, '');
-  put(`${STUBS}/(gamma)/_lib/manifest.ts`, '');
+  put('extensions/beta-two/web/_lib/manifest.ts', '');
+  put(`${STUBS}/(beta-two)/_lib/markdown.ts`, '');
+  put('extensions/gamma/web/_lib/manifest.ts', '');
   put('extensions/installed.json', JSON.stringify({ installed: ['alpha', 'beta-two'] }));
   generate(root);
 
   const pure = read('web/src/lib/extensions.generated.ts');
   assert.ok(isGenerated(pure));
   assert.match(pure, /^import \{ manifest as alpha_manifest \} from "\.\.\/\.\.\/\.\.\/extensions\/alpha\/web\/_lib\/manifest\.ts";$/m);
-  assert.match(pure, /^import \{ manifest as beta_two_manifest \} from "\.\.\/app\/\(browse\)\/\(beta-two\)\/_lib\/manifest\.ts";$/m);
+  assert.match(pure, /^import \{ manifest as beta_two_manifest \} from "\.\.\/\.\.\/\.\.\/extensions\/beta-two\/web\/_lib\/manifest\.ts";$/m);
   assert.match(pure, /^export const MANIFESTS = \[alpha_manifest, beta_two_manifest\] as const;$/m);
   assert.doesNotMatch(pure, /gamma/);
   assert.match(read('web/src/lib/extensions.markdown.generated.ts'), /^export const HANDLERS = \{ "alpha": alpha_markdown \} as const;$/m);
@@ -93,12 +94,13 @@ test("the layer lists import each installed extension's manifests, from its web/
   ]);
 });
 
-test("the CLI's list imports each installed extension's cli/manifest.ts, or else its folder in src/extensions", () => {
+test("the CLI's list imports each installed extension's cli/manifest.ts, never one in src/extensions", () => {
   extension('alpha');
   extension('beta-two');
   extension('gamma');
   put('extensions/alpha/cli/manifest.ts', '');
-  put('src/extensions/beta-two/manifest.ts', '');
+  put('extensions/beta-two/cli/manifest.ts', '');
+  put('src/extensions/alpha/manifest.ts', '');
   put('extensions/gamma/cli/manifest.ts', '');
   put('extensions/installed.json', JSON.stringify({ installed: ['alpha', 'beta-two'] }));
   generate(root);
@@ -106,7 +108,8 @@ test("the CLI's list imports each installed extension's cli/manifest.ts, or else
   const cli = read('src/extensions.generated.ts');
   assert.ok(isGenerated(cli));
   assert.match(cli, /^import \{ manifest as alpha_manifest \} from "\.\.\/extensions\/alpha\/cli\/manifest\.ts";$/m);
-  assert.match(cli, /^import \{ manifest as beta_two_manifest \} from "\.\/extensions\/beta-two\/manifest\.ts";$/m);
+  assert.match(cli, /^import \{ manifest as beta_two_manifest \} from "\.\.\/extensions\/beta-two\/cli\/manifest\.ts";$/m);
+  assert.doesNotMatch(cli, /src\/extensions|"\.\/extensions\//);
   assert.match(cli, /^export const MANIFESTS = \[alpha_manifest, beta_two_manifest\] as const;$/m);
 });
 

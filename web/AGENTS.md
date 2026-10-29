@@ -44,10 +44,10 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - Course pages: `/learn` (a calendar across courses, then the course cards), `/learn/<c>` (Overview: a hero with the current unit, the step its
   journey lights and the journey, a calendar, the goal) and its tabs `{syllabus,map,lessons,notes,misconceptions,cards,work}` under one layout holding
   the course header, and the detail pages `/learn/<c>/{knowledge,lessons,sources}/<x>`. They are learn's, all in
-  `src/app/(browse)/(learn)/`: pages, `api/`, `_components/` and `_lib/` (`_x` below means that folder). Their data is
-  `_lib/course-data.ts` over `_lib/courses.ts`, which loads the learn skill's
-  `scripts/courses.js` and `cards.js` (formats.md is the contract). The site never edits course Markdown: it writes
-  `work/` (`/api/work`) and otherwise only runs the learn skill's own write ops (Mark read, `/api/courses/<c>/read`
+  `../extensions/learn/web/` (stubbed into `src/app/(browse)/(learn)/`): pages, `api/`, `_components/` and `_lib/` (`_x` below means that folder). Their data is
+  `_lib/course-data.ts` over `_lib/courses.ts`, which loads the learn plugin's
+  `scripts/courses.js` and `cards.js` (`../extensions/learn/plugin/scripts/`) (formats.md is the contract). The site never edits course Markdown: it writes
+  `work/` (`/api/work`) and otherwise only runs the learn plugin's own write ops (Mark read, `/api/courses/<c>/read`
   → `courses.js read`). A lesson note's Resume conversation (`_lib/course-actions.ts`) opens `claude --resume` in
   Windows Terminal.
 - Lessons: a live lesson's Tab opens `/learn/<c>/now`, its Workspace. Start buttons
@@ -70,6 +70,8 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   `belay` MCP server and binds a `channels` entry to it; no skills). `.claude-plugin/marketplace.json`: the local `belay`
   marketplace listing it and each extension's plugin.
 - `extensions/grill/plugin/` is the `grill` plugin; its `SKILL.md` is the `/grill:grill` skill.
+- `extensions/learn/plugin/` is the `learn` plugin: `/learn:learn` (its `SKILL.md`) and `/learn:{build,review,checkpoint,status}` (`skills/`). Its
+  scripts are CommonJS, so it and `../extensions/learn/test/plugin/` carry a `{"type": "commonjs"}` package.json.
 - `extensions/grill/plugin/references/session-format.md` defines `session.json`, `chat.jsonl` and the mock patch order.
 - `belay claude` / `belay learn` (`../src/launch.ts`) start `claude` with
   `--dangerously-load-development-channels plugin:belay@belay`, `--disallowedTools` for tools they never use, and `BELAY_CHANNEL=1` (the skills' "channel loaded"
@@ -84,8 +86,8 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - Keep the tested data modules free of `server-only` and `@/` imports: `src/lib/`'s (`sessions`, `projects`, `issues`,
   `frontmatter`, `upstream`, `format`, `shell`, `course-art`, `belay-view`, `watch-paths`, `sidebar`, `settings`) and each extension's
   `_lib/` ones (grill's `sessions`, `filing`, `issues`, `flight`, `session-doc`, `mock`, `behaviours`; learn's `courses`, `calendar`, `course-paths`, `course-home`, `course-nav`, `wiki-target`, `work`,
-  `session-log`, `routines`, `lesson`, `start-queue`, `run`, `ts-env`). `pnpm test:site` runs `src/lib/test/`,
-  `src/app/**/_lib/test/` and `../extensions/*/test/site/` under plain `node --test`, which resolves neither. They may import the CLI's `src/*.ts` by relative path.
+  `session-log`, `routines`, `lesson`, `start-queue`, `run`, `ts-env`). `pnpm test:site` runs `src/lib/test/`
+  and `../extensions/*/test/site/` under plain `node --test`, which resolves neither. They may import the CLI's `src/*.ts` by relative path.
 - Client components take only types from `lib/data`, `lib/belay-view`, learn's `_lib/courses` and `_lib/course-home`, and the CLI's
   `store.ts`, whose runtime pulls in `node:fs`. Values they need live in import-free modules: `lib/hrefs`, `lib/settings`,
   `lib/collapsed`, grill's `_lib/hrefs`, learn's `_lib/{hrefs,course-nav,calendar,routines,lesson}`, and the CLI's `keys`, `picker` and `time`.
@@ -101,12 +103,12 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   palette, `GET /api/search`) listens too. `p` is Pick, so an option keyed `p` has no shortcut.
 - Follow along never jumps while a comment or pick note is being written: the jump would discard it. A lesson's
   Follow along waits in its pill while a text field has text.
-- `bridge/kinds/learn.mts`'s start queue and learn's `_lib/start-queue.ts` agree on `<data>/.run/start.json`, and the restart marker
+- Learn's `bridge/learn.mts` start queue and its `web/_lib/start-queue.ts` agree on `<data>/.run/start.json`, and the restart marker
   is `<data>/.run/restart` for the bridge and `src/launch.ts` alike.
 
 ## Plugin loading
 The marketplace was added from a local path (the belay repo root), but Claude Code runs each plugin from a copy in
-`~/.claude/plugins/cache/belay/<plugin>/<version>/`: after a change, `claude plugin update belay@belay` (or `grill@belay`)
+`~/.claude/plugins/cache/belay/<plugin>/<version>/`: after a change, `claude plugin update belay@belay` (or `grill@belay`, `learn@belay`)
 and start a new session. The core plugin is enabled at user scope, so its MCP server starts in every session; the
 channel only registers in sessions launched with the dev-channels flag. Since the bridge runs from the cache, it finds
 the clone (for `extensions/installed.json`) by `BELAY_REPO`, which `belay claude` sets, else its own folder, else the
@@ -122,17 +124,16 @@ An installed extension whose bridge isn't in the cached copy is skipped with a l
   `notifications/claude/channel/permission` verdict from the site answers it.
 
 ## Bridge protocol
-Idle, the server lists only `attach`: a grill by `slug` (`/grill:grill`) or a lesson by `course` (the `/learn` skills).
+Idle, the server lists only `attach`: a grill by `slug` (`/grill:grill`) or a lesson by `course` (the learn plugin's skills).
 Attaching binds a free 127.0.0.1 port with a fresh token, writes `bridge.json` in the session's folder
 `{port, token, sessionId, pid, at, wt}`, and announces `reply`, `show`, `choice` and `detach`, plus `restart` for a
 lesson. The site's hub holds an upstream to every `bridge.json`'s `/events`; a session is Live while that stream is
 open. The core message kinds live in `bridge/protocol.mts`, event types in `bridge/http.mts`.
-- Session kinds (loaded by `kinds/index.mts` for each installed extension, from `extensions/<id>/bridge/`, or
-  `bridge/kinds/` for learn until it moves): each extension's descriptor (`<id>.mts`, exporting `kind`: INSTRUCTIONS,
+- Session kinds (loaded by `kinds/index.mts` for each installed extension, from `extensions/<id>/bridge/`): each extension's descriptor (`<id>.mts`, exporting `kind`: INSTRUCTIONS,
   tool JSON, attach arguments, wording) loads at startup, and its runtime (`<id>.runtime.mts`: messages, handlers,
   notifications, files, step labels) on attach. `bridge/settings.mts` reads `settings.yaml`'s `extensions:` as
   `src/extensions.ts` does: INSTRUCTIONS at startup, the tools on every request.
-- Lessons (`bridge/kinds/learn.mts`, `learn.runtime.mts`): attach makes up `lesson-<course>-<yyyymmdd>-<hhmm>` and writes its
+- Lessons (`extensions/learn/bridge/learn.mts`, `learn.runtime.mts`): attach makes up `lesson-<course>-<yyyymmdd>-<hhmm>` and writes its
   `<data>/lessons/<slug>/session.json` (`kind: "lesson"`). `show` takes `{target: claim|whiteboard|work|source,
   topic?, id?, path?}`, checked against the course folder; the upstream keeps the last one for pages opened later.
   The site sends `attempt` (a `work/` file) and `restart` (a start button). A start: the site writes
@@ -163,7 +164,7 @@ open. The core message kinds live in `bridge/protocol.mts`, event types in `brid
 ## Site data
 - The layer lists (`lib/extensions*.ts`) read each installed extension's manifests from the generated
   `lib/extensions*.generated.ts`.
-- Session kinds: each extension's `web/_lib/manifest.ts` (learn's still in `(browse)/(learn)/`) adds its permission-card lines, focus parser
+- Session kinds: each extension's `web/_lib/manifest.ts` adds its permission-card lines, focus parser
   and reattach hint (`lib/extensions.ts`, browser-safe), and its `manifest.server.ts` its sessions' folder and a
   lazily loaded runtime: its session reader, list rows, live Tabs and extra watchers (`lib/extensions.server.ts`).
   Only active kinds count: `sessionRoots()`, `sessionDir`, `data.ts`'s lists and the hub's watchers, which the hub

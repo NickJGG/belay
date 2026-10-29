@@ -273,7 +273,7 @@ test("a lesson: a queued start runs in the Learning root, attach by course, show
   writeFileSync(path.join(course, "knowledge", "topic.md"), "# Topic\n\nA claim. ^c1\n");
   const queue = path.join(data, ".run", "start.json");
   mkdirSync(path.dirname(queue), { recursive: true });
-  writeFileSync(queue, JSON.stringify({ label: "Quick review", command: "/learn demo-course --quick", course: "demo-course", routine: "quick", at: Date.now() }));
+  writeFileSync(queue, JSON.stringify({ label: "Quick review", command: "/learn:learn demo-course --quick", course: "demo-course", routine: "quick", at: Date.now() }));
 
   const got: Note[] = [];
   const lc = new Client({ name: "lesson-test", version: "0" });
@@ -282,7 +282,7 @@ test("a lesson: a queued start runs in the Learning root, attach by course, show
   await lc.connect(new StdioClientTransport({ command: process.execPath, args: [SERVER], cwd: learning, env: env3, stderr: "ignore" }));
   try {
     const cmd = await waitFor("queued command", () => got.find((n) => n.params?.meta && (n.params.meta as Record<string, string>).kind === "command"));
-    assert.deepEqual(cmd.params?.meta, { kind: "command", course: "demo-course", command: "/learn demo-course --quick" });
+    assert.deepEqual(cmd.params?.meta, { kind: "command", course: "demo-course", command: "/learn:learn demo-course --quick" });
     assert.ok(!existsSync(queue), "the start is consumed");
 
     assert.ok((await lc.callTool({ name: "attach", arguments: { slug: "x", course: "demo-course" } })).isError);
@@ -357,7 +357,7 @@ test("learn off: no lesson tools or instructions, an attach by course is refused
   const queue = path.join(data, ".run", "start.json");
   mkdirSync(path.dirname(queue), { recursive: true });
   writeFileSync(settings, "extensions: { learn: off }\n");
-  writeFileSync(queue, JSON.stringify({ label: "Quick review", command: "/learn demo-course --quick", course: "demo-course", routine: "quick", at: Date.now() }));
+  writeFileSync(queue, JSON.stringify({ label: "Quick review", command: "/learn:learn demo-course --quick", course: "demo-course", routine: "quick", at: Date.now() }));
 
   const got: Note[] = [];
   const off = new Client({ name: "learn-off-test", version: "0" });

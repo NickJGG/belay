@@ -3,10 +3,10 @@
  * `extensions.markdown.generated.ts`). Runs on both sides, as `markdown.ts` does. A page names the handler by its
  * context's `id`; an uninstalled extension's has none.
  */
-import type { LearnMarkdown } from "@/app/(browse)/(learn)/_lib/markdown";
 import { HANDLERS } from "./extensions.markdown.generated.ts";
 import type { MarkdownHandler } from "./markdown";
 
-export type MarkdownContext = LearnMarkdown;
+/** Names the extension whose handler reads it; the rest is that extension's own. */
+export type MarkdownContext = { id: string; [key: string]: unknown };
 
-export const MARKDOWN_HANDLERS: Partial<{ [K in MarkdownContext["id"]]: MarkdownHandler<Extract<MarkdownContext, { id: K }>> }> = HANDLERS;
+export const MARKDOWN_HANDLERS: Partial<Record<string, MarkdownHandler<MarkdownContext>>> = HANDLERS;

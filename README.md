@@ -11,11 +11,12 @@ cd plugin && npm install && cd ..
 claude plugin marketplace add .
 claude plugin install belay@belay
 claude plugin install grill@belay
+claude plugin install learn@belay
 ```
 
-Claude Code runs each plugin from a copy in its cache, so after a change run `claude plugin update belay@belay` (or `grill@belay`) and start a new session.
+Claude Code runs each plugin from a copy in its cache, so after a change run `claude plugin update belay@belay` (or `grill@belay`, `learn@belay`) and start a new session.
 
-`belay claude [args]` starts Claude Code with the plugin's channel loaded (the `/grill:grill` skill needs it); `belay learn [args]` does the same in `~/Learning` (`LEARNING_ROOT`) for lessons. Both relaunch Claude when a lesson asks to restart.
+`belay claude [args]` starts Claude Code with the plugin's channel loaded (the `/grill:grill` and `/learn:learn` skills need it); `belay learn [args]` does the same in `~/Learning` (`LEARNING_ROOT`) for lessons. Both relaunch Claude when a lesson asks to restart.
 
 ## Extensions
 

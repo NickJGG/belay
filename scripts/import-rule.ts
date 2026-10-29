@@ -1,8 +1,6 @@
 /**
  * The import rule: only an extension's own files, the generated lists and stubs (`src/generate.ts`), and scripts/ may
- * import an extension's code. Its files are `extensions/<id>/`, plus, until learn moves there, its old folders
- * (`src/extensions/<id>/`, `web/src/app/(browse)/(<id>)/`, `bridge/kinds/<id>.*mts`, `bridge/test/kinds/<id>.test.mts`)
- * and `OWNED_UNMOVED`. Edges that break the rule today are frozen in `test/import-pending.json`, kept empty.
+ * import an extension's code. Its files are `extensions/<id>/` and `OWNED_UNMOVED`. Edges that break the rule today are frozen in `test/import-pending.json`, kept empty.
  *   node scripts/import-rule.ts           prints the edges that break the rule
  *   node scripts/import-rule.ts --write   freezes them as the pending list
  * A regex scanner, since root TS has no parser API: it reads static imports, `import type`, `export … from` and
@@ -23,32 +21,18 @@ const SOURCE = /\.(ts|tsx|mts)$/;
 /** Files and folders (ending in `/`) an extension owns before they move into its folders. */
 export const OWNED_UNMOVED: Record<string, ExtensionId> = {};
 
-/** May import any extension's code: the generated lists, listed whether or not they exist yet, and learn's until it moves. */
+/** May import any extension's code: the generated lists, listed whether or not they exist yet. */
 export const BUILT_IN_LISTS = new Set([
   'src/extensions.generated.ts',
   'web/src/lib/extensions.generated.ts',
   'web/src/lib/extensions.server.generated.ts',
   'web/src/lib/extensions.client.generated.ts',
   'web/src/lib/extensions.markdown.generated.ts',
-  // learn's types, until phase 4 moves learn out
-  'web/src/lib/extensions.server.ts',
-  'web/src/lib/extensions.ts',
-  'web/src/lib/extensions.markdown.ts',
 ]);
 
-const FOLDERS = [
-  /^extensions\/([^/]+)\//,
-  /^src\/extensions\/([^/]+)\//,
-  /^web\/src\/app\/\(browse\)\/\(([^/]+)\)\//,
-  /^bridge\/kinds\/([^/.]+)(?:\.[^/]+)?\.mts$/,
-  /^bridge\/test\/kinds\/([^/.]+)\.test\.mts$/,
-];
-
 export function ownerOf(file: string): ExtensionId | undefined {
-  for (const re of FOLDERS) {
-    const id = re.exec(file)?.[1];
-    if (id && isExtensionId(id)) return id;
-  }
+  const id = /^extensions\/([^/]+)\//.exec(file)?.[1];
+  if (id && isExtensionId(id)) return id;
   for (const [path, id] of Object.entries(OWNED_UNMOVED)) if (path.endsWith('/') ? file.startsWith(path) : file === path) return id;
 }
 

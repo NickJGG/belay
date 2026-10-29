@@ -50,10 +50,10 @@ test('specifiers resolve with or without an extension, through @/, and .mjs to i
 });
 
 test("an extension's folders across layers are one owner", () => {
-  assert.equal(ownerOf('src/extensions/learn/x.ts'), 'learn');
-  assert.equal(ownerOf('web/src/app/(browse)/(learn)/_lib/x.ts'), 'learn');
-  assert.equal(ownerOf('bridge/kinds/learn.mts'), 'learn');
-  assert.equal(ownerOf('bridge/kinds/learn.runtime.mts'), 'learn');
+  assert.equal(ownerOf('extensions/learn/cli/x.ts'), 'learn');
+  assert.equal(ownerOf('extensions/learn/web/_lib/x.ts'), 'learn');
+  assert.equal(ownerOf('extensions/learn/bridge/learn.runtime.mts'), 'learn');
+  assert.equal(ownerOf('web/src/app/(browse)/(learn)/learn/page.tsx'), undefined);
   assert.equal(ownerOf('extensions/grill/test/bridge/grill.test.mts'), 'grill');
   assert.equal(ownerOf('extensions/grill/web/_lib/mock.ts'), 'grill');
   assert.equal(ownerOf('extensions/grill/cli/manifest.ts'), 'grill');
@@ -61,11 +61,12 @@ test("an extension's folders across layers are one owner", () => {
   assert.equal(ownerOf('bridge/kinds/index.mts'), undefined);
   assert.equal(ownerOf('bridge/test/settings.test.mts'), undefined);
   assert.equal(ownerOf('web/src/lib/data.ts'), undefined);
-  assert.equal(mayImport('bridge/kinds/learn.mts', 'web/src/app/(browse)/(learn)/_lib/x.ts'), true);
-  assert.equal(mayImport('extensions/grill/cli/x.ts', 'src/extensions/learn/y.ts'), false);
+  assert.equal(mayImport('extensions/learn/bridge/learn.mts', 'extensions/learn/web/_lib/x.ts'), true);
+  assert.equal(mayImport('extensions/grill/cli/x.ts', 'extensions/learn/cli/y.ts'), false);
+  assert.equal(mayImport('web/src/lib/extensions.server.ts', 'extensions/learn/web/_lib/runtime.server.ts'), false);
   assert.equal(mayImport('src/extensions.generated.ts', 'extensions/grill/cli/manifest.ts'), true);
   assert.equal(mayImport('src/extensions.ts', 'extensions/grill/cli/manifest.ts'), false);
   assert.equal(mayImport('web/src/app/(browse)/(grill)/s/[slug]/page.tsx', 'extensions/grill/web/s/[slug]/page.tsx', true), true);
-  assert.equal(mayImport('scripts/x.ts', 'web/src/app/(browse)/(learn)/_lib/courses.ts'), true);
+  assert.equal(mayImport('scripts/x.ts', 'extensions/learn/web/_lib/courses.ts'), true);
   assert.equal(mayImport('src/cli.ts', 'extensions/grill/cli/manifest.ts'), false);
 });

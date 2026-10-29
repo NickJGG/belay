@@ -22,7 +22,7 @@ const BASE_INCLUDE = ['next-env.d.ts', 'src/**/*.ts', 'src/**/*.tsx', '.next/typ
 
 /** Each layer's manifest file in an extension's folder, and what it exports into the generated list. */
 const LAYERS = [
-  { out: 'src/extensions.generated.ts', source: 'cli/manifest.ts', legacy: 'src/extensions/<id>/manifest.ts', lists: { MANIFESTS: 'manifest' } },
+  { out: 'src/extensions.generated.ts', source: 'cli/manifest.ts', lists: { MANIFESTS: 'manifest' } },
   { out: 'web/src/lib/extensions.generated.ts', source: 'web/_lib/manifest.ts', lists: { MANIFESTS: 'manifest' } },
   { out: 'web/src/lib/extensions.server.generated.ts', source: 'web/_lib/manifest.server.ts', lists: { KINDS: 'server', SLOTS: 'slots' } },
   { out: 'web/src/lib/extensions.client.generated.ts', source: 'web/_components/manifest.client.tsx', lists: { KINDS: 'client', SLOTS: 'slots' } },
@@ -84,18 +84,12 @@ function routeFiles(dir: string, rel = ''): string[] {
   return out;
 }
 
-/** Where an extension's layer file is: its own folder, else where it was until its code moved there. */
-function layerFile(root: string, id: ExtensionId, layer: Layer): string | undefined {
-  const legacy = 'legacy' in layer ? join(root, layer.legacy.replace('<id>', id)) : join(stubRoot(root, id), layer.source.slice('web/'.length));
-  return [join(root, 'extensions', id, layer.source), legacy].find((f) => existsSync(f));
-}
-
 function layerSource(root: string, ids: readonly ExtensionId[], layer: Layer): string {
   const out = join(root, layer.out);
   const names = Object.entries('lists' in layer ? layer.lists : layer.record);
   const found = ids.flatMap((id) => {
-    const file = layerFile(root, id, layer);
-    return file ? [{ id, file }] : [];
+    const file = join(root, 'extensions', id, layer.source);
+    return existsSync(file) ? [{ id, file }] : [];
   });
   const imports = found.map(({ id, file }) => `import { ${[...new Set(names.map(([, n]) => n))].map((n) => `${n} as ${alias(id, n)}`).join(', ')} } from "${spec(out, file)}";`);
   const exports = names.map(([name, imported]) =>

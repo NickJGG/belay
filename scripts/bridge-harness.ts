@@ -240,7 +240,7 @@ await grill.close();
 
 // --- a lesson -----------------------------------------------------------------
 
-const QUICK = { label: 'Quick review', command: '/learn demo-course --quick', course: 'demo-course', routine: 'quick' };
+const QUICK = { label: 'Quick review', command: '/learn:learn demo-course --quick', course: 'demo-course', routine: 'quick' };
 const isCommand = (n: Note) => (n.params?.meta as Record<string, string> | undefined)?.kind === 'command';
 
 before = files();
