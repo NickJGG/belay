@@ -1,7 +1,7 @@
 import { PATH_PATTERNS } from "../../../../../../src/extension-ids.ts";
-import { SECTIONS, sectionOf } from "../../../../lib/course-nav.ts";
-import { courseHref } from "../../../../lib/hrefs.ts";
-import { toShow, type LessonShow } from "../../../../lib/lesson.ts";
+import { SECTIONS, sectionOf } from "./course-nav.ts";
+import { courseHref } from "./hrefs.ts";
+import { toShow, type LessonShow } from "./lesson.ts";
 import type { PureKind } from "../../../../lib/session-kind.ts";
 import type { Missing, ShellRules } from "../../../../lib/slots.ts";
 

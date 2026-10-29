@@ -1,8 +1,8 @@
 /** Learn's session kind on the server: its lessons' live Tabs and the course watcher. Loaded by `manifest.server.ts`. */
 import { watch } from "chokidar";
-import { courseList } from "../../../../lib/course-data.ts";
-import { courseColor, hues, root as learningRoot } from "../../../../lib/courses.ts";
-import { lessonHref, lessonTopic } from "../../../../lib/lesson.ts";
+import { courseList } from "./course-data.ts";
+import { courseColor, hues, root as learningRoot } from "./courses.ts";
+import { lessonHref, lessonTopic } from "./lesson.ts";
 import type { HubEvent } from "../../../../lib/hub.ts";
 import type { KindRuntime, LiveBase } from "../../../../lib/session-kind.ts";
 import { courseIgnored, courseLocate } from "./watch-paths.ts";

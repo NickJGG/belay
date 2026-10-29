@@ -15,10 +15,10 @@ const LESSON_WEIGHT = 5;
 /** Each loads courses.ts on call, for the same reason. */
 export const slots = {
   id: "learn",
-  search: async () => (await import("../../../../lib/course-data.ts")).courseIndex(),
+  search: async () => (await import("./course-data.ts")).courseIndex(),
   home: async () => (await import("../_components/home-courses.tsx")).HomeCourses,
   grid: async () => {
-    const { listCourses, listLessons } = await import("../../../../lib/courses.ts");
+    const { listCourses, listLessons } = await import("./courses.ts");
     const days = listCourses().flatMap((course) => listLessons(course.course).map((l) => l.date));
     return { days, weight: LESSON_WEIGHT, unit: ["lesson", "lessons"] as [string, string] };
   },

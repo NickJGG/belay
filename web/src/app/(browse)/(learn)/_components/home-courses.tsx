@@ -1,10 +1,10 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import styles from "@/app/page.module.css";
-import { CourseCard } from "@/components/course/course-card";
-import course from "@/components/course/course.module.css";
+import { CourseCard } from "./course-card";
+import course from "./course.module.css";
 import { buttonClass } from "@/components/ui/button";
-import { homeCourses } from "@/lib/course-data";
+import { homeCourses } from "@/app/(browse)/(learn)/_lib/course-data";
 
 /** Home's Your courses: the 3 most urgent courses' cards with their Up next bands, See all to /learn when others are hidden. */
 export async function HomeCourses() {

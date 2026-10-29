@@ -38,8 +38,8 @@ test('the scanner reads every import form and skips comments and strings', () =>
 
 test('specifiers resolve with or without an extension, through @/, and .mjs to its .mts source', () => {
   assert.equal(resolveSpecifier('src/cli.ts', './grill.ts'), 'src/grill.ts');
-  assert.equal(resolveSpecifier('web/src/lib/data.ts', './courses'), 'web/src/lib/courses.ts');
-  assert.equal(resolveSpecifier('web/src/app/layout.tsx', '@/lib/courses'), 'web/src/lib/courses.ts');
+  assert.equal(resolveSpecifier('web/src/lib/data.ts', './sessions'), 'web/src/lib/sessions.ts');
+  assert.equal(resolveSpecifier('web/src/app/layout.tsx', '@/lib/sessions'), 'web/src/lib/sessions.ts');
   assert.equal(resolveSpecifier('bridge/server.mts', './files.mjs'), 'bridge/files.mts');
   assert.equal(resolveSpecifier('src/cli.ts', 'yaml'), null);
 });
@@ -52,11 +52,11 @@ test("an extension's folders across layers are one owner", () => {
   assert.equal(ownerOf('bridge/test/kinds/grill.test.mts'), 'grill');
   assert.equal(ownerOf('bridge/kinds/index.mts'), undefined);
   assert.equal(ownerOf('bridge/test/settings.test.mts'), undefined);
-  assert.equal(ownerOf('web/src/lib/courses.ts'), 'learn');
+  assert.equal(ownerOf('web/src/lib/mock.ts'), 'grill');
   assert.equal(ownerOf('web/src/lib/data.ts'), undefined);
   assert.equal(mayImport('bridge/kinds/learn.mts', 'web/src/app/(browse)/(learn)/_lib/x.ts'), true);
   assert.equal(mayImport('src/extensions/grill/x.ts', 'src/extensions/learn/y.ts'), false);
   assert.equal(mayImport('src/extensions.ts', 'src/extensions/learn/manifest.ts'), true);
-  assert.equal(mayImport('scripts/x.ts', 'web/src/lib/courses.ts'), true);
+  assert.equal(mayImport('scripts/x.ts', 'web/src/app/(browse)/(learn)/_lib/courses.ts'), true);
   assert.equal(mayImport('src/cli.ts', 'src/extensions/learn/manifest.ts'), false);
 });

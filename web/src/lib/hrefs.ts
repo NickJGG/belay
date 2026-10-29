@@ -9,8 +9,5 @@ export const logHref = (day: string, n: number, at: string) => `/l/${day}/${n}?a
 
 export const grillHref = (slug: string) => `/s/${encodeURIComponent(slug)}`;
 
-/** A course page; `suffix` is a section (`/map`) or a detail (`/knowledge/<topic>`). */
-export const courseHref = (course: string, suffix = "") => `/learn/${encodeURIComponent(course)}${suffix}`;
-
 /** Opens a file or folder on this machine in VS Code. */
 export const vscodeHref = (abs: string) => `vscode://file/${abs.replace(/\\/g, "/")}`;

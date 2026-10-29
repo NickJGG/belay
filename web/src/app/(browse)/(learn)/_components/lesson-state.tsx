@@ -3,8 +3,8 @@
 import * as React from "react";
 import { subscribeLive } from "@/components/live/event-hub";
 import { useLive } from "@/components/live/live-provider";
-import { toShow, type LessonShow } from "@/lib/lesson";
-import type { Queue } from "@/lib/start-queue";
+import { toShow, type LessonShow } from "@/app/(browse)/(learn)/_lib/lesson";
+import type { Queue } from "@/app/(browse)/(learn)/_lib/start-queue";
 
 type LessonState = {
   /** The selected lesson's last `show`, for Follow along; null for a grill. */
