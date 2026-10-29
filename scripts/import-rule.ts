@@ -1,8 +1,8 @@
 /**
- * The import rule: only an extension's own files, each layer's built-in list, and scripts/ may import an extension's
- * code. Its files are its folders (`src/extensions/<id>/`, `web/src/app/(browse)/(<id>)/`, `bridge/kinds/<id>.*mts`,
- * `bridge/test/kinds/<id>.test.mts`) plus `OWNED_UNMOVED`, the files still waiting to move there. Edges that break the rule today are frozen in
- * `test/import-pending.json`, and each phase that moves code removes its own.
+ * The import rule: only an extension's own files, the generated lists and stubs (`src/generate.ts`), and scripts/ may
+ * import an extension's code. Its files are `extensions/<id>/`, plus, until learn moves there, its old folders
+ * (`src/extensions/<id>/`, `web/src/app/(browse)/(<id>)/`, `bridge/kinds/<id>.*mts`, `bridge/test/kinds/<id>.test.mts`)
+ * and `OWNED_UNMOVED`. Edges that break the rule today are frozen in `test/import-pending.json`, kept empty.
  *   node scripts/import-rule.ts           prints the edges that break the rule
  *   node scripts/import-rule.ts --write   freezes them as the pending list
  * A regex scanner, since root TS has no parser API: it reads static imports, `import type`, `export … from` and
@@ -12,31 +12,32 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { isExtensionId, type ExtensionId } from '../src/extension-ids.ts';
+import { isGenerated } from '../src/generate.ts';
 
 export const ROOT = resolve(import.meta.dirname, '..');
 export const PENDING_FILE = join(ROOT, 'test', 'import-pending.json');
 
-const SCAN = ['src', 'test', 'scripts', 'bridge', 'web/src'];
+const SCAN = ['src', 'test', 'scripts', 'bridge', 'web/src', 'extensions'];
 const SOURCE = /\.(ts|tsx|mts)$/;
 
 /** Files and folders (ending in `/`) an extension owns before they move into its folders. */
 export const OWNED_UNMOVED: Record<string, ExtensionId> = {};
 
-/** May import any extension's code; listed whether or not the file exists yet. */
+/** May import any extension's code: the generated lists, listed whether or not they exist yet, and learn's until it moves. */
 export const BUILT_IN_LISTS = new Set([
-  'src/extensions.ts',
-  'web/src/lib/extensions.ts',
-  'web/src/lib/extensions.server.ts',
-  'web/src/lib/extensions.client.ts',
-  'web/src/lib/extensions.markdown.ts',
+  'src/extensions.generated.ts',
   'web/src/lib/extensions.generated.ts',
   'web/src/lib/extensions.server.generated.ts',
   'web/src/lib/extensions.client.generated.ts',
   'web/src/lib/extensions.markdown.generated.ts',
-  'bridge/kinds/index.mts',
+  // learn's types, until phase 4 moves learn out
+  'web/src/lib/extensions.server.ts',
+  'web/src/lib/extensions.ts',
+  'web/src/lib/extensions.markdown.ts',
 ]);
 
 const FOLDERS = [
+  /^extensions\/([^/]+)\//,
   /^src\/extensions\/([^/]+)\//,
   /^web\/src\/app\/\(browse\)\/\(([^/]+)\)\//,
   /^bridge\/kinds\/([^/.]+)(?:\.[^/]+)?\.mts$/,
@@ -51,9 +52,10 @@ export function ownerOf(file: string): ExtensionId | undefined {
   for (const [path, id] of Object.entries(OWNED_UNMOVED)) if (path.endsWith('/') ? file.startsWith(path) : file === path) return id;
 }
 
-export function mayImport(importer: string, target: string): boolean {
+/** `generated`: the importer is a file `src/generate.ts` wrote (a route stub). */
+export function mayImport(importer: string, target: string, generated = false): boolean {
   const owner = ownerOf(target);
-  return !owner || ownerOf(importer) === owner || BUILT_IN_LISTS.has(importer) || importer.startsWith('scripts/');
+  return !owner || generated || ownerOf(importer) === owner || BUILT_IN_LISTS.has(importer) || importer.startsWith('scripts/');
 }
 
 const isRegexStart = (prev: string) => !prev || /[(,=:[!&|?{};+\-*%<>~^]$/.test(prev) || /\b(return|typeof|case|do|else|in|of|void)$/.test(prev);
@@ -146,9 +148,10 @@ export function violations(root = ROOT): string[] {
   const edges = new Set<string>();
   for (const abs of files) {
     const importer = posix(relative(root, abs));
-    for (const spec of specifiers(readFileSync(abs, 'utf8'))) {
+    const src = readFileSync(abs, 'utf8');
+    for (const spec of specifiers(src)) {
       const target = resolveSpecifier(importer, spec, root);
-      if (target && !mayImport(importer, target)) edges.add(`${importer} -> ${target}`);
+      if (target && !mayImport(importer, target, isGenerated(src))) edges.add(`${importer} -> ${target}`);
     }
   }
   return [...edges].sort();

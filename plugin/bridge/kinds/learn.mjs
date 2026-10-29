@@ -32,7 +32,7 @@ async function startQueued(ctx) {
 // A channel message sent the moment the handshake ends may arrive before Claude Code listens for it.
 const COMMAND_DELAY = 2000;
 const QUEUE_POLL = 1000;
-export const learn = {
+export const kind = {
     id: "learn",
     noun: "lesson",
     plural: "lessons",

@@ -1,15 +1,12 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "belay",
-  "version": "0.5.0",
-  "description": "Belay: grills and lessons you can read, answer and steer from the Belay site.",
+  "version": "0.6.0",
+  "description": "Belay: the channel bridge that lets the Belay site read, answer and steer your Claude Code sessions.",
   "author": {
     "name": "Nick",
     "email": "nick.gilliam2@gmail.com"
   },
-  "skills": [
-    "./"
-  ],
   "mcpServers": {
     "belay": {
       "command": "node",

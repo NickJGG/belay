@@ -7,6 +7,7 @@ import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dataDir, runDir } from './config.ts';
+import { REPO } from './extension-ids.ts';
 
 const CHANNEL = 'plugin:belay@belay';
 // Tools these sessions never use, kept out of every call's context. The flag is variadic, so the channel flag
@@ -46,7 +47,8 @@ export function launchSpec(argv: string[], c: LaunchContext): LaunchSpec {
     cwd: c.cwd,
     args: [...CHANNEL_ARGS, ...argv],
     // BELAY_CHANNEL tells /grill and /learn the channel is loaded, so site messages can reach this session.
-    env: { ...c.env, BELAY_CHANNEL: '1' },
+    // BELAY_REPO tells the bridge, which runs from Claude Code's plugin cache, which clone's extensions are installed.
+    env: { ...c.env, BELAY_CHANNEL: '1', BELAY_REPO: REPO },
     marker: join(runDir(c.data), 'restart'),
     // The helper reads the Windows console, which mintty doesn't have, so there you accept the dialog yourself.
     acceptDialog: c.platform === 'win32' && c.env.TERM_PROGRAM !== 'mintty',

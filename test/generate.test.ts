@@ -83,12 +83,31 @@ test("the layer lists import each installed extension's manifests, from its web/
   assert.match(read('web/src/lib/extensions.markdown.generated.ts'), /^export const HANDLERS = \{ "alpha": alpha_markdown \} as const;$/m);
   assert.match(read('web/src/lib/extensions.server.generated.ts'), /^export const KINDS = \[\] as const;$/m);
   const tsconfig = read('web/tsconfig.extensions.json');
-  assert.deepEqual(JSON.parse(tsconfig.slice(tsconfig.indexOf('\n'))).include.slice(-4), [
+  assert.deepEqual(JSON.parse(tsconfig.slice(tsconfig.indexOf('\n'))).include.slice(-6), [
     '../extensions/alpha/web/**/*.ts',
     '../extensions/alpha/web/**/*.tsx',
+    '../extensions/alpha/test/site/*.ts',
     '../extensions/beta-two/web/**/*.ts',
     '../extensions/beta-two/web/**/*.tsx',
+    '../extensions/beta-two/test/site/*.ts',
   ]);
+});
+
+test("the CLI's list imports each installed extension's cli/manifest.ts, or else its folder in src/extensions", () => {
+  extension('alpha');
+  extension('beta-two');
+  extension('gamma');
+  put('extensions/alpha/cli/manifest.ts', '');
+  put('src/extensions/beta-two/manifest.ts', '');
+  put('extensions/gamma/cli/manifest.ts', '');
+  put('extensions/installed.json', JSON.stringify({ installed: ['alpha', 'beta-two'] }));
+  generate(root);
+
+  const cli = read('src/extensions.generated.ts');
+  assert.ok(isGenerated(cli));
+  assert.match(cli, /^import \{ manifest as alpha_manifest \} from "\.\.\/extensions\/alpha\/cli\/manifest\.ts";$/m);
+  assert.match(cli, /^import \{ manifest as beta_two_manifest \} from "\.\/extensions\/beta-two\/manifest\.ts";$/m);
+  assert.match(cli, /^export const MANIFESTS = \[alpha_manifest, beta_two_manifest\] as const;$/m);
 });
 
 test('an unchanged file is not rewritten', () => {

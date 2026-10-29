@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
+import { REPO } from '../src/extension-ids.ts';
 import { launchSpec, runLauncher, type LaunchContext, type LaunchSpec } from '../src/launch.ts';
 
 let data: string;
@@ -28,11 +29,11 @@ const CHANNEL_ARGS = [
   'plugin:belay@belay',
 ];
 
-test('claude runs in the cwd with the channel, the user args after it, and BELAY_CHANNEL set', () => {
+test('claude runs in the cwd with the channel, the user args after it, and BELAY_CHANNEL and BELAY_REPO set', () => {
   const spec = launchSpec(['--resume', 'x'], ctx());
   assert.equal(spec.cwd, resolve('/work'));
   assert.deepEqual(spec.args, [...CHANNEL_ARGS, '--resume', 'x']);
-  assert.deepEqual(spec.env, { PATH: 'p', BELAY_CHANNEL: '1' });
+  assert.deepEqual(spec.env, { PATH: 'p', BELAY_CHANNEL: '1', BELAY_REPO: REPO });
   assert.equal(spec.marker, join(data, '.run', 'restart'));
   assert.equal(spec.acceptDialog, true);
 });

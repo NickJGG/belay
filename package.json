@@ -11,7 +11,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "test": "node --test \"test/**/*.test.ts\" \"src/extensions/*/test/*.test.ts\"",
+    "test": "node --test \"test/**/*.test.ts\" \"src/extensions/*/test/*.test.ts\" \"extensions/*/test/*.test.ts\"",
     "typecheck": "tsc",
     "postinstall": "node scripts/generate.ts"
   },

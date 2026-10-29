@@ -9,14 +9,11 @@ import { isActive } from "../../../src/extensions.ts";
 import type { ComponentType } from "react";
 import type { GridSource } from "../../../src/home.ts";
 import type { Issue } from "../../../src/store.ts";
-import type { GrillSearch } from "../app/(browse)/(grill)/_lib/manifest.server.ts";
-import type { GrillItem, GrillLive, runtime as grillRuntime } from "../app/(browse)/(grill)/_lib/runtime.server.ts";
-import type { GrillSession } from "../app/(browse)/(grill)/_lib/sessions.ts";
 import type { LearnSearch } from "../app/(browse)/(learn)/_lib/manifest.server.ts";
 import type { LessonLive, runtime as learnRuntime } from "../app/(browse)/(learn)/_lib/runtime.server.ts";
 import { KINDS, SLOTS } from "./extensions.server.generated.ts";
 import { sessionKind, shellRules } from "./extensions.ts";
-import type { ItemContext, KindRuntime, LiveSession, ServerKind } from "./session-kind.ts";
+import type { ItemBase, ItemContext, KindRuntime, LiveBase, LiveSession, ServerKind } from "./session-kind.ts";
 import { pseudoProject } from "./sidebar.ts";
 import type { FlightGroup, ListsContext, ProjectEntry, SearchContext, ServerSlots } from "./slots.ts";
 import type { SessionBase, SessionMemo } from "./sessions.ts";
@@ -25,17 +22,17 @@ export const SERVER_KINDS: readonly ServerKind[] = KINDS;
 export const SERVER_SLOTS: readonly ServerSlots[] = SLOTS;
 
 /** What the kinds' lists and Tabs add up to. */
-export type ListedSession = GrillSession;
-export type SessionItem = GrillItem;
-export type LiveItem = Widen<GrillLive, LessonLive> | Widen<LessonLive, GrillLive>;
+export type ListedSession = SessionBase;
+export type SessionItem = ItemBase;
+export type LiveItem = Widen<LiveBase, LessonLive> | LessonLive;
 
 /** The palette's names the extensions add, merged flat. */
-export type SearchParts = GrillSearch & LearnSearch;
+export type SearchParts = Partial<Record<string, unknown>> & LearnSearch;
 
 /** One kind's Tab, with the other kinds' fields readable as undefined. */
 type Widen<T, U> = T & { [K in Exclude<keyof U, keyof T>]?: undefined };
 
-type Runtimes = { grill: typeof grillRuntime; learn: typeof learnRuntime };
+type Runtimes = { learn: typeof learnRuntime };
 type RuntimeOf<K extends ExtensionId> = K extends keyof Runtimes ? Runtimes[K] : KindRuntime;
 
 export const activeIds = (data = dataDir()): ExtensionId[] => installedIds().filter((id) => isActive(id, data));

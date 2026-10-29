@@ -8,9 +8,12 @@
  * Every request must carry a loopback Host; one with an Origin must come from the Belay site.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import type { KindEvent, Message } from "./kinds/index.mts";
+import type { Message } from "./kinds/index.mts";
 import { hostAllowed, MAX_BODY, originAllowed, tokenMatches } from "./protocol.mts";
 import type { Step, Tone } from "./transcript.mts";
+
+/** A kind's own event, such as grill's `show`; its runtime types it. */
+export type KindEvent = { type: string; [key: string]: unknown };
 
 export type BridgeEvent =
   | { type: "reply"; text: string }

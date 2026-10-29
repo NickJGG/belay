@@ -9,7 +9,12 @@
     {
       "name": "belay",
       "source": "./plugin",
-      "description": "Belay: grills and lessons you can read, answer and steer from the Belay site."
+      "description": "Belay: the channel bridge that lets the Belay site read, answer and steer your Claude Code sessions."
+    },
+    {
+      "name": "grill",
+      "source": "./extensions/grill/plugin",
+      "description": "Grill: design interviews (/grill:grill) you can read, answer and steer from the Belay site."
     }
   ]
 }

@@ -4,17 +4,18 @@ A personal issue tracker for Claude Code work, and the Belay app around it: the 
 
 ## Plugin setup
 
-The plugin's MCP server is compiled from `bridge/` into `plugin/bridge/` with `pnpm build:bridge` in `web/`; the output is committed. Install its runtime deps once, then add the repo as a local marketplace and install the plugin:
+The plugin's MCP server is compiled from `bridge/` into `plugin/bridge/` with `pnpm build:bridge` in `web/`; the output is committed. Install its runtime deps once, then add the repo as a local marketplace and install the plugin, and the plugin of each extension you use:
 
 ```sh
 cd plugin && npm install && cd ..
 claude plugin marketplace add .
 claude plugin install belay@belay
+claude plugin install grill@belay
 ```
 
-The marketplace loads the plugin in place, so edits take effect at the next session start or `/reload-plugins`.
+Claude Code runs each plugin from a copy in its cache, so after a change run `claude plugin update belay@belay` (or `grill@belay`) and start a new session.
 
-`belay claude [args]` starts Claude Code with the plugin's channel loaded (the `/grill` skill needs it); `belay learn [args]` does the same in `~/Learning` (`LEARNING_ROOT`) for lessons. Both relaunch Claude when a lesson asks to restart.
+`belay claude [args]` starts Claude Code with the plugin's channel loaded (the `/grill:grill` skill needs it); `belay learn [args]` does the same in `~/Learning` (`LEARNING_ROOT`) for lessons. Both relaunch Claude when a lesson asks to restart.
 
 ## Extensions
 

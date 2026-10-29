@@ -10,9 +10,9 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "build:bridge": "tsc -p ../bridge",
-    "test:bridge": "tsc -p ../bridge && node --test \"../bridge/test/*.test.mts\" \"../bridge/test/kinds/*.test.mts\"",
-    "test:plugin": "node --test \"../plugin/scripts/test/*.test.js\"",
-    "test:site": "node --test \"src/lib/test/*.test.ts\" \"src/app/**/_lib/test/*.test.ts\""
+    "test:bridge": "tsc -p ../bridge && node --test \"../bridge/test/*.test.mts\" \"../bridge/test/kinds/*.test.mts\" \"../extensions/*/test/bridge/*.test.mts\"",
+    "test:plugin": "node --test \"../extensions/*/test/plugin/*.test.js\"",
+    "test:site": "node --test \"src/lib/test/*.test.ts\" \"src/app/**/_lib/test/*.test.ts\" \"../extensions/*/test/site/*.test.ts\""
   },
   "dependencies": {
     "@codemirror/autocomplete": "6.20.4",

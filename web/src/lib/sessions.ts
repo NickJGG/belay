@@ -1,5 +1,5 @@
 /**
- * Session folders on disk, read-only: `<root>/<slug>/session.json` (plugin/references/session-format.md). The core
+ * Session folders on disk, read-only: `<root>/<slug>/session.json` (extensions/grill/plugin/references/session-format.md). The core
  * reads what every session has; each session kind reads the rest of its own folders through a `SessionFormat`.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";

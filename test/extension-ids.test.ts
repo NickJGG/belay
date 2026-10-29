@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
 import { bundled, installedIds, isExtensionId, ownerOfPath, parseInfo, REPO } from '../src/extension-ids.ts';
+import { generate } from '../src/generate.ts';
 
 let root: string;
 
@@ -124,6 +125,7 @@ test("an issue's grill fields survive saves byte for byte in a clone without the
   cpSync(join(REPO, 'package.json'), join(clone, 'package.json'));
   cpSync(join(REPO, 'extensions', 'learn'), join(clone, 'extensions', 'learn'), { recursive: true });
   symlinkSync(join(REPO, 'node_modules'), join(clone, 'node_modules'), 'junction');
+  generate(clone);
   const data = join(root, 'data');
   mkdirSync(join(data, 'projects'), { recursive: true });
   mkdirSync(join(data, 'issues'));

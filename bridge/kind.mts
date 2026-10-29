@@ -1,8 +1,8 @@
 /**
- * A session kind: what an extension adds to the bridge. `kinds/index.mts` lists the built-in ones.
+ * A session kind: what an extension adds to the bridge. `kinds/index.mts` loads the installed ones.
  *
- * Its descriptor (`kinds/<id>.mts`) loads at startup, so it stays light: INSTRUCTIONS, tool JSON, attach arguments and
- * wording. Its runtime (`kinds/<id>.runtime.mts`) loads on attach: zod schemas, handlers, notifications, its files and
+ * Its descriptor (`extensions/<id>/bridge/<id>.mts`) loads at startup, so it stays light: INSTRUCTIONS, tool JSON, attach arguments and
+ * wording. Its runtime (`<id>.runtime.mts` beside it) loads on attach: zod schemas, handlers, notifications, its files and
  * step labels. A session's `state` is whatever its kind's runtime makes of the attach arguments.
  */
 import type { BridgeEvent } from "./http.mts";
@@ -38,7 +38,7 @@ export type Kind<S = any> = {
   properties: Record<string, object>;
   /** Attach's description of it: "a grill by `slug` (…)". */
   attach: string;
-  /** The advice for a channel message from another of its sessions: "to run `/grill resume <slug>` (a grill)". */
+  /** The advice for a channel message from another of its sessions: "to run `/grill:grill resume <slug>` (a grill)". */
   resume: string;
   /** Its INSTRUCTIONS block. */
   instructions: string;

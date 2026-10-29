@@ -9,8 +9,7 @@ import type { ParseArgsConfig } from 'node:util';
 import { isMap, parseDocument } from 'yaml';
 import { dataDir, sessionsDir } from './config.ts';
 import { bundled, extensionInfo, installedIds, isExtensionId, type ExtensionId, type ExtensionInfo, type OwnedField } from './extension-ids.ts';
-import { manifest as grill } from './extensions/grill/manifest.ts';
-import { manifest as learn } from './extensions/learn/manifest.ts';
+import { MANIFESTS as INSTALLED } from './extensions.generated.ts';
 import type { Issue, Project } from './store.ts';
 
 export type { OwnedField };
@@ -52,7 +51,8 @@ export interface ExtensionManifest {
   cli?: CliSlots;
 }
 
-export const MANIFESTS: readonly ExtensionManifest[] = [grill, learn];
+/** The installed extensions' manifests, listed by the generator (`src/generate.ts`). */
+export const MANIFESTS: readonly ExtensionManifest[] = INSTALLED;
 
 /** The extensions' owned fields. Throws on a field that's a core key or claimed twice. */
 export function ownedFields(core: readonly string[], infos: readonly Pick<ExtensionInfo, 'id' | 'fields'>[] = bundled()): OwnedField[] {

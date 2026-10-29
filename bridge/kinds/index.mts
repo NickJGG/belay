@@ -1,20 +1,58 @@
-/** The bridge's built-in session kinds, and what their loaded runtimes add up to. */
+/**
+ * The bridge's session kinds: each installed extension's descriptor, `extensions/<id>/bridge/<id>.mts` (compiled into
+ * the plugin's own `extensions/`), and what their loaded runtimes add up to.
+ */
+import { existsSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import type { z } from "zod";
+import { findClone, installedIn } from "../extensions.mts";
 import type { Kind, Runtime } from "../kind.mts";
 import type { AnyMessage, CoreMessage, Format } from "../protocol.mts";
 import type { LabelContext } from "../transcript.mts";
-import { grill } from "./grill.mts";
-import type { GrillEvent, GrillMessage } from "./grill.runtime.mts";
-import { learn } from "./learn.mts";
-import type { LessonEvent, LessonMessage } from "./learn.runtime.mts";
 
-export const KINDS: readonly Kind[] = [grill, learn];
+// Run from source (the tests) the descriptors are .mts; compiled, they're .mjs beside this file's tree.
+const EXT = import.meta.url.endsWith(".mts") ? "mts" : "mjs";
 
-/** Whether each is on when `settings.yaml` doesn't say: every installed extension, as `src/extensions.ts` reads it (a test checks they agree). */
-export const BUILT_IN: Readonly<Record<string, boolean>> = { grill: true, learn: true };
+/** Extension `id`'s descriptor in this bridge's tree: its own folder, else kinds/ until its code moves there. */
+export function kindFile(id: string): string | undefined {
+  return [`../../extensions/${id}/bridge/${id}.${EXT}`, `./${id}.${EXT}`].map((p) => fileURLToPath(new URL(p, import.meta.url))).find((f) => existsSync(f));
+}
 
-export type Message = CoreMessage | GrillMessage | LessonMessage;
-export type KindEvent = GrillEvent | LessonEvent;
+/** The installed extensions' kinds, and why any is missing. Outside a Belay clone, none. */
+export async function installedKinds(found = findClone()): Promise<{ kinds: Kind[]; notes: string[] }> {
+  if ("why" in found) return { kinds: [], notes: [`running core-only: ${found.why}`] };
+  const kinds: Kind[] = [];
+  const notes: string[] = [];
+  let ids: string[];
+  try {
+    ids = installedIn(found.root);
+  } catch (err) {
+    return { kinds, notes: [`running core-only: ${err}`] };
+  }
+  for (const id of ids) {
+    const file = kindFile(id);
+    if (!file) {
+      notes.push(`${id} is installed but this plugin has no bridge for it: update the plugin`);
+      continue;
+    }
+    try {
+      kinds.push((await import(pathToFileURL(file).href)).kind);
+    } catch (err) {
+      notes.push(`can't load ${id}'s bridge: ${err}`);
+    }
+  }
+  return { kinds, notes };
+}
+
+const installed = await installedKinds();
+export const KINDS: readonly Kind[] = installed.kinds;
+export const KIND_NOTES: readonly string[] = installed.notes;
+
+/** Whether each is on when `settings.yaml` doesn't say: every installed extension, as `src/extensions.ts` reads it. */
+export const DEFAULTS: Readonly<Record<string, boolean>> = Object.fromEntries(KINDS.map((k) => [k.id, true]));
+
+/** Core's messages; each kind's runtime parses and formats its own. */
+export type Message = CoreMessage;
 
 export type Loaded = { kind: Kind; runtime: Runtime };
 

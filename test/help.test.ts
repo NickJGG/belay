@@ -19,7 +19,7 @@ test("the built-ins' entries follow the commands they name, wrapped at 110 colum
   const lines = helpText(MANIFESTS).split('\n');
   const at = (prefix: string) => lines.findIndex((l) => l.startsWith(prefix));
   assert.equal(at('  grill commit <slug>'), at('  git init') + 2);
-  assert.equal(lines[at('  grill commit') + 1], '                                    skill runs it when its plan is accepted); in-progress grills are refused');
+  assert.equal(lines[at('  grill commit') + 1], '                                    /grill:grill skill runs it when its plan is accepted); in-progress grills');
   assert.equal(lines[at('  claude [args]') + 1], '                                    lesson restarts its session');
   assert.equal(at('  learn [args]'), at('  claude [args]') + 2);
 });

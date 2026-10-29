@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import os from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
-import { inLearningRoot, learn, queueFile } from "../../kinds/learn.mts";
+import { inLearningRoot, kind as learn, queueFile } from "../../kinds/learn.mts";
 import { readQueue, runtime, showError, writeLessonSession, type LessonState } from "../../kinds/learn.runtime.mts";
 import { parseMessage, toChannel } from "../../protocol.mts";
 

@@ -31,12 +31,14 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { dataDir } from "./files.mjs";
 import { ALWAYS, text } from "./kind.mjs";
-import { BUILT_IN, compose, KINDS, loadKinds } from "./kinds/index.mjs";
+import { compose, DEFAULTS, KIND_NOTES, KINDS, loadKinds } from "./kinds/index.mjs";
 import { loadYaml, readEnabled } from "./settings.mjs";
 const STARTED = Date.now();
 const POLL = 2000;
 const TAIL = 250;
 const log = (...args) => console.error("[belay-bridge]", ...args);
+for (const note of KIND_NOTES)
+    log(note);
 let modules = null;
 const importAll = async () => {
     const [files, protocol, http, transcript, focus, { z }] = await Promise.all([
@@ -58,7 +60,7 @@ let loaded = null;
 let live = null;
 /** The kinds new sessions may attach as. */
 const attachable = () => {
-    const on = readEnabled(dataDir(), BUILT_IN);
+    const on = readEnabled(dataDir(), DEFAULTS);
     return KINDS.filter((k) => on[k.id]);
 };
 /** The kinds whose tools are known: the attachable ones and the attached session's. */

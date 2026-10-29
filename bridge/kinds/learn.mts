@@ -35,7 +35,7 @@ async function startQueued(ctx: IdleContext) {
 const COMMAND_DELAY = 2000;
 const QUEUE_POLL = 1000;
 
-export const learn: Kind<LessonState> = {
+export const kind: Kind<LessonState> = {
   id: "learn",
   noun: "lesson",
   plural: "lessons",

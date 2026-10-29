@@ -8,9 +8,9 @@
     "erasableSyntaxOnly": true,
     "rewriteRelativeImportExtensions": true,
     "verbatimModuleSyntax": true,
-    "rootDir": ".",
-    "outDir": "../plugin/bridge",
+    "rootDir": "..",
+    "outDir": "../plugin",
     "types": ["node"]
   },
-  "include": ["*.mts", "kinds/*.mts"]
+  "include": ["*.mts", "kinds/*.mts", "../extensions/*/bridge/*.mts"]
 }

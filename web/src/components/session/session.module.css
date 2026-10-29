@@ -1,4 +1,4 @@
-/* What every session kind's pages share: the buttons, the Drawer and the usage meters. A grill's page is in (grill)/_components/workspace.module.css. */
+/* What every session kind's pages share: the buttons, the Drawer and the usage meters. A grill's page is in extensions/grill/web/_components/workspace.module.css. */
 
 .btn {
   display: inline-flex;

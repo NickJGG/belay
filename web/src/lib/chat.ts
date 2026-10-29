@@ -1,4 +1,4 @@
-/** A session's chat.jsonl (format: plugin/references/session-format.md) and which of its prompts still take an answer. */
+/** A session's chat.jsonl (format: extensions/grill/plugin/references/session-format.md) and which of its prompts still take an answer. */
 import { KIND_TOOLS } from "./extensions.ts";
 
 export type ChatEntry = { at: string; from: "site" | "claude" | "terminal"; kind: string } & Record<string, unknown>;

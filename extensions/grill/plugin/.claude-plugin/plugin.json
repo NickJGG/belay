@@ -1,0 +1,13 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "grill",
+  "version": "0.1.0",
+  "description": "Grill: design interviews (/grill:grill) you can read, answer and steer from the Belay site.",
+  "author": {
+    "name": "Nick",
+    "email": "nick.gilliam2@gmail.com"
+  },
+  "skills": [
+    "./"
+  ]
+}
