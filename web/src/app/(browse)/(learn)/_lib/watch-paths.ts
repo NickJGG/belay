@@ -1,6 +1,6 @@
 /** Which paths under the Learning root learn's course watcher cares about, compared through `path.relative` as the hub's are. */
 import path from "node:path";
-import { visibleParts } from "../../../../lib/course-paths.ts";
+import { visibleParts } from "./course-paths.ts";
 
 /** `[course, rel]` for a path under the Learning root that the site may show, else null. */
 export function courseLocate(root: string, abs: string): [string, string] | null {

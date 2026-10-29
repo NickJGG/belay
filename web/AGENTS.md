@@ -38,15 +38,16 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   (`homeActivity`, `?days=` as a project's Activity).
 - Course pages: `/learn` (a calendar across courses, then the course cards), `/learn/<c>` (Overview: a hero with the current unit, the step its
   journey lights and the journey, a calendar, the goal) and its tabs `{syllabus,map,lessons,notes,misconceptions,cards,work}` under one layout holding
-  the course header, and the detail pages `/learn/<c>/{knowledge,lessons,sources}/<x>`. Their pieces are in
-  `src/components/course/`; their data is `lib/course-data.ts` over `lib/courses.ts`, which loads the learn skill's
+  the course header, and the detail pages `/learn/<c>/{knowledge,lessons,sources}/<x>`. They are learn's, all in
+  `src/app/(browse)/(learn)/`: pages, `api/`, `_components/` and `_lib/` (`_x` below means that folder). Their data is
+  `_lib/course-data.ts` over `_lib/courses.ts`, which loads the learn skill's
   `scripts/courses.js` and `cards.js` (formats.md is the contract). The site never edits course Markdown: it writes
   `work/` (`/api/work`) and otherwise only runs the learn skill's own write ops (Mark read, `/api/courses/<c>/read`
-  → `courses.js read`). A lesson note's Resume conversation (`app/course-actions.ts`) opens `claude --resume` in
+  → `courses.js read`). A lesson note's Resume conversation (`_lib/course-actions.ts`) opens `claude --resume` in
   Windows Terminal.
 - Lessons: a live lesson's Tab opens `/learn/<c>/now`, its Workspace. Start buttons
-  (`course/start-buttons.tsx`) POST `/api/lesson/start`, which queues the routine (`lib/start-queue.ts`) and asks a
-  live lesson to restart into it; Follow along (`live/follow.tsx`) follows the lesson's `show`s (`lib/lesson.ts`).
+  (`_components/start-buttons.tsx`) POST `/api/lesson/start`, which queues the routine (`_lib/start-queue.ts`) and asks a
+  live lesson to restart into it; Follow along (`_components/follow.tsx`) follows the lesson's `show`s (`_lib/lesson.ts`).
 - Belay's pages: `/p` (project cards), `/p/<key>` (Issues; `?view=ideas`), `/p/<key>/{activity,logs}` and the
   extensions' sections (`/p/<key>/[section]`, grill's Grills) under one layout holding the project header, `/i/<id>` and `/l/<day>/<n>?at=`. Their pieces are in
   `src/components/belay/`; their writes are the server actions in `src/app/actions.ts`, each a thin wrapper around
@@ -66,13 +67,14 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   bridge is typechecked against the root's copies but runs against the plugin's.
 - The site runs on port 4747 (`belay serve`), the only site origin the bridge accepts; changing it also needs
   `BELAY_SITE_PORT`.
-- Keep `src/lib/` data modules (`sessions`, `projects`, `issues`, `frontmatter`, `upstream`, `format`, `shell`,
-  `course-art`, `belay-view`, `watch-paths`, `courses`, `calendar`, `course-paths`, `course-home`, `course-nav`, `wiki-target`,
-  `work`, `session-log`, `routines`, `lesson`, `start-queue`, `sidebar`) free of `server-only` and `@/` imports: `pnpm test:site` runs them under plain
-  `node --test`, which resolves neither. They may import the CLI's `../../../src/*.ts`.
-- Client components take only types from `lib/data`, `lib/belay-view`, `lib/courses`, `lib/course-home` and the CLI's
+- Keep the tested data modules free of `server-only` and `@/` imports: `src/lib/`'s (`sessions`, `projects`, `issues`,
+  `frontmatter`, `upstream`, `format`, `shell`, `course-art`, `belay-view`, `watch-paths`, `sidebar`) and each extension's
+  `_lib/` ones (learn's `courses`, `calendar`, `course-paths`, `course-home`, `course-nav`, `wiki-target`, `work`,
+  `session-log`, `routines`, `lesson`, `start-queue`, `run`, `ts-env`). `pnpm test:site` runs `src/lib/test/` and
+  `src/app/**/_lib/test/` under plain `node --test`, which resolves neither. They may import the CLI's `src/*.ts` by relative path.
+- Client components take only types from `lib/data`, `lib/belay-view`, learn's `_lib/courses` and `_lib/course-home`, and the CLI's
   `store.ts`, whose runtime pulls in `node:fs`. Values they need live in import-free modules: `lib/hrefs`,
-  `lib/collapsed`, `lib/course-nav`, `lib/calendar`, `lib/routines`, `lib/lesson`, and the CLI's `keys`, `picker` and `time`.
+  `lib/collapsed`, learn's `_lib/{hrefs,course-nav,calendar,routines,lesson}`, and the CLI's `keys`, `picker` and `time`.
 - Every write goes through a CLI op (via `actions.ts`), and adding one to the app means adding it to the CLI first.
 - `src/proxy.ts` applies belay's host guard (`src/guard.ts`) to every request but `/api/usage`, which checks its own.
 - `src/lib/session-doc.ts`'s `decisions`/`context` mirror `plugin/scripts/session.js`, and a test checks that
@@ -85,7 +87,7 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   palette, `GET /api/search`) listens too. `p` is Pick, so an option keyed `p` has no shortcut.
 - Follow along never jumps while a comment or pick note is being written: the jump would discard it. A lesson's
   Follow along waits in its pill while a text field has text.
-- `bridge/kinds/learn.mts`'s start queue and `lib/start-queue.ts` agree on `<data>/.run/start.json`, and the restart marker
+- `bridge/kinds/learn.mts`'s start queue and learn's `_lib/start-queue.ts` agree on `<data>/.run/start.json`, and the restart marker
   is `<data>/.run/restart` for the bridge and `src/launch.ts` alike.
 
 ## Plugin loading

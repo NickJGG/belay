@@ -6,7 +6,7 @@ import { BookOpen, CircleAlert, FileText, GraduationCap } from "lucide-react";
 import { Mark } from "@/components/layout/logo";
 import styles from "@/components/layout/palette.module.css";
 import { shortDate } from "@/lib/format";
-import { courseHref } from "@/lib/hrefs";
+import { courseHref } from "@/app/(browse)/(learn)/_lib/hrefs";
 import type { PaletteProps } from "@/lib/slots";
 import type { LearnSearch } from "../_lib/manifest.server";
 

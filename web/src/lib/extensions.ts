@@ -5,7 +5,7 @@
 import type { ExtensionId } from "../../../src/extension-ids.ts";
 import { manifest as grill } from "../app/(browse)/(grill)/_lib/manifest.ts";
 import { manifest as learn } from "../app/(browse)/(learn)/_lib/manifest.ts";
-import type { LessonShow } from "./lesson.ts";
+import type { LessonShow } from "../app/(browse)/(learn)/_lib/lesson.ts";
 import type { PureKind } from "./session-kind.ts";
 import type { ShellRules } from "./slots.ts";
 

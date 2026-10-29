@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ClaimChip } from "@/components/content/claim-chip";
+import { ClaimChip } from "./claim-chip";
 import { MarkdownLink, type MarkdownLinkProps } from "@/components/content/markdown-link";
 import styles from "@/components/content/prose.module.css";
 

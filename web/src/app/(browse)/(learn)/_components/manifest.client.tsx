@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { BookOpen, FileCode, Layers, LayoutDashboard, LibraryBig, ListChecks, MapIcon, NotebookPen, TriangleAlert } from "lucide-react";
 import { FocusHighlight } from "@/components/content/focus-highlight";
-import { FollowAlong } from "@/components/live/follow";
+import { FollowAlong } from "./follow";
 import { useLive } from "@/components/live/live-provider";
 import styles from "@/components/project-mark.module.css";
 import { str } from "@/components/session/drawer";

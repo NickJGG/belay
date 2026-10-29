@@ -8,7 +8,7 @@ import type { OpenTurn } from "./chat";
 import type { Focus } from "./extensions";
 import { activeKinds, runtimeOf, SERVER_KINDS } from "./extensions.server";
 import type { KindRuntime, LiveSession } from "./session-kind";
-import type { Queue } from "./start-queue";
+import type { Queue } from "../app/(browse)/(learn)/_lib/start-queue";
 import { isSlug } from "./sessions";
 import { Switchboard } from "./switchboard";
 import { connectUpstream, readBridgeFile, sameBridge, type BridgeEvent, type Upstream } from "./upstream";

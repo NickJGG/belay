@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { describe, test } from "node:test";
+import { EXTENSION_IDS as ALL } from "../../../../../../../src/extension-ids.ts";
 import { missing, pageKind, pageTab } from "../../../../../lib/shell.ts";
 import { sidebarSections } from "../../../../../lib/sidebar.ts";
 
@@ -48,4 +49,25 @@ test("a course detail page lights its section", () => {
   assert.deepEqual(lit(sidebarSections({ kind: "reading", owner: course, section: "Cards" }, "/learn/llm/x", on)), ["Cards"]);
   assert.equal(sidebarSections({ kind: "workspace", owner: course }, "/learn/llm/work", on), null);
   assert.equal(sidebarSections({ kind: "reading", owner: course }, "/learn/llm", []), null);
+});
+
+describe("the shell and lessons", () => {
+  test("the Now page and Work tab are Workspaces; other course pages read", () => {
+    assert.equal(pageKind("/learn/llm/now", ALL), "workspace");
+    assert.equal(pageKind("/learn/llm/work/flops.py", ALL), "workspace");
+    assert.equal(pageKind("/learn/llm/notes", ALL), "reading");
+    assert.equal(pageKind("/learn/llm/now/x", ALL), "reading");
+  });
+
+  test("a page's Tab: its grill, or the live lesson on its course", () => {
+    const live = [{ slug: "g" }, { slug: "lesson-llm-1", course: "llm" }];
+    assert.equal(pageTab("/s/g", live, ALL), "g");
+    assert.equal(pageTab("/learn/llm/knowledge/x", live, ALL), "lesson-llm-1");
+    assert.equal(pageTab("/learn/other", live, ALL), null);
+    assert.equal(pageTab("/p/KILN", live, ALL), null);
+  });
+
+  test("a missing course's Now page says so", () => {
+    assert.equal(missing("/learn/nope/now", ALL).what, "No course nope.");
+  });
 });

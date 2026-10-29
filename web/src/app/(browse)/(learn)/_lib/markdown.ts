@@ -10,8 +10,8 @@
 import type { Root, Parent, PhrasingContent, Text } from "mdast";
 import { visit, SKIP } from "unist-util-visit";
 import type { MarkdownHandler } from "../../../../lib/markdown";
-import type { TopicStatus } from "../../../../lib/courses";
-import { resolveWikiTarget } from "../../../../lib/wiki-target";
+import type { TopicStatus } from "./courses";
+import { resolveWikiTarget } from "./wiki-target";
 import { CourseLink } from "../_components/markdown-link";
 
 export type LearnMarkdown = {
