@@ -1,5 +1,5 @@
 /**
- * `belay claude` and `belay learn`: Claude Code with the Belay channel loaded. A lesson's restart (bridge/lesson.mts)
+ * `belay claude` and `belay learn`: Claude Code with the Belay channel loaded. A lesson's restart (bridge/kinds/learn.runtime.mts)
  * leaves `<runDir>/restart` and ends claude, and the loop starts a fresh session.
  */
 import { spawn } from 'node:child_process';

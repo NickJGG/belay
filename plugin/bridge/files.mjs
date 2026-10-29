@@ -1,20 +1,11 @@
-/** The bridge's footprint on disk: `bridge.json` and `chat.jsonl` in a session folder (`<data>/grills/<slug>` or
- * `<data>/lessons/<slug>`), and Claude's transcripts. */
+/** The bridge's footprint on disk: `bridge.json` and `chat.jsonl` in a session folder (`<data>/<kind folder>/<slug>`),
+ * and Claude's transcripts. */
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 export const dataDir = () => path.resolve(process.env.BELAY_DATA || path.join(os.homedir(), "Belay"));
-export const grillsDir = () => path.join(dataDir(), "grills");
-export const lessonsDir = () => path.join(dataDir(), "lessons");
 export const runDir = () => path.join(dataDir(), ".run");
-export const sessionDir = (slug, lesson = false) => path.join(lesson ? lessonsDir() : grillsDir(), slug);
-export const learningRoot = () => process.env.LEARNING_ROOT || path.join(os.homedir(), "Learning");
-/** Whether `dir` is the Learning root, where a queued lesson start may run. */
-export const inLearningRoot = (dir) => path.relative(path.resolve(learningRoot()), path.resolve(dir)) === "";
-/** The site's queued lesson start (`web/src/lib/start-queue.ts` writes it). */
-export const queueFile = () => path.join(runDir(), "start.json");
-/** While this exists when `claude` exits, `belay claude`'s loop starts it again (lesson.mts). */
-export const restartFile = () => path.join(runDir(), "restart");
+export const sessionDir = (folder, slug) => path.join(dataDir(), folder, slug);
 export function writeBridgeFile(dir, info) {
     mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, "bridge.json"), JSON.stringify(info, null, 2) + "\n");
@@ -30,17 +21,6 @@ export function removeBridgeFile(dir, pid = process.pid) {
         return;
     }
     rmSync(file, { force: true });
-}
-/** A lesson's session.json (`kind: "lesson"`, see session-format.md): written at its first attach, closed at detach. */
-export function writeLessonSession(dir, patch) {
-    const file = path.join(dir, "session.json");
-    let doc = {};
-    try {
-        doc = JSON.parse(readFileSync(file, "utf8"));
-    }
-    catch { }
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(file, JSON.stringify({ ...doc, ...patch, kind: "lesson", updated: new Date().toISOString() }, null, 2) + "\n");
 }
 export function appendChat(dir, entry) {
     mkdirSync(dir, { recursive: true });

@@ -247,8 +247,8 @@ export class Turns {
         return [turn, { type: "busy", on: false }];
     }
 }
-const str = (v) => (typeof v === "string" ? v : "");
-const norm = (p) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+export const str = (v) => (typeof v === "string" ? v : "");
+export const norm = (p) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
 const short = (p) => p.replace(/\\/g, "/").split("/").slice(-2).join("/");
 /** Hidden tools, with the row each would show if it failed. */
 const HIDDEN_TOOLS = new Map([
@@ -359,7 +359,7 @@ export const lower = (s) => {
     const word = /^\S*/.exec(s)[0];
     return /[A-Z]/.test(word.slice(1)) ? s : s.charAt(0).toLowerCase() + s.slice(1);
 };
-const parts = (verb, target, detail) => ({
+export const parts = (verb, target, detail) => ({
     label: [verb, target, detail].filter(Boolean).join(" "),
     verb,
     ...(target ? { target } : {}),
@@ -372,18 +372,12 @@ export function stepLabel(name, input, ctx) {
         return null;
     const filePath = str(input.file_path || input.notebook_path);
     const file = filePath && short(filePath);
-    if (filePath && ["Edit", "Write", "MultiEdit"].includes(name)) {
-        const p = norm(filePath);
-        const dir = `${norm(ctx.dir)}/`;
-        if (p === `${dir}session.json`)
-            return parts("Saved the session");
-        if (p.startsWith(`${dir}preview.`) && !p.slice(dir.length).includes("/")) {
-            const edits = Array.isArray(input.edits) ? input.edits : [];
-            const texts = [input.old_string, input.new_string, input.content, ...edits.flatMap((e) => [e?.old_string, e?.new_string])];
-            const q = texts.map((t) => /\bQ(\d+)\b/.exec(str(t))?.[1]).find(Boolean);
-            return parts(q ? `Updated the Q${q} mock` : "Updated the mock");
-        }
+    if (filePath && ["Edit", "Write", "MultiEdit"].includes(name) && norm(filePath) === `${norm(ctx.dir)}/session.json`) {
+        return parts("Saved the session");
     }
+    const own = ctx.label?.(name, input, ctx.dir);
+    if (own !== undefined)
+        return own;
     switch (name) {
         case "Edit":
         case "MultiEdit":
@@ -420,10 +414,6 @@ export function stepLabel(name, input, ctx) {
             return parts("Searched the web for", str(input.query));
         case "WebFetch":
             return parts("Fetched", str(input.url));
-        case "mcp__plugin_belay_belay__show": {
-            const opt = str(input.opt);
-            return parts("Pointed to", `Q${input.q}${opt ? ` · ${opt}` : ""}`);
-        }
     }
     const mcp = /^mcp__(.+?)__(.+)$/.exec(name);
     return mcp ? parts("Used", mcp[2], `in ${mcp[1]}`) : parts("Used", name);

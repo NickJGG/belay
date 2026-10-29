@@ -112,10 +112,10 @@ describe("Turns", () => {
   });
 
   test("a <channel> site message starts a turn though it is a meta record", () => {
-    const { t, events } = run([channel(0), toolUse(1, "mcp__plugin_belay_belay__show", { q: 6, opt: "a" })]);
+    const { t, events } = run([channel(0), toolUse(1, "Grep", { pattern: "foo" })]);
     assert.deepEqual(events, [
       { type: "busy", on: true },
-      { type: "step", label: "Pointed to Q6 · a", verb: "Pointed to", target: "Q6 · a", at: at(1), id: "toolu_1" },
+      { type: "step", label: "Searched foo", verb: "Searched", target: "foo", at: at(1), id: "toolu_1" },
     ]);
     assert.equal(t.start, at(0));
   });
@@ -362,6 +362,14 @@ describe("stepLabel", () => {
   const label = (name: string, input: Record<string, unknown>) => stepLabel(name, input, ctx)?.label ?? null;
   const step = (name: string, input: Record<string, unknown>) => stepLabel(name, input, ctx);
 
+  test("a session kind's label comes first; undefined leaves the call to the core", () => {
+    const kind = { dir: S, label: (name: string) => (name === "Read" ? undefined : name === "Grep" ? null : { label: "Own", verb: "Own" }) };
+    assert.equal(stepLabel("Read", { file_path: "C:\\a\\b.ts" }, kind)?.label, "Read a/b.ts");
+    assert.equal(stepLabel("Grep", { pattern: "x" }, kind), null);
+    assert.equal(stepLabel("Glob", { pattern: "x" }, kind)?.label, "Own");
+    assert.equal(stepLabel("Edit", { file_path: `${S}\\session.json` }, kind)?.label, "Saved the session");
+  });
+
   test("session.json edits save the session, matched across slashes and case", () => {
     assert.deepEqual(step("Edit", { file_path: `${S}\\session.json`, old_string: "a", new_string: "b" }), {
       label: "Saved the session",
@@ -370,13 +378,6 @@ describe("stepLabel", () => {
     assert.equal(label("Write", { file_path: "c:/users/nick/belay/grills/DEMO/session.json", content: "{}" }), "Saved the session");
     assert.equal(label("MultiEdit", { file_path: `${S}\\session.json`, edits: [] }), "Saved the session");
     assert.equal(label("Edit", { file_path: "C:\\Users\\Nick\\Belay\\grills\\other\\session.json" }), "Edited other/session.json");
-  });
-
-  test("preview edits update the Qn mock from a Q marker, else the mock", () => {
-    assert.equal(label("Edit", { file_path: `${S}\\preview.spec.js`, old_string: "x", new_string: "// Q7 option b\n" }), "Updated the Q7 mock");
-    assert.equal(label("Write", { file_path: `${S}\\preview.mock.css`, content: "/* Q12 */ .a{}" }), "Updated the Q12 mock");
-    assert.equal(label("Edit", { file_path: `${S}\\preview.data.js`, old_string: "Q3a", new_string: "y" }), "Updated the mock");
-    assert.equal(label("MultiEdit", { file_path: `${S}\\preview.spec.js`, edits: [{ old_string: "a", new_string: "Q2" }] }), "Updated the Q2 mock");
   });
 
   test("Grill scripts read as session actions; log-chat alone is hidden", () => {
@@ -395,8 +396,6 @@ describe("stepLabel", () => {
     for (const n of ["reply", "choice", "attach", "detach"]) assert.equal(label(`mcp__plugin_belay_belay__${n}`, {}), null);
     assert.equal(label("ToolSearch", { query: "x" }), null);
     assert.equal(label("TodoWrite", {}), null);
-    assert.deepEqual(step("mcp__plugin_belay_belay__show", { q: 4 }), { label: "Pointed to Q4", verb: "Pointed to", target: "Q4" });
-    assert.deepEqual(step("mcp__plugin_belay_belay__show", { q: 4, opt: "b1" }), { label: "Pointed to Q4 · b1", verb: "Pointed to", target: "Q4 · b1" });
   });
 
   test("identifiers are targets", () => {

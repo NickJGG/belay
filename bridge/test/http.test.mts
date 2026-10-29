@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { request } from "node:http";
 import { after, before, test } from "node:test";
 import { startHttp, type BridgeHttp } from "../http.mts";
-import type { Message } from "../protocol.mts";
+import { compose, loadKinds, type Message } from "../kinds/index.mts";
+import { parseMessage } from "../protocol.mts";
 
 const TOKEN = "t".repeat(48);
 const SITE = "http://127.0.0.1:4747";
@@ -14,6 +15,7 @@ before(async () => {
     slug: "demo",
     token: TOKEN,
     origins: [SITE],
+    parse: parseMessage<Message>(compose(await loadKinds()).messages),
     onMessage: async (m) => (m.kind === "chat" && m.text === "refuse" ? "refused" : (got.push(m), null)),
     snapshot: () => [{ type: "working", on: false }],
     status: () => ({ connected: true }),

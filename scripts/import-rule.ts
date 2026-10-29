@@ -1,7 +1,7 @@
 /**
  * The import rule: only an extension's own files, each layer's built-in list, and scripts/ may import an extension's
- * code. Its files are its folders (`src/extensions/<id>/`, `web/src/app/(browse)/(<id>)/`, `bridge/kinds/<id>.mts`)
- * plus `OWNED_UNMOVED`, the files still waiting to move there. Edges that break the rule today are frozen in
+ * code. Its files are its folders (`src/extensions/<id>/`, `web/src/app/(browse)/(<id>)/`, `bridge/kinds/<id>.*mts`,
+ * `bridge/test/kinds/<id>.test.mts`) plus `OWNED_UNMOVED`, the files still waiting to move there. Edges that break the rule today are frozen in
  * `test/import-pending.json`, and each phase that moves code removes its own.
  *   node scripts/import-rule.ts           prints the edges that break the rule
  *   node scripts/import-rule.ts --write   freezes them as the pending list
@@ -36,7 +36,6 @@ export const OWNED_UNMOVED: Record<string, ExtensionId> = {
   'web/src/lib/mock.ts': 'grill',
   'web/src/lib/session-doc.ts': 'grill',
 
-  'bridge/lesson.mts': 'learn',
   'web/src/app/(browse)/learn/': 'learn',
   'web/src/app/api/lesson/': 'learn',
   'web/src/app/api/work/': 'learn',
@@ -86,7 +85,12 @@ export const BUILT_IN_LISTS = new Set([
   'bridge/kinds/index.mts',
 ]);
 
-const FOLDERS = [/^src\/extensions\/([^/]+)\//, /^web\/src\/app\/\(browse\)\/\(([^/]+)\)\//, /^bridge\/kinds\/([^/]+)\.mts$/];
+const FOLDERS = [
+  /^src\/extensions\/([^/]+)\//,
+  /^web\/src\/app\/\(browse\)\/\(([^/]+)\)\//,
+  /^bridge\/kinds\/([^/.]+)(?:\.[^/]+)?\.mts$/,
+  /^bridge\/test\/kinds\/([^/.]+)\.test\.mts$/,
+];
 
 export function ownerOf(file: string): ExtensionId | undefined {
   for (const re of FOLDERS) {

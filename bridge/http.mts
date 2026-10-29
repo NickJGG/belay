@@ -1,14 +1,15 @@
 /**
  * The attached bridge's HTTP side, on a free 127.0.0.1 port for one slug and one token:
  *
- *   POST /message  (X-Belay-Token)           a `Message` (see protocol.mts) → `onMessage`
+ *   POST /message  (X-Belay-Token)           a `Message` (see protocol.mts and kinds/), read by `parse` → `onMessage`
  *   GET  /events   (X-Belay-Token or ?token)  SSE of `BridgeEvent`s; `snapshot()` first
  *   GET  /status                            up, slug, connected
  *
  * Every request must carry a loopback Host; one with an Origin must come from the Belay site.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { hostAllowed, MAX_BODY, originAllowed, parseMessage, tokenMatches, type Message } from "./protocol.mts";
+import type { KindEvent, Message } from "./kinds/index.mts";
+import { hostAllowed, MAX_BODY, originAllowed, tokenMatches } from "./protocol.mts";
 import type { Step, Tone } from "./transcript.mts";
 
 export type BridgeEvent =
@@ -17,8 +18,7 @@ export type BridgeEvent =
   | { type: "permission"; request_id: string; tool_name: string; description: string; input_preview: string; mode?: string }
   | { type: "verdict"; request_id: string; behavior: "allow" | "deny" }
   | { type: "working"; on: boolean }
-  | { type: "show"; q: number; opt?: string }
-  | { type: "show"; course: string; target: "claim" | "whiteboard" | "work" | "source"; topic?: string; id?: string; path?: string }
+  | KindEvent
   | { type: "session"; slug: string; sessionId: string | null }
   | { type: "disconnected"; slug: string; sessionId: string | null }
   | ({ type: "step" } & Step)
@@ -31,6 +31,7 @@ export type HttpOptions = {
   slug: string;
   token: string;
   origins: string[];
+  parse: (body: string) => Message | null;
   onMessage: (m: Message) => Promise<string | null>;
   snapshot: () => BridgeEvent[];
   status: () => Record<string, unknown>;
@@ -81,7 +82,7 @@ export async function startHttp(o: HttpOptions): Promise<BridgeHttp> {
       res.setHeader("Connection", "close");
       return send(req, res, 413, { error: "body too large" });
     }
-    const m = parseMessage(body);
+    const m = o.parse(body);
     if (!m) return send(req, res, 400, { error: "not a valid Belay message" });
     if (m.slug !== o.slug) return send(req, res, 409, { error: `this session is attached to ${o.slug}`, attached: o.slug });
     const error = await o.onMessage(m);

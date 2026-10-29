@@ -1,5 +1,4 @@
 [
-  "bridge/server.mts -> bridge/lesson.mts",
   "src/cli.ts -> src/grill.ts",
   "src/digest.ts -> src/grill.ts",
   "src/gitlog.ts -> src/grill.ts",

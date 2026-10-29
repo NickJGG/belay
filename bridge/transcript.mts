@@ -115,8 +115,11 @@ const NOTIFICATION = /^\s*<task-notification\b/;
 /** Commands whose exit 1 means "nothing matched", not a failure. */
 const NO_MATCH = new Set(["grep", "rg", "diff", "test", "["]);
 
-/** `dir`: the session folder, whose session.json and preview files read as session actions. */
-export type LabelContext = { dir: string };
+/**
+ * `dir`: the session folder, whose session.json reads as a session action. `label`: the session kinds' own rows,
+ * tried before the core's (undefined leaves a call to the core).
+ */
+export type LabelContext = { dir: string; label?: (name: string, input: Record<string, unknown>, dir: string) => StepParts | null | undefined };
 
 /**
  * Folds transcript records into busy/step/result/turn events for one Belay session. A tool_result updates its
@@ -265,8 +268,8 @@ export class Turns {
   }
 }
 
-const str = (v: unknown) => (typeof v === "string" ? v : "");
-const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+export const str = (v: unknown) => (typeof v === "string" ? v : "");
+export const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
 const short = (p: string) => p.replace(/\\/g, "/").split("/").slice(-2).join("/");
 /** Hidden tools, with the row each would show if it failed. */
 const HIDDEN_TOOLS = new Map([
@@ -373,7 +376,7 @@ export const lower = (s: string) => {
   return /[A-Z]/.test(word.slice(1)) ? s : s.charAt(0).toLowerCase() + s.slice(1);
 };
 
-const parts = (verb: string, target?: string, detail?: string): StepParts => ({
+export const parts = (verb: string, target?: string, detail?: string): StepParts => ({
   label: [verb, target, detail].filter(Boolean).join(" "),
   verb,
   ...(target ? { target } : {}),
@@ -388,17 +391,11 @@ export function stepLabel(name: string, input: Record<string, unknown>, ctx: Lab
   const filePath = str(input.file_path || input.notebook_path);
   const file = filePath && short(filePath);
 
-  if (filePath && ["Edit", "Write", "MultiEdit"].includes(name)) {
-    const p = norm(filePath);
-    const dir = `${norm(ctx.dir)}/`;
-    if (p === `${dir}session.json`) return parts("Saved the session");
-    if (p.startsWith(`${dir}preview.`) && !p.slice(dir.length).includes("/")) {
-      const edits = Array.isArray(input.edits) ? (input.edits as Record<string, unknown>[]) : [];
-      const texts = [input.old_string, input.new_string, input.content, ...edits.flatMap((e) => [e?.old_string, e?.new_string])];
-      const q = texts.map((t) => /\bQ(\d+)\b/.exec(str(t))?.[1]).find(Boolean);
-      return parts(q ? `Updated the Q${q} mock` : "Updated the mock");
-    }
+  if (filePath && ["Edit", "Write", "MultiEdit"].includes(name) && norm(filePath) === `${norm(ctx.dir)}/session.json`) {
+    return parts("Saved the session");
   }
+  const own = ctx.label?.(name, input, ctx.dir);
+  if (own !== undefined) return own;
 
   switch (name) {
     case "Edit":
@@ -433,10 +430,6 @@ export function stepLabel(name: string, input: Record<string, unknown>, ctx: Lab
       return parts("Searched the web for", str(input.query));
     case "WebFetch":
       return parts("Fetched", str(input.url));
-    case "mcp__plugin_belay_belay__show": {
-      const opt = str(input.opt);
-      return parts("Pointed to", `Q${input.q}${opt ? ` · ${opt}` : ""}`);
-    }
   }
   const mcp = /^mcp__(.+?)__(.+)$/.exec(name);
   return mcp ? parts("Used", mcp[2], `in ${mcp[1]}`) : parts("Used", name);

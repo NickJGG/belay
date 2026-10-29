@@ -13,14 +13,13 @@ import {
   toChannel,
 } from "../protocol.mts";
 
-const ok = (m: object) => assert.ok(parseMessage(JSON.stringify(m)), JSON.stringify(m));
-const bad = (m: unknown) => assert.equal(parseMessage(typeof m === "string" ? m : JSON.stringify(m)), null);
+const parse = parseMessage();
+const ok = (m: object) => assert.ok(parse(JSON.stringify(m)), JSON.stringify(m));
+const bad = (m: unknown) => assert.equal(parse(typeof m === "string" ? m : JSON.stringify(m)), null);
+const grill = (slug: string) => ({ head: `Belay site, grill \`${slug}\``, meta: {} });
 
-test("accepts each message kind", () => {
+test("accepts each core message kind", () => {
   ok({ kind: "chat", slug: "s", text: "hi" });
-  ok({ kind: "answer", slug: "s", q: 3, opt: "b1" });
-  ok({ kind: "answer", slug: "s", q: 3, opt: "b", note: "but smaller" });
-  ok({ kind: "comment", slug: "s", q: 2, opt: "a", selector: "main > .card", text: "Save", note: "move this" });
   ok({ kind: "choice", slug: "s", id: "a1b2c3", option: "Yes" });
   ok({ kind: "choice", slug: "s", id: "a1b2c3", text: "neither" });
   ok({ kind: "permission", slug: "s", request_id: "abcde", behavior: "allow" });
@@ -36,16 +35,12 @@ test("rejects malformed, unknown and oversized messages", () => {
   bad("not json");
   bad(null);
   bad({ kind: "shell", slug: "s", text: "x" });
+  bad({ kind: "answer", slug: "s", q: 3, opt: "b" });
   bad({ kind: "chat", text: "no slug" });
   bad({ kind: "chat", slug: "Bad Slug", text: "x" });
   bad({ kind: "chat", slug: "../etc", text: "x" });
   bad({ kind: "chat", slug: "s", text: "   " });
   bad({ kind: "chat", slug: "s", text: "x".repeat(8001) });
-  bad({ kind: "answer", slug: "s", q: 0, opt: "a" });
-  bad({ kind: "answer", slug: "s", q: 1.5, opt: "a" });
-  bad({ kind: "answer", slug: "s", q: 1, opt: "a b" });
-  bad({ kind: "comment", slug: "s", q: 1, opt: "a", selector: "x".repeat(1001), text: "", note: "n" });
-  bad({ kind: "comment", slug: "s", q: 1, opt: "a", selector: "p", text: "", note: "" });
   bad({ kind: "choice", slug: "s", id: "a1b2c3" });
   bad({ kind: "choice", slug: "s", id: "a1b2c3", option: "Yes", text: "and" });
   bad({ kind: "choice", slug: "s", id: "nothex", option: "Yes" });
@@ -53,49 +48,50 @@ test("rejects malformed, unknown and oversized messages", () => {
   bad({ kind: "permission", slug: "s", request_id: "abcde", behavior: "maybe" });
 });
 
-test("channel content names the site and session; meta carries slug and kind", () => {
-  const c = toChannel({ kind: "answer", slug: "my-grill", q: 4, opt: "b", note: "tighter" });
-  assert.match(c.content, /^Belay site, grill `my-grill`: picked option b for Q4\./);
-  assert.match(c.content, /tighter/);
-  assert.deepEqual(c.meta, { slug: "my-grill", kind: "answer", q: "4", opt: "b" });
+test("channel content opens with the session's head; meta carries slug, kind and the session's own", () => {
+  assert.match(toChannel({ kind: "choice", slug: "g", id: "abcdef", option: "Yes" }, ".", grill("g")).content, /chose "Yes"/);
+  assert.match(toChannel({ kind: "chat", slug: "g", text: "hello" }, ".", grill("g")).content, /^Belay site, grill `g`:\n\nhello$/);
+  const c = toChannel({ kind: "chat", slug: "l", text: "hi" }, ".", { head: "Belay site, lesson `l` on c", meta: { course: "c" } });
+  assert.deepEqual(c.meta, { slug: "l", kind: "chat", course: "c" });
+  const typed = toChannel({ kind: "choice", slug: "g", id: "abcdef", text: "neither" }, ".", grill("g"));
+  assert.equal(typed.content, "Belay site, grill `g`: dismissed choice abcdef and wrote:\n\nneither");
+  assert.deepEqual(typed.meta, { slug: "g", kind: "choice", id: "abcdef" });
+});
 
-  const cm = toChannel({ kind: "comment", slug: "g", q: 1, opt: "a", selector: ".x", text: " Save \n now ", note: "n" });
-  assert.match(cm.content, /element `\.x` \("Save now"\)/);
-  assert.equal(cm.meta.selector, ".x");
-
-  assert.match(toChannel({ kind: "choice", slug: "g", id: "abcdef", option: "Yes" }).content, /chose "Yes"/);
-  assert.match(toChannel({ kind: "chat", slug: "g", text: "hello" }).content, /^Belay site, grill `g`:\n\nhello$/);
+test("a session kind's message goes to its format; one nobody formats throws", () => {
+  const format = (m: { kind: string }, head: string, meta: Record<string, string>) =>
+    m.kind === "wave" ? { content: `${head}: waved.`, meta: { ...meta, hand: "left" } } : undefined;
+  const c = toChannel({ kind: "wave", slug: "g" }, ".", grill("g"), format);
+  assert.deepEqual(c, { content: "Belay site, grill `g`: waved.", meta: { slug: "g", kind: "wave", hand: "left" } });
+  assert.throws(() => toChannel({ kind: "nod", slug: "g" }, ".", grill("g"), format), /no notification for a nod message/);
 });
 
 const pic = (i = 0) => `20261024T120000-abcde${i}.png`;
 
-test("chat, comment and a typed choice answer take pictures", () => {
+test("chat and a typed choice answer take pictures", () => {
   ok({ kind: "chat", slug: "s", text: "", images: [pic()] });
   ok({ kind: "chat", slug: "s", text: "look", images: [pic(), pic(1)] });
-  ok({ kind: "comment", slug: "s", q: 1, opt: "a", selector: "p", text: "", note: "this", images: [pic()] });
   ok({ kind: "choice", slug: "s", id: "a1b2c3", text: "like this", images: [pic()] });
   bad({ kind: "chat", slug: "s", text: "" });
   bad({ kind: "chat", slug: "s", text: " ", images: [] });
   bad({ kind: "chat", slug: "s", text: "x", images: ["../secret.png"] });
   bad({ kind: "chat", slug: "s", text: "x", images: ["20261024T120000-abcdef.pdf"] });
   bad({ kind: "chat", slug: "s", text: "x", images: Array.from({ length: MAX_IMAGES + 1 }, (_, i) => pic(i)) });
-  bad({ kind: "comment", slug: "s", q: 1, opt: "a", selector: "p", text: "", note: "", images: [pic()] });
   bad({ kind: "choice", slug: "s", id: "a1b2c3", option: "Yes", images: [pic()] });
-  assert.equal(imagesOf(parseMessage(JSON.stringify({ kind: "answer", slug: "s", q: 1, opt: "a", images: [pic()] }))!).length, 0);
+  assert.equal(imagesOf(parse(JSON.stringify({ kind: "permission", slug: "s", request_id: "abcde", behavior: "allow", images: [pic()] }))!).length, 0);
 });
 
 test("attached pictures are listed as absolute paths to Read", () => {
   const dir = path.resolve("sessions", "g", "images");
-  const c = toChannel({ kind: "chat", slug: "g", text: "see", images: [pic(), pic(1)] }, dir);
+  const c = toChannel({ kind: "chat", slug: "g", text: "see", images: [pic(), pic(1)] }, dir, grill("g"));
   assert.equal(
     c.content,
     `Belay site, grill \`g\`:\n\nsee\n\nAttached pictures (Read each before answering):\n- ${path.join(dir, pic())}\n- ${path.join(dir, pic(1))}`,
   );
   assert.equal(c.meta.images, "2");
-  const only = toChannel({ kind: "chat", slug: "g", text: "", images: [pic()] }, dir);
+  const only = toChannel({ kind: "chat", slug: "g", text: "", images: [pic()] }, dir, grill("g"));
   assert.match(only.content, /^Belay site, grill `g`: sent 1 picture\.\n\nAttached pictures/);
-  assert.match(toChannel({ kind: "comment", slug: "g", q: 1, opt: "a", selector: "p", text: "", note: "n", images: [pic()] }, dir).content, /Attached pictures/);
-  assert.equal(toChannel({ kind: "chat", slug: "g", text: "hi" }, dir).meta.images, undefined);
+  assert.equal(toChannel({ kind: "chat", slug: "g", text: "hi" }, dir, grill("g")).meta.images, undefined);
 });
 
 test("choices resolve once, and only to one of their options", () => {
@@ -128,21 +124,4 @@ test("token, origin and host checks", () => {
   assert.ok(hostAllowed("localhost:5000", 5000));
   assert.ok(!hostAllowed("evil.example:5000", 5000));
   assert.ok(!hostAllowed(undefined, 5000));
-});
-
-test("lesson messages: attempt and restart parse, and a lesson's channel names its course", () => {
-  ok({ kind: "attempt", slug: "lesson-c-20261025-1200", path: "work/flops.py" });
-  ok({ kind: "attempt", slug: "l", path: "work/a/b.md", text: "Attempt: work/a/b.md" });
-  ok({ kind: "restart", slug: "l", label: "Quick review", wrap: true });
-  bad({ kind: "attempt", slug: "l", path: "knowledge/x.md" });
-  bad({ kind: "attempt", slug: "l", path: "work/../course.md" });
-  bad({ kind: "restart", slug: "l", label: " " });
-
-  const lesson = { course: "llm-architecture" };
-  const a = toChannel({ kind: "attempt", slug: "l", path: "work/flops.py" }, ".", lesson);
-  assert.match(a.content, /^Belay site, lesson `l` on llm-architecture: submitted `work\/flops\.py`/);
-  assert.deepEqual(a.meta, { slug: "l", kind: "attempt", course: "llm-architecture", path: "work/flops.py" });
-  const r = toChannel({ kind: "restart", slug: "l", label: "Card review", wrap: true }, ".", lesson);
-  assert.deepEqual(r.meta, { slug: "l", kind: "restart", course: "llm-architecture", wrap: "true" });
-  assert.equal(toChannel({ kind: "chat", slug: "l", text: "hi" }, ".", lesson).meta.course, "llm-architecture");
 });

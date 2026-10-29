@@ -1,5 +1,5 @@
 /**
- * A live lesson's Follow along: the bridge's `show` events (bridge/lesson.mts) and the pages they point at. Imports
+ * A live lesson's Follow along: the bridge's `show` events (bridge/kinds/learn.runtime.mts) and the pages they point at. Imports
  * nothing that touches node, so client components can use it.
  */
 import { courseHref } from "./hrefs.ts";

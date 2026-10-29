@@ -58,6 +58,8 @@ before(async () => {
   mkdirSync(logDir, { recursive: true });
   mkdirSync(cwd, { recursive: true });
   mkdirSync(path.dirname(ownerFile), { recursive: true });
+  mkdirSync(data, { recursive: true });
+  writeFileSync(path.join(data, "settings.yaml"), "extensions: { learn: on }\n");
   setOwner("session-one");
   client = new Client({ name: "lifecycle-test", version: "0" });
   client.fallbackNotificationHandler = async (n) => void notes.push(n as Note);
@@ -246,6 +248,14 @@ test("without an owner file, attach uses the claimed session id and ignores junk
   } finally {
     await other.close();
   }
+});
+
+test("a settings change announces the tools again", async () => {
+  const count = () => notes.filter((n) => n.method === "notifications/tools/list_changed").length;
+  const before = count();
+  writeFileSync(path.join(data, "settings.yaml"), "extensions: { learn: on }\ntheme: dark\n");
+  await waitFor("list_changed", () => count() > before);
+  assert.deepEqual(await toolNames(), ["attach"]);
 });
 
 test("bridge.json is removed when Claude Code exits", async () => {

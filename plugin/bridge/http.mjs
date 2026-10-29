@@ -1,14 +1,14 @@
 /**
  * The attached bridge's HTTP side, on a free 127.0.0.1 port for one slug and one token:
  *
- *   POST /message  (X-Belay-Token)           a `Message` (see protocol.mts) → `onMessage`
+ *   POST /message  (X-Belay-Token)           a `Message` (see protocol.mts and kinds/), read by `parse` → `onMessage`
  *   GET  /events   (X-Belay-Token or ?token)  SSE of `BridgeEvent`s; `snapshot()` first
  *   GET  /status                            up, slug, connected
  *
  * Every request must carry a loopback Host; one with an Origin must come from the Belay site.
  */
 import { createServer } from "node:http";
-import { hostAllowed, MAX_BODY, originAllowed, parseMessage, tokenMatches } from "./protocol.mjs";
+import { hostAllowed, MAX_BODY, originAllowed, tokenMatches } from "./protocol.mjs";
 function readBody(req) {
     return new Promise((resolve, reject) => {
         let size = 0;
@@ -45,7 +45,7 @@ export async function startHttp(o) {
             res.setHeader("Connection", "close");
             return send(req, res, 413, { error: "body too large" });
         }
-        const m = parseMessage(body);
+        const m = o.parse(body);
         if (!m)
             return send(req, res, 400, { error: "not a valid Belay message" });
         if (m.slug !== o.slug)
