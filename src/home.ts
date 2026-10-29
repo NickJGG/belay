@@ -1,5 +1,4 @@
 /** The dashboard's derived views: what's In flight, the Activity of recent work days, and Home's activity grid. */
-import type { GrillSession } from './grill.ts';
 import type { DatedEntry } from './logs.ts';
 import type { Issue, IssueStatus, Project } from './store.ts';
 import { addDays, dayOfWeek, daysBetween, updatedDay, workDayOf } from './workday.ts';
@@ -32,12 +31,13 @@ interface InFlightIssue {
 export interface InFlight {
   /** Idle first, then most recently touched first. */
   issues: InFlightIssue[];
-  /** In-progress sessions tagged with a project that no issue links to yet. */
-  grill: GrillSession[];
 }
 
-/** `logs` must reach back to the earliest `doingSince` of the doing issues, so their last touch is found. */
-export function inFlight(projects: Project[], issues: Issue[], logs: DatedEntry[], grill: GrillSession[], today: string): InFlight {
+/**
+ * The doing issues of active projects; extensions add their own In flight. `logs` must reach back to the earliest
+ * `doingSince` of the doing issues, so their last touch is found.
+ */
+export function inFlight(projects: Project[], issues: Issue[], logs: DatedEntry[], today: string): InFlight {
   const active = new Set(projects.filter((p) => p.status === 'active').map((p) => p.key));
   const rows = issues
     .filter((t) => t.status === 'doing' && active.has(t.project))
@@ -50,11 +50,7 @@ export function inFlight(projects: Project[], issues: Issue[], logs: DatedEntry[
       };
     })
     .sort((a, b) => Number(b.row.idleDays !== undefined) - Number(a.row.idleDays !== undefined) || b.last.localeCompare(a.last));
-  const linked = new Set(issues.map((t) => t.grill));
-  return {
-    issues: rows.map((r) => r.row),
-    grill: grill.filter((g) => g.status === 'in-progress' && g.project && !linked.has(g.slug)).map((g) => ({ ...g, project: g.project!.toUpperCase() })),
-  };
+  return { issues: rows.map((r) => r.row) };
 }
 
 export type ActivityEvent =

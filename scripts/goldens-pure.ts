@@ -56,6 +56,9 @@ const URLS = [
   '/nope',
 ];
 const LIVE = [{ slug: 'some-grill' }, { slug: 'lesson-1', course: 'c' }];
+// From phase 6 the page rules take the active ids, and a course is an `owner` place; master ignores both.
+const ALL = ['grill', 'learn'];
+const asOwner = (place: any) => (place.course ? { ...place, owner: { id: 'learn', key: place.course.slug, title: place.course.title } } : place);
 
 const PLACES: [object, string][] = [];
 for (const kind of ['reading', 'workspace']) {
@@ -86,8 +89,8 @@ const SHOWS: Record<string, unknown>[] = [
 const out = {
   tools: TOOLS.map((name) => ({ name, line: permissionLine(name, 'its own description') })),
   focus: SHOWS.map((e) => ({ e, focus: parseFocus(e) })),
-  pages: URLS.map((url) => ({ url, kind: pageKind(url), tab: pageTab(url, LIVE), tabNoLive: pageTab(url, []), missing: missing(url) })),
-  sidebar: PLACES.map(([place, url]) => ({ place, url, sections: sidebarSections(place, url) })),
+  pages: URLS.map((url) => ({ url, kind: pageKind(url, ALL), tab: pageTab(url, LIVE, ALL), tabNoLive: pageTab(url, [], ALL), missing: missing(url, ALL) })),
+  sidebar: PLACES.map(([place, url]) => ({ place, url, sections: sidebarSections(asOwner(place), url, ALL) })),
 };
 writeFileSync(flags.out, `${JSON.stringify(out, null, 2)}\n`);
 console.log(`${URLS.length} pages, ${PLACES.length} places, ${TOOLS.length} tools, ${SHOWS.length} shows in ${flags.out}`);

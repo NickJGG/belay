@@ -23,8 +23,8 @@ export default async function IssuePage({ params }: Props) {
   return (
     <div className={styles.page}>
       <ShellSlot project={{ key: issue.project, name: d.project?.name ?? issue.project }} section="Issues" glow={d.project && projectColor(d.project)} />
-      <IssueHead issue={issue} hasPlan={!!d.plan} blocks={d.blocks} />
-      <IssueFacts issue={issue} plan={d.plan} blockers={d.blockers} blocks={d.blocks} candidates={d.candidates} />
+      <IssueHead issue={issue} ext={d.ext} blocks={d.blocks} />
+      <IssueFacts issue={issue} ext={d.ext} blockers={d.blockers} blocks={d.blocks} candidates={d.candidates} />
       <BodyEditor id={issue.id} body={issue.body} hash={d.hash} />
       <Comments id={issue.id} comments={issue.comments} />
     </div>

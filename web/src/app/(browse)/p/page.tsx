@@ -4,7 +4,6 @@ import styles from "@/components/belay/belay.module.css";
 import { PageHeader } from "@/components/layout/page-header";
 import { projectGroups } from "@/lib/belay-view";
 import { projectsIndex, type ProjectCard as Card } from "@/lib/data";
-import { UNFILED } from "@/lib/hrefs";
 import page from "../../page.module.css";
 
 export const metadata = { title: "Projects • Belay" };
@@ -20,11 +19,11 @@ const card = (p: Card) => (
 );
 
 /**
- * Projects: the list header, then a card per project under Working on (focus or open work)
- * and Everything else, with paused and archived ones in a collapsed group at the foot.
+ * Projects: the list header, then a card per project under Working on (focus or open work) and Everything else, the
+ * active extensions' cards (Unfiled) last, with paused and archived ones in a collapsed group at the foot.
  */
 export default async function ProjectsPage() {
-  const { projects, unfiled } = await projectsIndex();
+  const { projects, entries } = await projectsIndex();
   const { working, rest, shelved } = projectGroups(projects);
   return (
     <div className={styles.page}>
@@ -40,7 +39,9 @@ export default async function ProjectsPage() {
           <h2 className={page.trayTitle}>Everything else</h2>
           <ProjectCards>
             {rest.map(card)}
-            {unfiled > 0 ? <ProjectCard projectKey={UNFILED} name="Unfiled" mark={null} facts={unfiled === 1 ? "1 grill" : `${unfiled} grills`} /> : null}
+            {entries.map((e) => (
+              <ProjectCard key={e.key} projectKey={e.key} name={e.name} mark={null} facts={e.facts} />
+            ))}
           </ProjectCards>
         </section>
         {shelved.length > 0 && (

@@ -7,7 +7,9 @@ import { MoreLink } from "@/components/belay/more-link";
 import { StatusIcon, statusName } from "@/components/belay/status-icon";
 import styles from "@/components/belay/belay.module.css";
 import { projectIssues } from "@/lib/data";
-import { projectHref, UNFILED } from "@/lib/hrefs";
+import { activeIds } from "@/lib/extensions.server";
+import { projectHref } from "@/lib/hrefs";
+import { sectionsOf, pseudoProject } from "@/lib/sidebar";
 import { cn } from "@/lib/utils";
 import type { Issue, IssueStatus } from "../../../../../../src/store.ts";
 
@@ -17,10 +19,12 @@ export async function generateMetadata({ params }: Props) {
   return { title: `${decodeURIComponent((await params).key).toUpperCase()} • Belay` };
 }
 
-/** A project's Issues: an Issues · Ideas filter with +, then issue rows in collapsible status groups. */
+/** A project's Issues: an Issues · Ideas filter with +, then issue rows in collapsible status groups. A pseudo-project has no Issues, so it opens on its first section. */
 export default async function ProjectIssues({ params, searchParams }: Props) {
-  const key = decodeURIComponent((await params).key).toUpperCase();
-  if (key === UNFILED.toUpperCase()) redirect(projectHref(UNFILED, "/grills"));
+  const raw = decodeURIComponent((await params).key);
+  const active = activeIds();
+  if (pseudoProject(raw, active)) redirect(projectHref(raw, sectionsOf(raw, active)[0].suffix));
+  const key = raw.toUpperCase();
   const q = await searchParams;
   const ideas = q.view === "ideas";
   const older = q.older === "1";

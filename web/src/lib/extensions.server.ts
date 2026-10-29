@@ -4,18 +4,20 @@
  */
 import "server-only";
 import { dataDir } from "../../../src/config.ts";
-import type { ExtensionId } from "../../../src/extension-ids.ts";
+import { EXTENSION_IDS, type ExtensionId } from "../../../src/extension-ids.ts";
 import { isActive } from "../../../src/extensions.ts";
 import type { ComponentType } from "react";
 import type { GridSource } from "../../../src/home.ts";
+import type { Issue } from "../../../src/store.ts";
 import { server as grill, slots as grillSlots, type GrillSearch } from "../app/(browse)/(grill)/_lib/manifest.server.ts";
 import type { GrillItem, GrillLive, runtime as grillRuntime } from "../app/(browse)/(grill)/_lib/runtime.server.ts";
 import type { GrillSession } from "../app/(browse)/(grill)/_lib/sessions.ts";
 import { server as learn, slots as learnSlots, type LearnSearch } from "../app/(browse)/(learn)/_lib/manifest.server.ts";
 import type { LessonLive, runtime as learnRuntime } from "../app/(browse)/(learn)/_lib/runtime.server.ts";
-import { sessionKind } from "./extensions.ts";
+import { sessionKind, shellRules } from "./extensions.ts";
 import type { ItemContext, KindRuntime, LiveSession, ServerKind } from "./session-kind.ts";
-import type { SearchContext, ServerSlots } from "./slots.ts";
+import { pseudoProject } from "./sidebar.ts";
+import type { FlightGroup, ListsContext, ProjectEntry, SearchContext, ServerSlots } from "./slots.ts";
 import type { SessionBase, SessionMemo } from "./sessions.ts";
 
 export const SERVER_KINDS: readonly ServerKind[] = [grill, learn];
@@ -26,13 +28,15 @@ export type ListedSession = GrillSession;
 export type SessionItem = GrillItem;
 export type LiveItem = Widen<GrillLive, LessonLive> | Widen<LessonLive, GrillLive>;
 
-/** One kind's Tab, with the other kinds' fields readable as undefined. */
 /** The palette's names the extensions add, merged flat. */
 export type SearchParts = GrillSearch & LearnSearch;
 
+/** One kind's Tab, with the other kinds' fields readable as undefined. */
 type Widen<T, U> = T & { [K in Exclude<keyof U, keyof T>]?: undefined };
 
 type Runtimes = { grill: typeof grillRuntime; learn: typeof learnRuntime };
+
+export const activeIds = (data = dataDir()): ExtensionId[] => EXTENSION_IDS.filter((id) => isActive(id, data));
 
 export const activeKinds = (data = dataDir()) => SERVER_KINDS.filter((k) => isActive(k.id, data));
 
@@ -116,3 +120,36 @@ export const homeSections = (): Promise<{ id: ExtensionId; Section: ComponentTyp
 
 /** What the active extensions add to Home's activity grid. */
 export const gridSources = (): Promise<GridSource[]> => Promise.all(activeSlots().flatMap((s) => (s.grid ? [s.grid()] : [])));
+
+/** The active extensions' In flight groups that have something in flight, in built-in order. */
+export async function flightGroups(c: ListsContext<ListedSession>): Promise<FlightGroup[]> {
+  const groups = await Promise.all(activeSlots().map((s) => s.flight?.(c)));
+  return groups.filter((g) => !!g);
+}
+
+/** The active extensions' cards on Projects, in built-in order. */
+export async function projectEntries(c: ListsContext<ListedSession>): Promise<ProjectEntry[]> {
+  return (await Promise.all(activeSlots().map((s) => s.projects?.(c) ?? []))).flat();
+}
+
+/**
+ * The project section at `/p/<key>/<segment>`, from the active extension that has it; null when none does, or when
+ * `key` is another extension's pseudo-project.
+ */
+export async function projectSection(key: string, segment: string): Promise<{ label: string; Section: ComponentType<{ projectKey: string }> } | null> {
+  const active = activeIds();
+  const pseudo = pseudoProject(key, active);
+  for (const rules of shellRules(active)) {
+    const section = rules.sections?.find((s) => s.suffix === `/${segment}`);
+    const page = SERVER_SLOTS.find((s) => s.id === rules.id)?.sections?.[segment];
+    if (!section || !page || (pseudo && pseudo !== rules.id)) continue;
+    return { label: section.label, Section: await page() };
+  }
+  return null;
+}
+
+/** What the active extensions' issue facts and actions draw from, by extension. */
+export async function issueParts(issue: Issue, data: string): Promise<Partial<Record<ExtensionId, unknown>>> {
+  const parts = await Promise.all(activeSlots(data).map(async (s) => [s.id, await s.issue?.(issue, data)] as const));
+  return Object.fromEntries(parts.filter(([, d]) => d !== undefined));
+}

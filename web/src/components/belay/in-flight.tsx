@@ -1,12 +1,12 @@
-import type { FlightGrill, FlightIssue } from "@/lib/data";
+import type { FlightIssue } from "@/lib/data";
+import type { FlightGroup } from "@/lib/slots";
 import { Group } from "./group";
-import { GrillRow } from "./grill-row";
 import { IssueRows, keyColumn } from "./issue-rows";
 import styles from "./belay.module.css";
 
-/** Home's In flight: an Issues group then a Grills group, each in its page's row shape; an empty one is left out. */
-export function InFlight({ issues, grills }: { issues: FlightIssue[]; grills: FlightGrill[] }) {
-  if (!issues.length && !grills.length) return <p className={styles.empty}>Nothing in flight.</p>;
+/** Home's In flight: an Issues group then the active extensions' groups, each in its page's row shape; an empty one is left out. */
+export function InFlight({ issues, groups }: { issues: FlightIssue[]; groups: FlightGroup[] }) {
+  if (!issues.length && !groups.length) return <p className={styles.empty}>Nothing in flight.</p>;
   return (
     <>
       {issues.length ? (
@@ -16,15 +16,11 @@ export function InFlight({ issues, grills }: { issues: FlightIssue[]; grills: Fl
           </div>
         </Group>
       ) : null}
-      {grills.length ? (
-        <Group id="flight-grills" label="Grills" count={grills.length}>
-          <ul className={styles.rows}>
-            {grills.map((g) => (
-              <GrillRow key={g.slug} {...g} />
-            ))}
-          </ul>
+      {groups.map((g) => (
+        <Group key={g.id} id={g.id} label={g.label} count={g.count}>
+          {g.rows}
         </Group>
-      ) : null}
+      ))}
     </>
   );
 }

@@ -26,14 +26,14 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 ## Layout
 - `src/components/layout/shell.tsx` is every page's chrome, mounted by the root layout: the sidebar (`rail`, pinned
   open or collapsed to icons), the live Tabs, the Drawer and, on phones, the dock (`site-nav`) and Strip. Pages pass
-  their project or course and section (a Reading page's section rows, `lib/sidebar.ts`) through `<ShellSlot>`, and a
+  their project or owned place (a course) and section (a Reading page's section rows, `lib/sidebar.ts`) through `<ShellSlot>`, and a
   Workspace may pass its own `pane`, drawn in the rail's place (a grill's Outline, `session/outline.tsx`). The Drawer's conversation is `live-provider.tsx`'s.
 - `layout/palette.tsx` is belay's cmdk command palette, mounted by the shell. A page lists its own commands first with
   `<PageCommands>` (an issue's status keys and !, a grill's resume command, a course's starts, a lesson note's Resume
   conversation). Its New issue and Log what you did reach
   the project page's form through `belay/intents.ts`.
 - Home (`/`) is a header with the 5h/7d usage rings (seeded by `homePulse` in `data.ts`, then the hub's account-wide
-  `limits` events) and the CLI's two-week `activityGrid`, then In flight, from the CLI's `inFlight` (`homeFlight`),
+  `limits` events) and the CLI's two-week `activityGrid`, then In flight: the CLI's `inFlight` doing issues and the extensions' groups (`homeFlight`),
   then Your courses (`homeCourses`: the 3 most urgent, See all to /learn), then Recent activity: the CLI's `activity` with `doneOnly`, across projects
   (`homeActivity`, `?days=` as a project's Activity).
 - Course pages: `/learn` (a calendar across courses, then the course cards), `/learn/<c>` (Overview: a hero with the current unit, the step its
@@ -47,8 +47,8 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
 - Lessons: a live lesson's Tab opens `/learn/<c>/now`, its Workspace. Start buttons
   (`course/start-buttons.tsx`) POST `/api/lesson/start`, which queues the routine (`lib/start-queue.ts`) and asks a
   live lesson to restart into it; Follow along (`live/follow.tsx`) follows the lesson's `show`s (`lib/lesson.ts`).
-- Belay's pages: `/p` (project cards), `/p/<key>` (Issues; `?view=ideas`), `/p/<key>/{grills,activity,logs}` under
-  one layout holding the project header, `/i/<id>` and `/l/<day>/<n>?at=`. Their pieces are in
+- Belay's pages: `/p` (project cards), `/p/<key>` (Issues; `?view=ideas`), `/p/<key>/{activity,logs}` and the
+  extensions' sections (`/p/<key>/[section]`, grill's Grills) under one layout holding the project header, `/i/<id>` and `/l/<day>/<n>?at=`. Their pieces are in
   `src/components/belay/`; their writes are the server actions in `src/app/actions.ts`, each a thin wrapper around
   one CLI op on a fresh strict `Ctx`.
 - At the repo root: `bridge/`: the MCP server's TypeScript source. `plugin/`: the plugin (`.claude-plugin/plugin.json` declares the
@@ -151,10 +151,15 @@ open. The core message kinds live in `bridge/protocol.mts`, event types in `brid
   root layout passes the active ids; every built-in kind's provider stays mounted, and each active kind's entry
   renderers are tried for every session, as before kinds.
 - Slots (`lib/slots.ts`): beside its kind, an extension's `manifest.server.ts` exports `slots` with its palette names
-  (merged flat into `/api/search`), Home section and activity-grid source, each loaded on call; its
-  `manifest.client.tsx` exports `slots` with its nav entries, sidebar section icons and palette groups. Its Markdown
-  syntax is a handler (`lib/extensions.markdown.ts`), picked by the `id` of the context a page passes `Prose`. Its pure
-  `manifest.ts` names its noun for the site description. Only active extensions' slots are used.
+  (merged flat into `/api/search`), Home section, activity-grid source, In flight group, Projects cards, project
+  section pages (by address segment, rendered by `p/[key]/[section]`) and the plain data its issue facts and actions
+  draw from, each loaded on call; its `manifest.client.tsx` exports `slots` with its nav entries, sidebar section
+  icons, palette groups, issue facts and ⋯ actions. Its Markdown syntax is a handler (`lib/extensions.markdown.ts`),
+  picked by the `id` of the context a page passes `Prose`. Its pure `manifest.ts` names its noun for the site
+  description and holds its page rules (`shell`): Workspace pages, Tabs, Not found lines, project sections, a
+  pseudo-project (grill's Unfiled) and a place's section rows (learn's courses, passed as `<ShellSlot owner>`).
+  `lib/shell.ts` and `lib/sidebar.ts` take the active ids, so an inactive extension's addresses get the generic Not
+  found line. Only active extensions' slots are used.
 - `sessions.ts` reads a session folder in its kind's format: session.json, else a bare `bridge.json` (in progress),
   else, for a grill, `<slug>.md` frontmatter (`legacy`). A legacy grill is read-only and renders its `.md`, with its old preview at
   `/legacy/sessions/<slug>/preview.html`; the shared shell it loads is served from `web/legacy/`. Lessons come from

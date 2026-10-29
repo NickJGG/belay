@@ -26,7 +26,6 @@ import {
 import { relativeDue } from "../format.ts";
 import { routineCommand } from "../routines.ts";
 import { LEGACY_TOOLS, SessionParser } from "../session-log.ts";
-import { courseIgnored, courseLocate } from "../watch-paths.ts";
 import { resolveWikiTarget } from "../wiki-target.ts";
 import { listWork, workPath, writeWork } from "../work.ts";
 
@@ -177,18 +176,6 @@ describe("course links", () => {
     assert.deepEqual(sectionOf("/learn/llm/lessons/x"), { course: "llm", section: "Lessons", detail: true });
     assert.deepEqual(sectionOf("/learn/llm/work/a/b.py"), { course: "llm", section: "Work", detail: false });
     assert.equal(sectionOf("/p/KILN"), null);
-  });
-
-  test("the course watcher reports visible paths only", () => {
-    assert.deepEqual(courseLocate(tmp, path.join(tmp, "llm", "knowledge", "a.md")), ["llm", "knowledge/a.md"]);
-    assert.deepEqual(courseLocate(tmp, path.join(tmp, "llm", "work", "x", "y.py").replaceAll("\\", "/")), ["llm", "work/x/y.py"]);
-    assert.equal(courseLocate(tmp, path.join(tmp, "llm", "exercises", "e1.md")), null);
-    const ignored = courseIgnored(tmp);
-    assert.equal(ignored(tmp), false);
-    assert.equal(ignored(path.join(tmp, "llm")), false);
-    assert.equal(ignored(path.join(tmp, "llm", "knowledge")), false);
-    assert.equal(ignored(path.join(tmp, "llm", "rubrics")), true);
-    assert.equal(ignored(path.join(tmp, ".obsidian")), true);
   });
 });
 

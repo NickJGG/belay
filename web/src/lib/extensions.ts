@@ -7,8 +7,16 @@ import { manifest as grill } from "../app/(browse)/(grill)/_lib/manifest.ts";
 import { manifest as learn } from "../app/(browse)/(learn)/_lib/manifest.ts";
 import type { LessonShow } from "./lesson.ts";
 import type { PureKind } from "./session-kind.ts";
+import type { ShellRules } from "./slots.ts";
 
 export const MANIFESTS = [grill, learn] as const;
+
+/** The active extensions' page rules, in built-in order. */
+export const shellRules = (active: readonly ExtensionId[]): (ShellRules & { id: ExtensionId })[] =>
+  MANIFESTS.filter((m) => active.includes(m.id)).map((m) => ({ id: m.id, ...(m.shell as ShellRules) }));
+
+/** The extension whose pseudo-project `key` is, active or not. */
+export const pseudoOwner = (key: string): ExtensionId | undefined => MANIFESTS.find((m) => (m.shell as ShellRules).pseudo?.key === key)?.id;
 
 /** What a live session's page can follow: the focus types of every kind that has one. */
 export type Focus = LessonShow;

@@ -37,7 +37,8 @@ function useSectionIcons(): Record<string, LucideIcon> {
 export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   const pathname = usePathname() ?? "/";
   const slot = useSlot();
-  const sections = sidebarSections({ kind: pageKind(pathname), project: slot.project, course: slot.course, section: slot.section }, pathname);
+  const { active } = useLive();
+  const sections = sidebarSections({ kind: pageKind(pathname, active), project: slot.project, owner: slot.owner, section: slot.section }, pathname, active);
   const sectionLit = !!sections?.rows.some((r) => r.on);
   const icons = useSectionIcons();
   const navRow = (item: NavItem) => {

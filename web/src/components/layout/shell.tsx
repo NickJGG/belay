@@ -71,10 +71,10 @@ function useCollapsed(): [Collapsed, (c: Collapsed) => void] {
 
 function Frame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
-  const kind = pageKind(pathname);
+  const { selected, kinds, active } = useLive();
+  const kind = pageKind(pathname, active);
   const [collapsed, setCollapsed] = useCollapsed();
   const toggle = () => setCollapsed({ ...collapsed, [kind]: !collapsed[kind] });
-  const { selected, kinds } = useLive();
   const { pane } = useSlot();
 
   return (

@@ -4,9 +4,12 @@ import * as React from "react";
 import { Flag, MoreHorizontal } from "lucide-react";
 import { keyCommand, STATUS_KEYS } from "../../../../src/keys.ts";
 import type { Issue } from "../../../../src/store.ts";
+import type { ExtensionId } from "../../../../src/extension-ids.ts";
 import { openLinkedFile, removeIssue, setIssuePriority, setIssueStatus, setIssueTitle } from "@/app/actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageCommands, type PageCommand } from "@/components/layout/palette";
+import { useLive } from "@/components/live/live-provider";
+import { activeClientSlots } from "@/lib/extensions.client";
 import { projectHref } from "@/lib/hrefs";
 import { cn } from "@/lib/utils";
 import { Confirm, MenuButton, useAction, useOptimisticAction } from "./controls";
@@ -54,16 +57,17 @@ function TitleEdit({ id, title }: { id: string; title: string }) {
 
 /**
  * The issue page's header: ‹, the status icon (belay's status menu, keys 1–5), the key, the title, a !
- * toggle for high priority (also the ! key), and ⋯ with Open plan, Open file and Delete. The palette lists the
- * status and ! commands first while it's open.
+ * toggle for high priority (also the ! key), and ⋯ with the active extensions' actions (a grill's Open plan), Open
+ * file and Delete. The palette lists the status and ! commands first while it's open.
  */
 export function IssueHead({
   issue,
-  hasPlan,
+  ext,
   blocks,
 }: {
   issue: Pick<Issue, "id" | "title" | "status" | "priority" | "project">;
-  hasPlan: boolean;
+  /** What each active extension's actions draw from. */
+  ext: Partial<Record<ExtensionId, unknown>>;
   /** Issues it blocks, which deleting it unblocks. */
   blocks: { id: string; title?: string }[];
 }) {
@@ -72,6 +76,8 @@ export function IssueHead({
   const [statusOpen, setStatusOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [pending, run] = useAction();
+  const { active } = useLive();
+  const actions = activeClientSlots(active).flatMap((s) => (s.id in ext ? (s.issueActions?.(issue.id, ext[s.id]) ?? []) : []));
 
   const onKey = React.useEffectEvent((e: KeyboardEvent) => {
     if (e.defaultPrevented || e.isComposing || document.querySelector("dialog[open]")) return;
@@ -93,7 +99,6 @@ export function IssueHead({
     return () => window.removeEventListener("keydown", listener);
   }, []);
 
-  const open = (kind: "plan" | "file") => run(() => openLinkedFile(issue.id, kind));
   const commands: PageCommand[] = [
     ...STATUS_KEYS.filter((s) => s !== status).map((s) => ({
       id: s,
@@ -134,26 +139,27 @@ export function IssueHead({
         <MenuButton label="Issue actions" trigger={<MoreHorizontal size={18} aria-hidden />}>
           {(close) => (
             <>
-              {hasPlan && (
+              {actions.map((a) => (
                 <button
+                  key={a.id}
                   type="button"
                   role="menuitem"
                   className={styles.menuItem}
                   onClick={() => {
                     close();
-                    open("plan");
+                    run(a.run);
                   }}
                 >
-                  Open plan
+                  {a.label}
                 </button>
-              )}
+              ))}
               <button
                 type="button"
                 role="menuitem"
                 className={styles.menuItem}
                 onClick={() => {
                   close();
-                  open("file");
+                  run(() => openLinkedFile(issue.id, "file"));
                 }}
               >
                 Open file

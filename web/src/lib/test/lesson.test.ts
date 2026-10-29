@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 import { coursePage, lessonHref, lessonSlug, lessonTopic, showKey, showPage, toShow } from "../lesson.ts";
+import { EXTENSION_IDS as ALL } from "../../../../src/extension-ids.ts";
 import { missing, pageKind, pageTab } from "../shell.ts";
 import { clearQueue, QUEUE_TTL, queueFile, readQueue, writeQueue } from "../start-queue.ts";
 
@@ -61,22 +62,22 @@ describe("Follow along targets", () => {
 
 describe("the shell and lessons", () => {
   test("the Now page and Work tab are Workspaces; other course pages read", () => {
-    assert.equal(pageKind("/learn/llm/now"), "workspace");
-    assert.equal(pageKind("/learn/llm/work/flops.py"), "workspace");
-    assert.equal(pageKind("/learn/llm/notes"), "reading");
-    assert.equal(pageKind("/learn/llm/now/x"), "reading");
+    assert.equal(pageKind("/learn/llm/now", ALL), "workspace");
+    assert.equal(pageKind("/learn/llm/work/flops.py", ALL), "workspace");
+    assert.equal(pageKind("/learn/llm/notes", ALL), "reading");
+    assert.equal(pageKind("/learn/llm/now/x", ALL), "reading");
   });
 
   test("a page's Tab: its grill, or the live lesson on its course", () => {
     const live = [{ slug: "g" }, { slug: "lesson-llm-1", course: "llm" }];
-    assert.equal(pageTab("/s/g", live), "g");
-    assert.equal(pageTab("/learn/llm/knowledge/x", live), "lesson-llm-1");
-    assert.equal(pageTab("/learn/other", live), null);
-    assert.equal(pageTab("/p/KILN", live), null);
+    assert.equal(pageTab("/s/g", live, ALL), "g");
+    assert.equal(pageTab("/learn/llm/knowledge/x", live, ALL), "lesson-llm-1");
+    assert.equal(pageTab("/learn/other", live, ALL), null);
+    assert.equal(pageTab("/p/KILN", live, ALL), null);
   });
 
   test("a missing course's Now page says so", () => {
-    assert.equal(missing("/learn/nope/now").what, "No course nope.");
+    assert.equal(missing("/learn/nope/now", ALL).what, "No course nope.");
   });
 });
 

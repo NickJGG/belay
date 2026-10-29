@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
+import { useLive } from "@/components/live/live-provider";
 import { missing } from "@/lib/shell";
 import styles from "./not-found.module.css";
 
 /** A 404 inside the shell. Not found pages get no params, so the address says what's missing. */
 export default function NotFound() {
-  const { what, back } = missing(usePathname() ?? "/");
+  const { what, back } = missing(usePathname() ?? "/", useLive().active);
   return (
     <div className={styles.wrap}>
       <PageHeader title="Not found" />

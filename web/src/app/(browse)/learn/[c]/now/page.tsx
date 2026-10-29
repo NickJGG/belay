@@ -46,7 +46,7 @@ export default async function NowPage({ params }: Props) {
   const dir = courseDir(c);
   return (
     <div className={styles.coursePage}>
-      <ShellSlot course={{ slug: c, title: course.title }} glow={courseColor(course)} />
+      <ShellSlot owner={{ id: "learn", key: c, title: course.title }} glow={courseColor(course)} />
       <DetailHead
         title={title}
         back={{ href: courseHref(c), label: course.title }}
