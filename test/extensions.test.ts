@@ -7,7 +7,17 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
 import { BUILT_IN, matchesPattern, ownerOfPath } from '../src/extension-ids.ts';
-import { attachedSessions, enabledExtensions, isActive, ownedFields, parseEnabled, type ExtensionManifest } from '../src/extensions.ts';
+import {
+  attachedSessions,
+  enabledExtensions,
+  fieldLines,
+  fieldValues,
+  isActive,
+  ownedFields,
+  parseEnabled,
+  withFieldOptions,
+  type ExtensionManifest,
+} from '../src/extensions.ts';
 import { Ctx, setExtension } from '../src/ops.ts';
 import { ISSUE_FIELDS, KNOWN_ISSUE_KEYS } from '../src/store.ts';
 
@@ -72,6 +82,24 @@ test('owned fields may claim neither a core key nor another extension’s key', 
   assert.throws(() => ownedFields(ISSUE_FIELDS, [m('grill', 'title')]), /claims the core issue key 'title'/);
   assert.throws(() => ownedFields(ISSUE_FIELDS, [m('grill', 'x'), m('learn', 'x')]), /both claim the issue key 'x'/);
   assert.deepEqual(KNOWN_ISSUE_KEYS, [...ISSUE_FIELDS]);
+});
+
+const estimates: ExtensionManifest = { id: 'grill', fields: [{ key: 'estimate', after: 'source' }], skills: [] };
+
+test('owned fields become add/edit options, read back as values, and refuse to shadow an option', () => {
+  const options = withFieldOptions({ title: { type: 'string' } }, [estimates]);
+  assert.deepEqual(options, { title: { type: 'string' }, estimate: { type: 'string' } });
+  assert.deepEqual(withFieldOptions({ title: { type: 'string' } }, []), { title: { type: 'string' } });
+  assert.deepEqual(fieldValues({ title: 't', estimate: '3' }, [estimates]), [{ field: estimates.fields[0], value: '3' }]);
+  assert.deepEqual(fieldValues({ estimate: '' }, [estimates]), [{ field: estimates.fields[0], value: '' }]);
+  assert.deepEqual(fieldValues({ title: 't' }, [estimates]), []);
+  assert.throws(() => withFieldOptions({ estimate: { type: 'boolean' } }, [estimates]), /owned field 'estimate' clashes with the option --estimate/);
+});
+
+test("show lines list an issue's owned fields that have a value", () => {
+  assert.deepEqual(fieldLines({ extra: [{ key: 'estimate', value: 3, after: 'source' }] }, [estimates]), ['estimate:   3']);
+  assert.deepEqual(fieldLines({ extra: [{ key: 'other', value: 3, after: 'source' }] }, [estimates]), []);
+  assert.deepEqual(fieldLines({}, [estimates]), []);
 });
 
 test('switching an extension edits only its entry, keeping the other values and comments', () => {

@@ -516,6 +516,20 @@ test('ops keep an issue\'s plain unknown keys in place', () => {
   assert.match(src, /^updated: \S+\nmeta:\n {2}a:\n {4}- x\n {4}- y\ncomments:\n/m);
 });
 
+test('owned field values go in their slot on add, change in place on edit, and an empty one clears', () => {
+  const estimate = { key: 'estimate', after: 'source' };
+  const t = addIssue(new Ctx(dir), { title: 'n', project: 'PIX', fields: [{ field: estimate, value: '3' }, { field: { key: 'skip', after: 'id' }, value: '' }] });
+  const file = join(dir, 'issues', 'pix-1.md');
+  assert.match(readFileSync(file, 'utf8'), /^source: user\nestimate: "3"\ncreated: /m);
+  assert.deepEqual(t.extra, [{ key: 'estimate', value: '3', after: 'source' }]);
+  writeFileSync(file, readFileSync(file, 'utf8').replace('estimate: "3"\n', 'estimate: "3"\nlater: x\n'));
+  editIssue(new Ctx(dir), 'PIX-1', { fields: [{ field: estimate, value: '5' }] });
+  assert.match(readFileSync(file, 'utf8'), /^source: user\nestimate: "5"\nlater: x\ncreated: /m);
+  editIssue(new Ctx(dir), 'PIX-1', { fields: [{ field: estimate, value: '' }] });
+  assert.match(readFileSync(file, 'utf8'), /^source: user\nlater: x\ncreated: /m);
+  assert.equal(addIssue(new Ctx(dir), { title: 'm', project: 'PIX', fields: [] }).extra, undefined);
+});
+
 test('a file with a non-plain unknown value is refused by every op, and its bytes stay unchanged', () => {
   createIssue(dir, issue());
   const bad = '---\nid: PIX-2\ntitle: x\nproject: PIX\nstatus: todo\nblocked_by: []\nsource: user\ncreated: 2026-10-01\nupdated: 2026-10-01\nbig: 12345678901234567890\n---\n';

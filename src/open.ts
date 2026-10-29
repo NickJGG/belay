@@ -1,23 +1,25 @@
-/** Opening an issue's own file, grill session or plan in the OS default app. */
+/** Opening an issue's own file, or a file an active extension links it to, in the OS default app. */
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { grillFile } from './grill.ts';
+import { activeManifests, type ExtensionManifest } from './extensions.ts';
 import { issueFile, type Issue } from './store.ts';
 
-export type Linked = 'file' | 'grill' | 'plan';
+/** `file`, then the active extensions' kinds (grill's `grill` and `plan`). */
+export function linkedKinds(manifests: readonly ExtensionManifest[]): string[] {
+  return ['file', ...manifests.flatMap((m) => Object.keys(m.cli?.linked ?? {}))];
+}
 
-export const isLinked = (v: unknown): v is Linked => v === 'file' || v === 'grill' || v === 'plan';
-
-/** Absolute path of the issue's file, grill session or plan, or undefined when it has none. */
-export function linkedPath(
-  issue: Pick<Issue, 'id' | 'grill' | 'plan'>,
-  kind: Linked,
-  dirs: { data: string; grills?: string },
-): string | undefined {
-  if (kind === 'file') return issueFile(dirs.data, issue.id);
-  if (kind === 'grill') return issue.grill && dirs.grills ? grillFile(dirs.grills, issue.grill) : undefined;
-  return issue.plan ? resolve(issue.plan) : undefined;
+/** Absolute path of the issue's file of that kind, or undefined when it has none. Throws on a kind no active extension offers. */
+export async function linkedPath(
+  issue: Issue,
+  kind: string,
+  data: string,
+  manifests: readonly ExtensionManifest[] = activeManifests(data),
+): Promise<string | undefined> {
+  if (kind === 'file') return issueFile(data, issue.id);
+  const path = manifests.find((m) => m.cli?.linked?.[kind])?.cli?.linked?.[kind];
+  if (!path) throw new Error(`kind must be ${linkedKinds(manifests).join('|')}`);
+  return path(issue, data);
 }
 
 export function openFile(path: string): void {

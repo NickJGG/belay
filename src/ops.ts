@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { isMap, parseDocument } from 'yaml';
 import { dataDir, runDir } from './config.ts';
 import type { ExtensionId } from './extension-ids.ts';
-import { settingsFile } from './extensions.ts';
+import { settingsFile, type OwnedValue } from './extensions.ts';
 import { commitPaths } from './gitlog.ts';
 import { loadLog, loadLogDays, loadLogs, logFile, parseLogAddress, saveLog, type DatedEntry, type LogEntry } from './logs.ts';
 import { suggestKey } from './projectkey.ts';
@@ -42,6 +42,7 @@ import {
   type BadFile,
   type Comment,
   type Project,
+  type ExtraKey,
   type Issue,
   type IssueStatus,
 } from './store.ts';
@@ -212,7 +213,16 @@ export interface NewIssue {
   source?: string;
   grill?: string;
   plan?: string;
+  /** Owned fields; empty values are skipped. */
+  fields?: OwnedValue[];
   body?: string;
+}
+
+/** `extra` with an owned field set in place, or appended after its slot; an empty value removes it. */
+function setOwned(extra: ExtraKey[], { field, value }: OwnedValue): ExtraKey[] {
+  const i = extra.findIndex((e) => e.key === field.key);
+  if (!value) return extra.filter((_, j) => j !== i);
+  return i < 0 ? [...extra, { key: field.key, value, after: field.after }] : extra.with(i, { ...extra[i], value });
 }
 
 export function addIssue(ctx: Ctx, t: NewIssue, author = USER): Issue {
@@ -224,6 +234,7 @@ export function addIssue(ctx: Ctx, t: NewIssue, author = USER): Issue {
       const blockers = ctx.checkBlockers(undefined, t.blockers ?? []);
       const d = new Date();
       const status = oneOf(t.status ?? 'todo', ['idea', 'todo'] as const, 'status');
+      const extra = (t.fields ?? []).reduce(setOwned, []);
       return ctx.createIssue({
         title,
         project: project.key,
@@ -237,6 +248,7 @@ export function addIssue(ctx: Ctx, t: NewIssue, author = USER): Issue {
         updated: now(d),
         comments: [],
         transitions: [{ at: now(d), to: status, ...author }],
+        ...(extra.length > 0 && { extra }),
         body: (t.body ?? '').trim(),
       });
     },
@@ -264,6 +276,8 @@ export interface IssuePatch {
   grill?: string;
   /** Empty clears. */
   plan?: string;
+  /** Owned fields; an empty value clears one. */
+  fields?: OwnedValue[];
   /** Replaces the body. */
   body?: string;
 }
@@ -292,12 +306,19 @@ export function editIssue(ctx: Ctx, id: string, patch: IssuePatch): Issue {
       }
       if (patch.grill !== undefined) issue.grill = patch.grill || undefined;
       if (patch.plan !== undefined) issue.plan = patch.plan || undefined;
+      if (patch.fields?.length) {
+        const extra = patch.fields.reduce(setOwned, issue.extra ?? []);
+        issue.extra = extra.length ? extra : undefined;
+      }
       if (patch.body !== undefined) issue.body = patch.body.trim();
       issue.updated = now();
       ctx.saveIssue(issue);
       return issue;
     },
-    (issue) => `edit ${issue.id} ${patched(patch)}`.trimEnd(),
+    (issue) => {
+      const { fields = [], ...rest } = patch;
+      return `edit ${issue.id} ${patched({ ...rest, ...Object.fromEntries(fields.map((f) => [f.field.key, f.value])) })}`.trimEnd();
+    },
   );
 }
 

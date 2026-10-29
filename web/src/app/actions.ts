@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { dataDir } from "../../../src/config.ts";
 import { logFile } from "../../../src/logs.ts";
-import { isLinked, linkedPath, openFile } from "../../../src/open.ts";
+import { activeManifests } from "../../../src/extensions.ts";
+import { linkedKinds, linkedPath, openFile } from "../../../src/open.ts";
 import {
   ConflictError,
   Ctx,
@@ -26,7 +27,6 @@ import {
   setStatus,
 } from "../../../src/ops.ts";
 import { isDay } from "../../../src/workday.ts";
-import { sessionRoots } from "@/lib/extensions.server";
 import { projectHref } from "@/lib/hrefs";
 
 export interface Result {
@@ -230,12 +230,14 @@ export async function editLogEntry(address: unknown, at: unknown, patch: unknown
   redirect(moved);
 }
 
-/** Opens the issue's file or plan on this machine. The path comes from the issue, never the client. */
+/** Opens the issue's file, or one an active extension links it to, on this machine. The path comes from the issue, never the client. */
 export async function openLinkedFile(id: unknown, kind: unknown): Promise<Result> {
   try {
-    if (!isLinked(kind)) throw new Error("kind must be file|grill|plan");
     const data = dataDir();
-    const path = linkedPath(new Ctx(data).issue(str(id, "id")), kind, { data, grills: sessionRoots(data).grill });
+    const manifests = activeManifests(data);
+    const kinds = linkedKinds(manifests);
+    if (typeof kind !== "string" || !kinds.includes(kind)) throw new Error(`kind must be ${kinds.join("|")}`);
+    const path = await linkedPath(new Ctx(data).issue(str(id, "id")), kind, data, manifests);
     if (!path) throw new Error(`no ${kind} on ${id}`);
     openFile(path);
   } catch (e) {

@@ -1,13 +1,20 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { basename } from 'node:path';
-import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { claudeDir, dataDir, DEFAULT_PORT, grillsDir } from './config.ts';
+import { args, print } from './argv.ts';
+import { claudeDir, dataDir, DEFAULT_PORT } from './config.ts';
 import { clip, digestLines, plural } from './digest.ts';
-import { attachedSessions, extensionId } from './extensions.ts';
-import { commitGrill, initHistory } from './gitlog.ts';
-import { grillMatches, loadGrillSessions } from './grill.ts';
+import {
+  activeManifests,
+  attachedSessions,
+  extensionId,
+  fieldLines,
+  fieldValues,
+  withFieldOptions,
+  type Command,
+} from './extensions.ts';
+import { initHistory } from './gitlog.ts';
+import { helpText } from './help.ts';
 import { attachCommits, duration, localStamp, recentSessions, weekCommits } from './history.ts';
 import {
   Ctx,
@@ -32,7 +39,7 @@ import {
   setStatus,
   type MoveTarget,
 } from './ops.ts';
-import { launchSpec, realDeps, runLauncher } from './launch.ts';
+import { launchCommand } from './launch.ts';
 import { parseLogAddress, type DatedEntry } from './logs.ts';
 import { filterIssues, issueComparator, isReady, naturalDesc, next, openBlockers, projectCounts, projectForCwd, SORT_FIELDS } from './query.ts';
 import { statusLine, withBad } from './statusline.ts';
@@ -40,94 +47,6 @@ import { ISSUE_STATUSES, KNOWN_ISSUE_KEYS, normalizeStoredPath, issueFile, SOURC
 import { serve } from './web.ts';
 import { weekLines, weekSummary } from './week.ts';
 import { addDays, isDay, weekStart, workDay, workDayOf } from './workday.ts';
-
-const HELP = `belay — what should I work on?
-
-  next [--all]                      doing, high-priority, then ready issues in focus projects
-  add "<title>" [--project <key>] [--status idea|todo] [--blocked-by <id>...]
-                [--priority high] [--source user|claude] [--grill <slug>] [--plan <path>]
-                [--body <text> | --body-file <path|->]
-  set <id> <status>                 idea|todo|doing|done|dropped
-  edit <id> [--title <t>] [--blocked-by <id>...] [--priority high|none]
-            [--grill <slug>] [--plan <path>] [--body <text> | --body-file <path|->]
-                                    --body/--body-file set the description (- reads stdin)
-  comment <id> <text|-> [--as user|claude]
-  comment <id> --edit <n> <text|->  |  comment <id> --delete <n>
-                                    log an entry on the issue (- reads stdin); #n as numbered in show.
-                                    Author is claude inside Claude Code, else user
-  delete <id>                       erase an issue for good; strips it from its dependents' blockers
-  show <id>
-  did <key> "<text>" [--kind <k>] [--count <n>] [--minutes <n>] [--issue <id>] [--date yesterday|YYYY-MM-DD]
-                                    log work done on a project (up to 7 days back); --kind must be one the
-                                    project declares, --count needs it (default 1)
-  log [<key>] [--since 7d|YYYY-MM-DD]
-                                    log entries, newest first, addressed <day>/<n>
-  log delete <day>/<n>
-  log edit <day>/<n> [--text <t>|-] [--kind <k>] [--count <n>] [--minutes <n>] [--issue <id>]
-           [--date today|yesterday|YYYY-MM-DD]
-                                    '' clears kind (and count), count, minutes or issue; --date moves
-                                    the entry to the end of that day (up to 7 days back)
-  list [--project <key>] [--status <s,...>|all] [--priority high] [--source user|claude]
-       [--ready | --blocked] [--sort id|title|created|updated] [--asc | --desc]
-                                    default hides done and dropped; --blocked is any status with an
-                                    open blocker; --sort starts newest first for updated, else ascending
-  week [--last]                     this (or last) Mon–Sun week per project: days moved, issues done,
-                                    commits and log entries
-
-  history [<project>] [-n <count>] [-v]
-                                    recent Claude sessions and their commits, newest first
-  git init                          start git history for the data dir: from then on every change is a
-                                    commit (git log/revert in the data dir to look back or undo)
-  grill commit <slug>               commit a planned grill's folder to the data dir's history (the /grill
-                                    skill runs it when its plan is accepted); in-progress grills are refused
-  claude [args]                     Claude Code with the Belay channel (args go to claude); relaunches when a
-                                    lesson restarts its session
-  learn [args]                      the same, in the Learning root (LEARNING_ROOT, default ~/Learning)
-  search <words>...                 issues (title, description, comments) and grill sessions (slug, topic, project) with every word
-  check                             report bad files (nothing is written while one exists) and issue
-                                    frontmatter keys belay doesn't know (kept on save)
-  extension on|off <id>             switch an extension (grill, learn) in settings.yaml; off is refused while
-                                    one of its sessions is attached. Its data is never touched
-  serve [--port <n>] [--no-open] [--dev]
-                                    dashboard at http://127.0.0.1:4747/ (Ctrl+C to stop); builds web/
-                                    first when it or src/ changed (needs 'npm install' in web/);
-                                    --dev skips the build and runs next dev, so edits show up live
-  digest                            SessionStart hook: reads the hook JSON on stdin, prints a summary
-                                    if its cwd is in a registered project, else nothing
-  statusline                        status line command: reads Claude Code's status JSON on stdin, prints
-                                    the project's doing issue (or next ready one)
-
-  project add [<key>] --name <name> --path <dir>... [--group <g>] [--focus]
-                                    key: 3–4 letters, the issue-ID prefix (ELV-12); derived from
-                                    the name when omitted (3 letters, 4 on a clash)
-  project list [--all]              --all includes archived
-  project set <key> [--status active|paused|archived] [--focus|--no-focus] [--name <n>] [--group <g>]
-                    [--kinds a,b] [--path <dir>...] [--icon <path>] [--color <#hex>]
-                                    --path replaces the project's dirs. --icon: an image, absolute or relative to
-                                    the first dir (empty clears). --color: the app's colour for it, #rgb or #rrggbb
-                                    (empty clears). kinds: log-entry kinds (empty clears)
-  project move <key> (--before <key> | --after <key> | --top | --bottom)
-                                    rearrange the order projects are listed in (here and the sidebar)
-  project rekey <key> <new-key>     rename the key and every issue ID in the project, fixing blockers
-  project which [<dir>]             key of the project containing <dir> (default cwd); prints nothing if none
-
---project defaults to the project whose path contains the cwd. --blocked-by takes
-repeated flags or a comma list. Keys and IDs are case-insensitive. Data dir: $BELAY_DATA (default ~/Belay).`;
-
-function args<T extends ParseArgsConfig['options']>(
-  argv: string[],
-  options: T,
-  positionals: number,
-  maxPositionals = positionals,
-) {
-  const parsed = parseArgs({ args: argv, options, allowPositionals: true, allowNegative: true, strict: true });
-  const n = parsed.positionals.length;
-  if (n < positionals || n > maxPositionals) {
-    const expected = maxPositionals === positionals ? positionals : `${positionals}–${maxPositionals}`;
-    throw new Error(`expected ${expected} argument(s), got ${n} — see 'belay help'`);
-  }
-  return parsed;
-}
 
 // --- output ---
 
@@ -141,10 +60,6 @@ function lines(issues: Issue[], ctx: Ctx, showStatus = false): string[] {
     const status = showStatus ? `${t.status.padEnd(statusWidth)}  ` : '';
     return `  ${t.id.padEnd(width)}  ${status}${t.title}${tail ? `  ${tail}` : ''}`;
   });
-}
-
-function print(text: string | string[]): void {
-  console.log(Array.isArray(text) ? text.join('\n') : text);
 }
 
 function bodyArg(body: string | undefined, file: string | undefined): string | undefined {
@@ -186,9 +101,10 @@ function cmdNext(argv: string[]): void {
 }
 
 function cmdAdd(argv: string[]): void {
+  const manifests = activeManifests();
   const { values, positionals } = args(
     argv,
-    {
+    withFieldOptions({
       project: { type: 'string', short: 'p' },
       status: { type: 'string', short: 's' },
       'blocked-by': { type: 'string', multiple: true },
@@ -198,7 +114,7 @@ function cmdAdd(argv: string[]): void {
       plan: { type: 'string' },
       body: { type: 'string' },
       'body-file': { type: 'string' },
-    },
+    }, manifests),
     1,
   );
   const ctx = new Ctx();
@@ -215,6 +131,7 @@ function cmdAdd(argv: string[]): void {
       source: values.source,
       grill: values.grill,
       plan: values.plan,
+      fields: fieldValues(values, manifests),
       body: bodyArg(values.body, values['body-file']),
     },
     commentAuthor(process.env),
@@ -232,9 +149,10 @@ function cmdSet(argv: string[]): void {
 }
 
 function cmdEdit(argv: string[]): void {
+  const manifests = activeManifests();
   const { values, positionals } = args(
     argv,
-    {
+    withFieldOptions({
       title: { type: 'string' },
       'blocked-by': { type: 'string', multiple: true },
       priority: { type: 'string' },
@@ -242,7 +160,7 @@ function cmdEdit(argv: string[]): void {
       plan: { type: 'string' },
       body: { type: 'string' },
       'body-file': { type: 'string' },
-    },
+    }, manifests),
     1,
   );
   const issue = editIssue(new Ctx(), positionals[0], {
@@ -251,6 +169,7 @@ function cmdEdit(argv: string[]): void {
     priority: values.priority,
     grill: values.grill,
     plan: values.plan,
+    fields: fieldValues(values, manifests),
     body: bodyArg(values.body, values['body-file']),
   });
   print(`updated ${issue.id}`);
@@ -312,6 +231,7 @@ function cmdShow(argv: string[]): void {
     blocks.length ? `blocks:     ${blocks.join(', ')}` : '',
     t.grill ? `grill:      ${t.grill}` : '',
     t.plan ? `plan:       ${t.plan}` : '',
+    ...fieldLines(t, activeManifests(ctx.dir)),
     `dates:      created ${t.created}, updated ${t.updated.replace('T', ' ')}`,
     `file:       ${normalizeStoredPath(issueFile(ctx.dir, t.id))}`,
   ].filter(Boolean);
@@ -527,7 +447,7 @@ function cmdHistory(argv: string[]): void {
   print(out);
 }
 
-function cmdSearch(argv: string[]): void {
+async function cmdSearch(argv: string[]): Promise<void> {
   const { positionals } = args(argv, {}, 1, Infinity);
   const words = positionals.map((w) => w.toLowerCase());
   const ctx = readCtx();
@@ -535,22 +455,9 @@ function cmdSearch(argv: string[]): void {
     const hay = [t.title, t.body, ...t.comments.map((c) => c.text)].join('\n').toLowerCase();
     return words.every((w) => hay.includes(w));
   });
-  const dir = grillsDir();
-  const grill = loadGrillSessions(dir)
-    .filter((g) => grillMatches(g, words))
-    .sort((a, b) => (b.updated ?? '').localeCompare(a.updated ?? ''));
   const out: string[] = [];
   if (issues.length) out.push('issues', ...lines(issues, ctx, true));
-  if (grill.length) {
-    out.push(`grill sessions (<slug>/<slug>.md in ${normalizeStoredPath(dir)})`);
-    const slugW = Math.max(...grill.map((g) => g.slug.length));
-    const statusW = Math.max(...grill.map((g) => (g.status ?? '').length));
-    const projW = Math.max(...grill.map((g) => (g.project ?? '').length));
-    for (const g of grill) {
-      const proj = projW ? `${(g.project ?? '-').padEnd(projW)}  ` : '';
-      out.push(`  ${g.slug.padEnd(slugW)}  ${(g.status ?? '').padEnd(statusW)}  ${g.updated ?? '          '}  ${proj}${clip(g.topic, 100)}`);
-    }
-  }
+  for (const m of activeManifests(ctx.dir)) if (m.cli?.search) out.push(...(await m.cli.search())(words, ctx.dir));
   print(out.length ? out : 'no matches');
 }
 
@@ -561,28 +468,6 @@ function cmdGit(argv: string[]): void {
   const dir = dataDir();
   initHistory(dir);
   print(`started git history in ${normalizeStoredPath(dir)}`);
-}
-
-function cmdGrill(argv: string[]): void {
-  const [sub, ...rest] = argv;
-  if (sub !== 'commit') throw new Error(`unknown 'grill ${sub ?? ''}' — expected commit`);
-  const slug = args(rest, {}, 1).positionals[0];
-  const result = commitGrill(dataDir(), slug, commentAuthor(process.env));
-  print(result === 'committed' ? `committed grill ${slug}` : result === 'unchanged' ? 'nothing to commit' : 'no git history: nothing committed');
-}
-
-/** Everything after the command goes to claude untouched. */
-function launch(mode: 'claude' | 'learn', argv: string[]): void {
-  const spec = launchSpec(mode, argv, { env: process.env, home: homedir(), cwd: process.cwd(), data: dataDir(), platform: process.platform });
-  runLauncher(spec, realDeps).then(
-    (code) => {
-      process.exitCode = code;
-    },
-    (e: Error) => {
-      console.error(`belay: ${e.message}`);
-      process.exitCode = 1;
-    },
-  );
 }
 
 function cmdServe(argv: string[]): void {
@@ -596,7 +481,7 @@ function cmdServe(argv: string[]): void {
 }
 
 /** Must never fail the session start: any error goes to stderr and the exit code stays 0. */
-function cmdDigest(argv: string[]): void {
+async function cmdDigest(argv: string[]): Promise<void> {
   args(argv, {}, 0);
   try {
     let input: { cwd?: unknown; session_id?: unknown; source?: unknown } = {};
@@ -612,13 +497,21 @@ function cmdDigest(argv: string[]): void {
     const project = projectForCwd(ctx.projects, cwd);
     if (!project) return;
     if (input.source === 'compact') {
-      print(digestLines(project, ctx.issues, [], [], { bad: ctx.bad, compact: true }));
+      print(digestLines(project, ctx.issues, [], { bad: ctx.bad, compact: true }));
       return;
     }
     const exclude = typeof input.session_id === 'string' ? input.session_id : undefined;
     const sessions = recentSessions(claudeDir(), ctx.projects, { project, limit: 3, exclude });
     attachCommits(sessions, ctx.projects);
-    print(digestLines(project, ctx.issues, sessions, loadGrillSessions(grillsDir()), { bad: ctx.bad }));
+    print(digestLines(project, ctx.issues, sessions, { bad: ctx.bad }));
+    for (const m of activeManifests(ctx.dir)) {
+      try {
+        const section = m.cli?.digest && (await m.cli.digest())(project, ctx.issues, ctx.dir);
+        if (section?.length) print(section);
+      } catch (e) {
+        console.error(`belay digest: ${m.id}: ${(e as Error).message}`);
+      }
+    }
   } catch (e) {
     console.error(`belay digest: ${(e as Error).message}`);
   }
@@ -780,7 +673,7 @@ async function cmdExtension(argv: string[]): Promise<void> {
   print(setExtension(new Ctx(dir), id, action === 'on') ? `${id} ${action}` : `${id} was already ${action}`);
 }
 
-const COMMANDS: Record<string, (argv: string[]) => void | Promise<void>> = {
+const COMMANDS: Record<string, Command> = {
   next: cmdNext,
   add: cmdAdd,
   set: cmdSet,
@@ -797,28 +690,24 @@ const COMMANDS: Record<string, (argv: string[]) => void | Promise<void>> = {
   check: cmdCheck,
   extension: cmdExtension,
   git: cmdGit,
-  grill: cmdGrill,
-  claude: (argv) => launch('claude', argv),
-  learn: (argv) => launch('learn', argv),
+  claude: (argv) => launchCommand('claude', argv),
   serve: cmdServe,
   digest: cmdDigest,
   statusline: cmdStatusline,
   project: cmdProject,
 };
 
-const [cmd, ...rest] = process.argv.slice(2);
-if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
-  print(HELP);
-} else {
-  const fail = (e: unknown) => {
+/** Core commands resolve before the settings are read, so the status line and the digest never wait on them. */
+async function main([cmd, ...rest]: string[]): Promise<void> {
+  try {
+    if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') return print(helpText(activeManifests()));
+    const run = COMMANDS[cmd] ?? (await activeManifests().find((m) => m.cli?.commands?.[cmd])?.cli?.commands?.[cmd]());
+    if (!run) throw new Error(`unknown command '${cmd}' — see 'belay help'`);
+    await run(rest);
+  } catch (e) {
     console.error(`belay: ${(e as Error).message}`);
     process.exitCode = 1;
-  };
-  try {
-    const run = COMMANDS[cmd];
-    if (!run) throw new Error(`unknown command '${cmd}' — see 'belay help'`);
-    run(rest)?.catch(fail);
-  } catch (e) {
-    fail(e);
   }
 }
+
+await main(process.argv.slice(2));

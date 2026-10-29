@@ -4,9 +4,10 @@
  */
 import { spawn } from 'node:child_process';
 import { existsSync, rmSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { runDir } from './config.ts';
+import { dataDir, runDir } from './config.ts';
 
 const CHANNEL = 'plugin:belay@belay';
 // Tools these sessions never use, kept out of every call's context. The flag is variadic, so the channel flag
@@ -27,7 +28,7 @@ const CHANNEL_ARGS = ['--disallowedTools', UNUSED_TOOLS.join(','), '--dangerousl
 export interface LaunchSpec {
   cwd: string;
   args: string[];
-  env: Record<string, string | undefined>;
+  env: NodeJS.ProcessEnv;
   /** The restart marker. */
   marker: string;
   /** Whether to start the helper that accepts the dev-channels dialog. */
@@ -35,7 +36,7 @@ export interface LaunchSpec {
 }
 
 export interface LaunchContext {
-  env: Record<string, string | undefined>;
+  env: NodeJS.ProcessEnv;
   home: string;
   cwd: string;
   data: string;
@@ -78,7 +79,18 @@ export async function runLauncher(spec: LaunchSpec, deps: LaunchDeps): Promise<n
   }
 }
 
-const HELPER = fileURLToPath(new URL('../scripts/accept-dev-channels.ps1', import.meta.url));
+/** The command: everything after it goes to claude untouched. Never rejects; a failure goes to stderr. */
+export async function launchCommand(mode: 'claude' | 'learn', argv: string[]): Promise<void> {
+  try {
+    const spec = launchSpec(mode, argv, { env: process.env, home: homedir(), cwd: process.cwd(), data: dataDir(), platform: process.platform });
+    process.exitCode = await runLauncher(spec, realDeps);
+  } catch (e) {
+    console.error(`belay: ${(e as Error).message}`);
+    process.exitCode = 1;
+  }
+}
+
+const HELPER =fileURLToPath(new URL('../scripts/accept-dev-channels.ps1', import.meta.url));
 
 export const realDeps: LaunchDeps = {
   claude(args, spec) {

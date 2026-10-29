@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
-import { commitGrill, GITIGNORE, hasHistory, initHistory } from '../src/gitlog.ts';
+import { GITIGNORE, hasHistory, initHistory } from '../src/gitlog.ts';
 import { Ctx, addComment, addIssue, addLog, addProject, deleteLog, rekeyProject, replaceBody, setStatus } from '../src/ops.ts';
 
 let dir: string;
@@ -136,55 +136,4 @@ test("a log op commits the day's file, including its removal", () => {
   assert.deepEqual(changed(), [`A\tlog/${day}.yaml`]);
   deleteLog(new Ctx(dir), `${day}/1`);
   assert.deepEqual(changed(), [`D\tlog/${day}.yaml`]);
-});
-
-function grill(slug: string, files: Record<string, string>) {
-  mkdirSync(join(dir, 'grills', slug), { recursive: true });
-  for (const [name, text] of Object.entries(files)) writeFileSync(join(dir, 'grills', slug, name), text);
-}
-
-const json = (status: string) => JSON.stringify({ status });
-
-test('commitGrill commits a planned grill folder alone, without its bridge.json', () => {
-  initHistory(dir);
-  grill('done-one', { 'session.json': json('planned'), 'done-one.md': '# x\n', 'bridge.json': '{}' });
-  grill('other', { 'session.json': json('planned') });
-  writeFileSync(join(dir, 'stray.txt'), '');
-  assert.equal(commitGrill(dir, 'done-one', { by: 'claude', session: 's-1' }), 'committed');
-  assert.equal(git('log', '-1', '--format=%s%n%n%b').trim(), 'grill done-one - claude\n\nSession: s-1');
-  assert.deepEqual(changed().sort(), ['A\tgrills/done-one/done-one.md', 'A\tgrills/done-one/session.json']);
-  assert.equal(commitGrill(dir, 'done-one', { by: 'claude' }), 'unchanged');
-});
-
-test("commitGrill leaves bridge.json out even when .gitignore doesn't", () => {
-  initHistory(dir);
-  writeFileSync(join(dir, '.gitignore'), 'cache/\n');
-  git('commit', '-qam', 'old ignore');
-  grill('g', { 'session.json': json('planned'), 'bridge.json': '{"token":"t"}' });
-  assert.equal(commitGrill(dir, 'g', { by: 'user' }), 'committed');
-  assert.deepEqual(changed(), ['A\tgrills/g/session.json']);
-  assert.equal(commitGrill(dir, 'g', { by: 'user' }), 'unchanged');
-});
-
-test('commitGrill refuses a grill that is not planned, a missing one and a bad slug', () => {
-  initHistory(dir);
-  grill('live', { 'session.json': json('in-progress'), 'live.md': '---\nstatus: planned\n---\n' });
-  assert.throws(() => commitGrill(dir, 'live', { by: 'user' }), /grill 'live' is in-progress; only a planned grill is committed/);
-  assert.throws(() => commitGrill(dir, 'nope', { by: 'user' }), /no grill 'nope'/);
-  assert.throws(() => commitGrill(dir, '../x', { by: 'user' }), /not a grill slug/);
-  assert.deepEqual(subjects(), ['init - user']);
-});
-
-test('commitGrill reads a legacy grill status from its session file', () => {
-  initHistory(dir);
-  grill('old', { 'old.md': '---\ntopic: Old\nstatus: planned\n---\n', 'preview.html': '' });
-  grill('dropped', { 'dropped.md': '---\ntopic: Gone\nstatus: abandoned\n---\n' });
-  assert.equal(commitGrill(dir, 'old', { by: 'user' }), 'committed');
-  assert.throws(() => commitGrill(dir, 'dropped', { by: 'user' }), /is abandoned/);
-});
-
-test('commitGrill checks the grill but commits nothing without history', () => {
-  grill('g', { 'session.json': json('planned') });
-  assert.equal(commitGrill(dir, 'g', { by: 'user' }), 'no history');
-  assert.throws(() => commitGrill(dir, 'nope', { by: 'user' }), /no grill/);
 });

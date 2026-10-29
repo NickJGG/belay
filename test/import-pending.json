@@ -1,9 +1,4 @@
 [
-  "src/cli.ts -> src/grill.ts",
-  "src/digest.ts -> src/grill.ts",
-  "src/gitlog.ts -> src/grill.ts",
-  "src/open.ts -> src/grill.ts",
-  "test/digest.test.ts -> src/grill.ts",
   "test/grill.test.ts -> src/grill.ts",
   "web/src/lib/data.ts -> web/src/lib/mock.ts",
   "web/src/lib/data.ts -> web/src/lib/session-doc.ts",
