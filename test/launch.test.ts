@@ -15,7 +15,6 @@ afterEach(() => rmSync(data, { recursive: true, force: true }));
 
 const ctx = (over: Partial<LaunchContext> = {}): LaunchContext => ({
   env: { PATH: 'p' },
-  home: resolve('/home/me'),
   cwd: resolve('/work'),
   data,
   platform: 'win32',
@@ -30,7 +29,7 @@ const CHANNEL_ARGS = [
 ];
 
 test('claude runs in the cwd with the channel, the user args after it, and BELAY_CHANNEL set', () => {
-  const spec = launchSpec('claude', ['--resume', 'x'], ctx());
+  const spec = launchSpec(['--resume', 'x'], ctx());
   assert.equal(spec.cwd, resolve('/work'));
   assert.deepEqual(spec.args, [...CHANNEL_ARGS, '--resume', 'x']);
   assert.deepEqual(spec.env, { PATH: 'p', BELAY_CHANNEL: '1' });
@@ -38,14 +37,9 @@ test('claude runs in the cwd with the channel, the user args after it, and BELAY
   assert.equal(spec.acceptDialog, true);
 });
 
-test('learn runs in LEARNING_ROOT, else ~/Learning', () => {
-  assert.equal(launchSpec('learn', [], ctx()).cwd, join(resolve('/home/me'), 'Learning'));
-  assert.equal(launchSpec('learn', [], ctx({ env: { LEARNING_ROOT: 'D:/courses' } })).cwd, 'D:/courses');
-});
-
 test('the dialog helper is skipped under mintty and off Windows', () => {
-  assert.equal(launchSpec('claude', [], ctx({ env: { TERM_PROGRAM: 'mintty' } })).acceptDialog, false);
-  assert.equal(launchSpec('claude', [], ctx({ platform: 'linux' })).acceptDialog, false);
+  assert.equal(launchSpec([], ctx({ env: { TERM_PROGRAM: 'mintty' } })).acceptDialog, false);
+  assert.equal(launchSpec([], ctx({ platform: 'linux' })).acceptDialog, false);
 });
 
 /** Fake deps: each claude run pops the next exit code and, when `restarts` says so, leaves the marker. */
@@ -76,7 +70,7 @@ function fake(spec: LaunchSpec, codes: number[], restarts: boolean[]) {
 }
 
 test('no restart marker: one run, exiting with its code, after clearing a stale marker', async () => {
-  const spec = launchSpec('claude', ['hi'], ctx());
+  const spec = launchSpec(['hi'], ctx());
   mkdirSync(join(data, '.run'));
   writeFileSync(spec.marker, '');
   const f = fake(spec, [3], [false]);
@@ -86,7 +80,7 @@ test('no restart marker: one run, exiting with its code, after clearing a stale 
 });
 
 test('a restart marker relaunches without the user args, clearing the screen and the marker', async () => {
-  const spec = launchSpec('learn', ['/learn', 'x'], ctx({ env: { TERM_PROGRAM: 'mintty' } }));
+  const spec = launchSpec(['/learn', 'x'], ctx({ env: { TERM_PROGRAM: 'mintty' } }));
   const f = fake(spec, [0, 0, 7], [true, true, false]);
   assert.equal(await runLauncher(spec, f.deps), 7);
   assert.deepEqual(f.calls, [[...CHANNEL_ARGS, '/learn', 'x'], CHANNEL_ARGS, CHANNEL_ARGS]);

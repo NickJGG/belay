@@ -690,7 +690,7 @@ const COMMANDS: Record<string, Command> = {
   check: cmdCheck,
   extension: cmdExtension,
   git: cmdGit,
-  claude: (argv) => launchCommand('claude', argv),
+  claude: (argv) => launchCommand(argv),
   serve: cmdServe,
   digest: cmdDigest,
   statusline: cmdStatusline,

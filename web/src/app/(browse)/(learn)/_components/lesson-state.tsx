@@ -17,7 +17,8 @@ const LessonContext = React.createContext<LessonState>({ focus: null, start: nul
 
 /** The selected lesson's focus, from its seed and then its bridge's `show` events, and the start queue. */
 export function LessonProvider({ children }: { children: React.ReactNode }) {
-  const { selected, seed } = useLive();
+  const { selected, seed, active } = useLive();
+  const on = active.includes("learn");
   const slug = selected?.slug ?? null;
 
   const [focus, setFocus] = React.useState<{ slug: string | null; focus: LessonShow | null }>({ slug, focus: seed?.focus ?? null });
@@ -38,7 +39,9 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
   }, [slug]);
 
   const [start, setStart] = React.useState<Queue | null>(null);
+  // Mounted whether learn is on or not, so only an active learn asks for the queue.
   React.useEffect(() => {
+    if (!on) return;
     let alive = true;
     const reload = () =>
       fetch("/api/lesson/start", { cache: "no-store" })
@@ -54,10 +57,11 @@ export function LessonProvider({ children }: { children: React.ReactNode }) {
       alive = false;
       unsubscribe();
     };
-  }, []);
+  }, [on]);
 
   const shown = selected?.kind === "lesson" && focus.slug === slug ? focus.focus : null;
-  const value = React.useMemo(() => ({ focus: shown, start }), [shown, start]);
+  const queued = on ? start : null;
+  const value = React.useMemo(() => ({ focus: shown, start: queued }), [shown, queued]);
   return <LessonContext.Provider value={value}>{children}</LessonContext.Provider>;
 }
 

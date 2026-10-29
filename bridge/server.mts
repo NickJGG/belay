@@ -454,12 +454,20 @@ mcp.setRequestHandler(ListToolsRequestSchema, async () => {
 /** The session the attach arguments name, or why they name none. */
 async function attachTarget(args: Record<string, unknown>): Promise<Target | string> {
   const kinds = attachable();
-  const named = kinds.filter((k) => args[k.key] !== undefined);
+  const known = listed();
+  const off = KINDS.find((k) => !known.includes(k) && args[k.key] !== undefined);
+  if (off) return `${off.plural} are switched off: run \`belay extension on ${off.id}\``;
+  const named = known.filter((k) => args[k.key] !== undefined);
   if (named.length !== 1) return `pass exactly one of ${kinds.map((k) => `${k.key} (a ${k.noun})`).join(" or ")}`;
   const kind = named[0];
   const runtime = await kind.load();
   const state = runtime.target(args);
-  return typeof state === "string" ? state : { kind, runtime, state };
+  if (typeof state === "string") return state;
+  // A kind switched off while attached may still re-attach its own session, after a /clear.
+  if (!kinds.includes(kind) && !(live?.kind === kind && runtime.same(live.state, state))) {
+    return `${kind.plural} are switched off: only the attached ${kind.noun} can re-attach`;
+  }
+  return { kind, runtime, state };
 }
 
 mcp.setRequestHandler(CallToolRequestSchema, async (req) => {

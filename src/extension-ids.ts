@@ -12,7 +12,10 @@ export const isExtensionId = (s: string): s is ExtensionId => (EXTENSION_IDS as 
 export const BUILT_IN: Readonly<Record<ExtensionId, boolean>> = { grill: true, learn: false };
 
 /** The site paths each owns, gated by the proxy while it's inactive. `*` matches one segment. */
-export const PATH_PATTERNS: Readonly<Record<ExtensionId, readonly string[]>> = { grill: [], learn: [] };
+export const PATH_PATTERNS: Readonly<Record<ExtensionId, readonly string[]>> = {
+  grill: [],
+  learn: ['/learn', '/api/lesson', '/api/work', '/api/courses'],
+};
 
 const segments = (p: string) => p.split('/').filter(Boolean);
 

@@ -16,6 +16,10 @@ The marketplace loads the plugin in place, so edits take effect at the next sess
 
 `belay claude [args]` starts Claude Code with the plugin's channel loaded (the `/grill` skill needs it); `belay learn [args]` does the same in `~/Learning` (`LEARNING_ROOT`) for lessons. Both relaunch Claude when a lesson asks to restart.
 
+## Extensions
+
+Grills and courses are extensions on top of the issue tracker. `belay extension on|off <id>` switches one in `~/Belay/settings.yaml`'s `extensions:` map; grill starts on and learn off. An extension that's off leaves no trace in the site, the CLI or the channel's tools (the channel's instructions drop it at Claude Code's next start), but its data stays where it is. Switching off is refused while one of its sessions is attached, and a session attached before the switch keeps working until it detaches. Learn's switch works today; grill's is always on for now.
+
 ## Dashboard setup
 
 The dashboard is a separate Next.js package in `web/` (pnpm). Install its dependencies once:

@@ -40,7 +40,7 @@ test('patterns match whole segments, with * for any one', () => {
   assert.equal(matchesPattern('/api/s/abc/files/a.png', '/api/s/*/files'), true);
   assert.equal(matchesPattern('/api/s/abc/chat', '/api/s/*/files'), false);
   assert.equal(matchesPattern('/', '/learn'), false);
-  assert.equal(ownerOfPath('/learn/x', ['grill', 'learn']), undefined);
+  assert.equal(ownerOfPath('/learn/x', ['grill', 'learn']), 'learn');
 });
 
 test('the extensions map switches built-ins over their defaults, accepting on/off and true/false', () => {
@@ -70,10 +70,24 @@ test('the reader keeps the last good value through a broken file, and turns ever
   }
 });
 
-test('every extension stays active until its gating lands, whatever the settings say', () => {
+test('learn follows its setting; grill stays active until its gating lands', () => {
   writeFileSync(join(dir, 'settings.yaml'), 'extensions:\n  learn: off\n  grill: off\n');
-  assert.equal(isActive('learn', dir), true);
+  assert.equal(isActive('learn', dir), false);
   assert.equal(isActive('grill', dir), true);
+  writeFileSync(join(dir, 'settings.yaml'), 'extensions:\n  learn: on\n');
+  assert.equal(isActive('learn', dir), true);
+});
+
+test('a switched-off extension stays active while one of its sessions has a live bridge', () => {
+  writeFileSync(join(dir, 'settings.yaml'), 'extensions:\n  learn: off\n');
+  mkdirSync(join(dir, 'lessons', 'lesson-none'), { recursive: true });
+  assert.equal(isActive('learn', dir), false);
+  bridge('lessons', 'lesson-dead', { port: 1, token: 't', pid: 2 ** 22 + 1 });
+  assert.equal(isActive('learn', dir), false);
+  bridge('lessons', 'lesson-a', { port: 1, token: 't', pid: process.pid });
+  assert.equal(isActive('learn', dir), true);
+  rmSync(join(dir, 'lessons', 'lesson-a', 'bridge.json'));
+  assert.equal(isActive('learn', dir), false);
 });
 
 test('owned fields may claim neither a core key nor another extension’s key', () => {
@@ -198,3 +212,10 @@ test('belay extension switches, and refuses off while a session of that kind is 
 function spawnAsync(...args: string[]) {
   return spawn(process.execPath, [join(import.meta.dirname, '..', 'src', 'cli.ts'), ...args], { env: { ...process.env, BELAY_DATA: dir, CLAUDECODE: '' } });
 }
+
+test("learn's paths are gated, segment by segment", () => {
+  for (const p of ['/learn', '/learn/c/work', '/api/lesson/start', '/api/work', '/api/work/run', '/api/courses/c/claim']) {
+    assert.equal(ownerOfPath(p, ['learn']), 'learn', p);
+  }
+  for (const p of ['/', '/learning', '/api/search', '/p/BEL', '/api/worker']) assert.equal(ownerOfPath(p, ['learn']), undefined, p);
+});
