@@ -3,8 +3,12 @@
  * so the file it saves was read just before, and a concurrent edit by Claude isn't clobbered.
  */
 import { createHash } from 'node:crypto';
-import { existsSync } from 'node:fs';
-import { dataDir } from './config.ts';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { isMap, parseDocument } from 'yaml';
+import { dataDir, runDir } from './config.ts';
+import type { ExtensionId } from './extension-ids.ts';
+import { settingsFile } from './extensions.ts';
 import { commitPaths } from './gitlog.ts';
 import { loadLog, loadLogDays, loadLogs, logFile, parseLogAddress, saveLog, type DatedEntry, type LogEntry } from './logs.ts';
 import { suggestKey } from './projectkey.ts';
@@ -34,6 +38,7 @@ import {
   now,
   today,
   validateKey,
+  writeAtomic,
   type BadFile,
   type Comment,
   type Project,
@@ -159,6 +164,11 @@ export class Ctx {
   saveOrder(keys: string[]): void {
     saveOrder(this.dir, keys);
     this.#touched.add(orderFile(this.dir));
+  }
+
+  saveSettings(text: string): void {
+    writeAtomic(settingsFile(this.dir), text);
+    this.#touched.add(settingsFile(this.dir));
   }
 
   saveLog(day: string, entries: LogEntry[]): void {
@@ -739,5 +749,28 @@ export function editLog(ctx: Ctx, addr: string, patch: LogPatch, expectAt?: stri
       const to = `${r.day}/${r.n}`;
       return `log edit ${r.entry.project} ${addr}${to === addr ? '' : `->${to}`} ${patched(patch)}`.trimEnd();
     },
+  );
+}
+
+/**
+ * Sets `id`'s switch in `settings.yaml`'s `extensions:` map, keeping the file's other values and comments. Switching
+ * learn off also drops a queued lesson start, which isn't part of the history. False when the file already said so.
+ */
+export function setExtension(ctx: Ctx, id: ExtensionId, on: boolean): boolean {
+  return ctx.record(
+    () => {
+      const file = settingsFile(ctx.dir);
+      const src = existsSync(file) ? readFileSync(file, 'utf8') : '';
+      const doc = parseDocument(src);
+      if (doc.errors.length) throw new Error(`settings.yaml: ${doc.errors[0].message.split('\n')[0]}`);
+      if (doc.get('extensions') != null && !isMap(doc.get('extensions'))) throw new Error("settings.yaml: 'extensions' is not a map");
+      if (!on && id === 'learn') rmSync(join(runDir(ctx.dir), 'start.json'), { force: true });
+      doc.setIn(['extensions', id], on ? 'on' : 'off');
+      const text = doc.toString();
+      if (text === src) return false;
+      ctx.saveSettings(text);
+      return true;
+    },
+    () => `extension ${id} ${on ? 'on' : 'off'}`,
   );
 }

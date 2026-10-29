@@ -11,6 +11,7 @@ import { courseHref, vscodeHref } from "@/lib/hrefs";
 import type { MarkdownContext } from "@/lib/markdown";
 import { runCommand } from "@/lib/run";
 import type { WorkEntry } from "@/lib/work";
+import { draftKey, encodeDraft, restoreDraft } from "@/lib/work-draft";
 import { cn } from "@/lib/utils";
 import { CodeEditor, type CodeEditorHandle } from "./code-editor";
 import { RunSplit, useInput, useRun } from "./run-panel";
@@ -196,6 +197,28 @@ function Editor({
     setConflict(c);
   };
 
+  /** Mirrors unsaved edits to sessionStorage, against the disk text they were typed over. */
+  const keepDraft = React.useCallback(() => {
+    try {
+      const draft = encodeDraft(textRef.current, savedRef.current);
+      if (draft === null) sessionStorage.removeItem(draftKey(course, rel));
+      else sessionStorage.setItem(draftKey(course, rel), draft);
+    } catch {}
+  }, [course, rel]);
+
+  // Edits a failed save left behind come back, unless the file changed since.
+  React.useEffect(() => {
+    let draft: string | null = null;
+    try {
+      draft = restoreDraft(sessionStorage.getItem(draftKey(course, rel)), savedRef.current);
+    } catch {}
+    if (draft === null) return;
+    editor.current?.setDoc(draft);
+    textRef.current = draft;
+    setText(draft);
+    setStatus("unsaved");
+  }, [course, rel]);
+
   const put = React.useCallback(
     (body: string, force = false, keepalive = false) =>
       fetch("/api/work", {
@@ -229,6 +252,7 @@ function Editor({
           if (data?.ok) {
             savedRef.current = body;
             baseRef.current = data.mtime;
+            keepDraft();
             markConflict(null);
             setError(null);
             setStatus(textRef.current === body ? "saved" : "unsaved");
@@ -251,7 +275,7 @@ function Editor({
         if (!ok) return false;
       }
     },
-    [put],
+    [put, keepDraft],
   );
 
   // Autosave after a pause in typing.
@@ -280,11 +304,12 @@ function Editor({
     textRef.current = disk;
     savedRef.current = disk;
     baseRef.current = mtime;
+    keepDraft();
     setText(disk);
     setStatus("saved");
     setError(null);
     markConflict(null);
-  }, []);
+  }, [keepDraft]);
 
   const checkDisk = React.useCallback(async () => {
     const res = await fetch(`/api/work?${new URLSearchParams({ course, path: rel })}`).catch(() => null);
@@ -317,6 +342,7 @@ function Editor({
 
   const onChange = (next: string) => {
     textRef.current = next;
+    keepDraft();
     setText(next);
     setStatus(next === savedRef.current ? "saved" : "unsaved");
   };

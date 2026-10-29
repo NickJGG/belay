@@ -2,7 +2,8 @@
 # The rollback check and CLI goldens, master against branch:
 #   scripts/rollback-check.sh <new test root> <master code root> <branch code root> [--paths-master <json>] [--paths-branch <json>]
 # Run it from a frozen copy of scripts/ (the one in this dir is used). Makes fresh test data, then:
-#   1. CLI goldens from both roots on the same working copy, diffed;
+#   1. CLI goldens from both roots on the same working copy, diffed, and the web's pure goldens (page goldens need
+#      both sites served: see goldens-pages.ts);
 #   2. ops: branch on the working copy, master on a fresh copy of pristine; both logs must pass, and diff equal;
 #   3. each copy differs from pristine only by its ops' edits;
 #   4. the branch reads twice (cold, warm) and master reads lenient and strict; the reports are kept for review,
@@ -41,6 +42,11 @@ step "goldens"
 env_w node "$S/goldens-cli.ts" "$M" --out "$T/goldens-master" "${PM[@]}"
 env_w node "$S/goldens-cli.ts" "$B" --out "$T/goldens-branch" "${PB[@]}"
 check diff -r "$T/goldens-master" "$T/goldens-branch"
+
+step "web pure goldens"
+node "$S/goldens-pure.ts" "$M" --out "$T/pure-master.json" "${PM[@]}"
+node "$S/goldens-pure.ts" "$B" --out "$T/pure-branch.json" "${PB[@]}"
+check diff "$T/pure-master.json" "$T/pure-branch.json"
 
 step "ops"
 env_w node "$S/rollback-ops.ts" "$B" --out "$T/ops-branch.json" "${PB[@]}" 2>&1 | quiet

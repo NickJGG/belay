@@ -5,6 +5,7 @@ import { basename } from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { claudeDir, dataDir, DEFAULT_PORT, grillsDir } from './config.ts';
 import { clip, digestLines, plural } from './digest.ts';
+import { attachedSessions, extensionId } from './extensions.ts';
 import { commitGrill, initHistory } from './gitlog.ts';
 import { grillMatches, loadGrillSessions } from './grill.ts';
 import { attachCommits, duration, localStamp, recentSessions, weekCommits } from './history.ts';
@@ -27,6 +28,7 @@ import {
   moveProject,
   oneOf,
   rekeyProject,
+  setExtension,
   setStatus,
   type MoveTarget,
 } from './ops.ts';
@@ -34,7 +36,7 @@ import { launchSpec, realDeps, runLauncher } from './launch.ts';
 import { parseLogAddress, type DatedEntry } from './logs.ts';
 import { filterIssues, issueComparator, isReady, naturalDesc, next, openBlockers, projectCounts, projectForCwd, SORT_FIELDS } from './query.ts';
 import { statusLine, withBad } from './statusline.ts';
-import { ISSUE_FIELDS, ISSUE_STATUSES, normalizeStoredPath, issueFile, SOURCES, unknownKeys, type Issue, type IssueStatus } from './store.ts';
+import { ISSUE_STATUSES, KNOWN_ISSUE_KEYS, normalizeStoredPath, issueFile, SOURCES, unknownKeys, type Issue, type IssueStatus } from './store.ts';
 import { serve } from './web.ts';
 import { weekLines, weekSummary } from './week.ts';
 import { addDays, isDay, weekStart, workDay, workDayOf } from './workday.ts';
@@ -84,6 +86,8 @@ const HELP = `belay — what should I work on?
   search <words>...                 issues (title, description, comments) and grill sessions (slug, topic, project) with every word
   check                             report bad files (nothing is written while one exists) and issue
                                     frontmatter keys belay doesn't know (kept on save)
+  extension on|off <id>             switch an extension (grill, learn) in settings.yaml; off is refused while
+                                    one of its sessions is attached. Its data is never touched
   serve [--port <n>] [--no-open] [--dev]
                                     dashboard at http://127.0.0.1:4747/ (Ctrl+C to stop); builds web/
                                     first when it or src/ changed (needs 'npm install' in web/);
@@ -326,7 +330,7 @@ function cmdShow(argv: string[]): void {
 function cmdCheck(argv: string[]): void {
   args(argv, {}, 0);
   const ctx = readCtx();
-  const unknown = ctx.issues.map((t) => ({ id: t.id, keys: unknownKeys(t, ISSUE_FIELDS) })).filter((u) => u.keys.length);
+  const unknown = ctx.issues.map((t) => ({ id: t.id, keys: unknownKeys(t, KNOWN_ISSUE_KEYS) })).filter((u) => u.keys.length);
   const out: string[] = [];
   if (ctx.bad.length) out.push('bad files (nothing is written while one is listed):', ...ctx.bad.map((b) => `  ${b.file}  ${b.error}`));
   if (unknown.length) {
@@ -763,7 +767,20 @@ function projectSet(argv: string[]): void {
   print(`updated project ${p.key}: ${parts.filter(Boolean).join(', ')}`);
 }
 
-const COMMANDS: Record<string, (argv: string[]) => void> = {
+async function cmdExtension(argv: string[]): Promise<void> {
+  const { positionals } = args(argv, {}, 2);
+  const [action, raw] = positionals;
+  if (action !== 'on' && action !== 'off') throw new Error(`expected on or off, got '${action}' — see 'belay help'`);
+  const id = extensionId(raw);
+  const dir = dataDir();
+  if (action === 'off') {
+    const live = await attachedSessions(dir, id);
+    if (live.length) throw new Error(`a ${id} session is attached (${live.join(', ')}): switch ${id} off once it detaches`);
+  }
+  print(setExtension(new Ctx(dir), id, action === 'on') ? `${id} ${action}` : `${id} was already ${action}`);
+}
+
+const COMMANDS: Record<string, (argv: string[]) => void | Promise<void>> = {
   next: cmdNext,
   add: cmdAdd,
   set: cmdSet,
@@ -778,6 +795,7 @@ const COMMANDS: Record<string, (argv: string[]) => void> = {
   history: cmdHistory,
   search: cmdSearch,
   check: cmdCheck,
+  extension: cmdExtension,
   git: cmdGit,
   grill: cmdGrill,
   claude: (argv) => launch('claude', argv),
@@ -792,12 +810,15 @@ const [cmd, ...rest] = process.argv.slice(2);
 if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
   print(HELP);
 } else {
+  const fail = (e: unknown) => {
+    console.error(`belay: ${(e as Error).message}`);
+    process.exitCode = 1;
+  };
   try {
     const run = COMMANDS[cmd];
     if (!run) throw new Error(`unknown command '${cmd}' — see 'belay help'`);
-    run(rest);
+    run(rest)?.catch(fail);
   } catch (e) {
-    console.error(`belay: ${(e as Error).message}`);
-    process.exitCode = 1;
+    fail(e);
   }
 }

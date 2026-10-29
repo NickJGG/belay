@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { test } from "node:test";
 import { dayLabel, flightGrills, grillProgress, kindTotals, projectGroups, gapLabel, windowDays } from "../belay-view.ts";
-import { belayIgnored, belayWatched } from "../watch-paths.ts";
+import { belayIgnored, belayWatched, isSettings } from "../watch-paths.ts";
 
 test("day labels are relative to today, with the year only when it differs", () => {
   assert.equal(dayLabel("2026-10-25", "2026-10-25"), "Today");
@@ -53,7 +53,7 @@ test("projects group into Working on, Everything else, then paused and archived"
   assert.deepEqual(shelved.map((x) => x.key), ["PAU", "ARC"]);
 });
 
-test("belay's watcher sees issues, projects, log days and order.yaml, in either separator", () => {
+test("belay's watcher sees issues, projects, log days, order.yaml and settings.yaml, in either separator", () => {
   const root = path.join("C:", "data");
   const slash = (p: string) => p.replaceAll("\\", "/");
   for (const form of [(p: string) => p, slash]) {
@@ -67,7 +67,10 @@ test("belay's watcher sees issues, projects, log days and order.yaml, in either 
     assert.equal(belayIgnored(root)(form(root)), false);
     assert.equal(belayIgnored(root)(at("issues")), false);
     assert.equal(belayIgnored(root)(at(".git")), true);
-    assert.equal(belayIgnored(root)(at("settings.yaml")), true);
+    assert.equal(belayIgnored(root)(at("settings.yaml")), false);
+    assert.equal(belayWatched(root, at("settings.yaml")), false);
+    assert.equal(isSettings(root, at("settings.yaml")), true);
+    assert.equal(isSettings(root, at("issues", "settings.yaml")), false);
   }
 });
 
