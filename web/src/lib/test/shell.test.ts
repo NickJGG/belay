@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { EXTENSION_IDS } from "../../../../src/extension-ids.ts";
+import { installedIds } from "../../../../src/extension-ids.ts";
 import { terrain } from "../course-art.ts";
 import { MANIFESTS } from "../extensions.ts";
 import { COLLAPSED_DEFAULTS, DRAWER_DEFAULTS, fresh, markSeen, missing, moveTab, orderTabs, pageKind, pageTab, parseCollapsed, parseDrawer, parseGlow, parseOutline, parseSeen, parseTabOrder, selectTab } from "../shell.ts";
 import type { ShellRules } from "../slots.ts";
 
 // Each extension's own cases are in its `_lib/test/shell.test.ts`.
-const ALL = EXTENSION_IDS;
+const ALL = installedIds();
 
 describe("page kinds", () => {
   test("only an active extension makes a page a workspace or a Tab's", () => {

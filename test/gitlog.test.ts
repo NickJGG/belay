@@ -4,7 +4,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
-import { GITIGNORE, hasHistory, initHistory } from '../src/gitlog.ts';
+import type { ExtensionInfo } from '../src/extension-ids.ts';
+import { gitignore, hasHistory, initHistory } from '../src/gitlog.ts';
 import { Ctx, addComment, addIssue, addLog, addProject, deleteLog, rekeyProject, replaceBody, setStatus } from '../src/ops.ts';
 
 let dir: string;
@@ -56,9 +57,24 @@ test('initHistory refuses an existing repo; the baseline commit ignores cache/ a
   mkdirSync(join(dir, '.run'));
   writeFileSync(join(dir, '.run', 'restart'), '');
   initHistory(dir);
-  assert.equal(readFileSync(join(dir, '.gitignore'), 'utf8'), GITIGNORE);
+  assert.equal(readFileSync(join(dir, '.gitignore'), 'utf8'), 'cache/\n.run/\nlessons/\ngrills/*/bridge.json\n');
   assert.deepEqual(subjects(), ['init - user']);
   assert.deepEqual(git('ls-files').trim().split('\n'), ['.gitignore', 'grills/g/g.md']);
+});
+
+test("the .gitignore leaves out an untracked extension's sessions whole and a tracked one's bridge.json", () => {
+  const info = (id: string, history: boolean): ExtensionInfo => ({
+    id,
+    name: id,
+    summary: id,
+    mark: { path: 'M0 0', dot: { x: 0, y: 0, r: 1 } },
+    fields: [],
+    paths: [],
+    sessions: `${id}s`,
+    history,
+  });
+  assert.equal(gitignore([]), 'cache/\n.run/\n');
+  assert.equal(gitignore([info('a', true), info('b', false), info('c', false)]), 'cache/\n.run/\nbs/\ncs/\nas/*/bridge.json\n');
 });
 
 test('one commit per op, with the subject format', () => {

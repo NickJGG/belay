@@ -2,7 +2,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { args, print } from '../../argv.ts';
-import { dataDir, grillsDir } from '../../config.ts';
+import { dataDir, sessionsDir } from '../../config.ts';
 import { clip, plural } from '../../digest.ts';
 import { owned } from '../../extensions.ts';
 import { commitPathsOrThrow, hasChanges, hasHistory } from '../../gitlog.ts';
@@ -16,9 +16,9 @@ import { normalizeStoredPath, type Issue, type Project } from '../../store.ts';
  */
 export function commitGrill(dir: string, slug: string, author: { by: string; session?: string }): 'committed' | 'unchanged' | 'no history' {
   if (!isGrillSlug(slug)) throw new Error(`'${slug}' is not a grill slug`);
-  const folder = join(grillsDir(dir), slug);
-  if (!existsSync(folder)) throw new Error(`no grill '${slug}' in ${grillsDir(dir)}`);
-  const status = grillStatus(grillsDir(dir), slug);
+  const folder = join(sessionsDir('grill', dir), slug);
+  if (!existsSync(folder)) throw new Error(`no grill '${slug}' in ${sessionsDir('grill', dir)}`);
+  const status = grillStatus(sessionsDir('grill', dir), slug);
   if (status !== 'planned') throw new Error(`grill '${slug}' is ${status ?? 'without a status'}; only a planned grill is committed`);
   if (!hasHistory(dir)) return 'no history';
   // A bridge's token stays out even in a data dir whose .gitignore predates grills/. The wildcard matters: git refuses
@@ -38,7 +38,7 @@ export function cmdGrill(argv: string[]): void {
 }
 
 export function searchLines(words: string[], data: string): string[] {
-  const dir = grillsDir(data);
+  const dir = sessionsDir('grill', data);
   const grill = loadGrillSessions(dir)
     .filter((g) => grillMatches(g, words))
     .sort((a, b) => (b.updated ?? '').localeCompare(a.updated ?? ''));
@@ -55,7 +55,7 @@ export function searchLines(words: string[], data: string): string[] {
 }
 
 export function digestSection(project: Project, issues: Issue[], data: string): string[] {
-  return digestLines(project, issues, loadGrillSessions(grillsDir(data)));
+  return digestLines(project, issues, loadGrillSessions(sessionsDir('grill', data)));
 }
 
 /** The project's grill sessions that no issue links to yet, as one line, or none. */

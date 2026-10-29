@@ -15,6 +15,7 @@ import { grillHref } from "../_lib/hrefs";
 import type { ClientKind, Composer as ComposerT } from "@/lib/session-kind";
 import type { ClientSlots } from "@/lib/slots";
 import { cn } from "@/lib/utils";
+import info from "../../../../../../extensions/grill/belay.json";
 import type { GrillIssue, GrillSearch } from "../_lib/manifest.server";
 import type { GrillLive } from "../_lib/runtime.server";
 import { GrillIcon, GrillMark } from "./mark";
@@ -113,8 +114,8 @@ export const client: ClientKind<GrillLive> = {
 
 export const slots: ClientSlots<GrillSearch, GrillIssue> = {
   id: "grill",
-  name: "Grill",
-  summary: "Design interviews with /grill, their pages, Tabs and the grill and plan fields on issues.",
+  name: info.name,
+  summary: info.summary,
   Mark: GrillMark,
   sectionIcons: { Grills: GrillIcon },
   Found: GrillsFound,

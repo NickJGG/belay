@@ -1,5 +1,5 @@
 /**
- * Read-only access to grill sessions (`<grillsDir>/<slug>/<slug>.md`) for search, the digest and the dashboard.
+ * Read-only access to grill sessions (`<grills>/<slug>/<slug>.md`) for search, the digest and the dashboard.
  */
 import { closeSync, existsSync, openSync, readFileSync, readSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';

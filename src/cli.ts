@@ -5,6 +5,7 @@ import { args, print } from './argv.ts';
 import { claudeDir, dataDir, DEFAULT_PORT } from './config.ts';
 import { clip, digestLines, plural } from './digest.ts';
 import {
+  activeFields,
   activeManifests,
   extensionId,
   fieldLines,
@@ -100,7 +101,7 @@ function cmdNext(argv: string[]): void {
 }
 
 function cmdAdd(argv: string[]): void {
-  const manifests = activeManifests();
+  const fields = activeFields();
   const { values, positionals } = args(
     argv,
     withFieldOptions({
@@ -111,7 +112,7 @@ function cmdAdd(argv: string[]): void {
       source: { type: 'string' },
       body: { type: 'string' },
       'body-file': { type: 'string' },
-    }, manifests),
+    }, fields),
     1,
   );
   const ctx = new Ctx();
@@ -126,7 +127,7 @@ function cmdAdd(argv: string[]): void {
       blockers: idList(values['blocked-by']),
       priority: values.priority,
       source: values.source,
-      fields: fieldValues(values, manifests),
+      fields: fieldValues(values, fields),
       body: bodyArg(values.body, values['body-file']),
     },
     commentAuthor(process.env),
@@ -144,7 +145,7 @@ function cmdSet(argv: string[]): void {
 }
 
 function cmdEdit(argv: string[]): void {
-  const manifests = activeManifests();
+  const fields = activeFields();
   const { values, positionals } = args(
     argv,
     withFieldOptions({
@@ -153,14 +154,14 @@ function cmdEdit(argv: string[]): void {
       priority: { type: 'string' },
       body: { type: 'string' },
       'body-file': { type: 'string' },
-    }, manifests),
+    }, fields),
     1,
   );
   const issue = editIssue(new Ctx(), positionals[0], {
     title: values.title,
     blockers: values['blocked-by'] && idList(values['blocked-by']),
     priority: values.priority,
-    fields: fieldValues(values, manifests),
+    fields: fieldValues(values, fields),
     body: bodyArg(values.body, values['body-file']),
   });
   print(`updated ${issue.id}`);
@@ -220,7 +221,7 @@ function cmdShow(argv: string[]): void {
     `source:     ${t.source}`,
     t.blocked_by.length ? `blocked by: ${t.blocked_by.map(describe).join(', ')}` : '',
     blocks.length ? `blocks:     ${blocks.join(', ')}` : '',
-    ...fieldLines(t, activeManifests(ctx.dir)),
+    ...fieldLines(t, activeFields(ctx.dir)),
     `dates:      created ${t.created}, updated ${t.updated.replace('T', ' ')}`,
     `file:       ${normalizeStoredPath(issueFile(ctx.dir, t.id))}`,
   ].filter(Boolean);

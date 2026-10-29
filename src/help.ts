@@ -1,8 +1,9 @@
 /** `belay help`: the core usage with the active extensions' lines. */
+import { installedIds } from './extension-ids.ts';
 import type { CliHelp, ExtensionManifest } from './extensions.ts';
 
 /** Core usage, with the active extensions' flags, clauses and finds. Their own commands go in by `withEntries`. */
-const HELP = (h: Required<Omit<CliHelp, 'commands'>>) => `belay — what should I work on?
+const HELP = (h: Required<Omit<CliHelp, 'commands'>>, ids: readonly string[]) => `belay — what should I work on?
 
   next [--all]                      doing, high-priority, then ready issues in focus projects
   add "<title>" [--project <key>] [--status idea|todo] [--blocked-by <id>...]
@@ -43,7 +44,7 @@ ${entry('claude [args]', `Claude Code with the Belay channel (args go to claude)
   search <words>...                 ${['issues (title, description, comments)', h.search].filter(Boolean).join(' and ')} with every word
   check                             report bad files (nothing is written while one exists) and issue
                                     frontmatter keys belay doesn't know (kept on save)
-  extension on|off <id>             switch an extension (grill, learn) in settings.yaml; off is refused while
+  extension on|off <id>             switch an extension (${ids.join(', ')}) in settings.yaml; off is refused while
                                     one of its sessions is attached. Its data is never touched
   serve [--port <n>] [--no-open] [--dev]
                                     dashboard at http://127.0.0.1:4747/ (Ctrl+C to stop); builds web/
@@ -104,9 +105,9 @@ function withEntries(text: string, entries: NonNullable<CliHelp['commands']>): s
   return blocks.map((b) => b.text).join('\n');
 }
 
-export function helpText(manifests: readonly ExtensionManifest[]): string {
+export function helpText(manifests: readonly ExtensionManifest[], ids: readonly string[] = installedIds()): string {
   const help = manifests.flatMap((m) => m.cli?.help ?? []);
   const words = (k: 'add' | 'edit' | 'search') => help.flatMap((h) => h[k] ?? []).join(k === 'search' ? ' and ' : ' ');
-  const core = HELP({ add: words('add'), edit: words('edit'), search: words('search'), claude: help.map((h) => h.claude ?? '').join('') });
+  const core = HELP({ add: words('add'), edit: words('edit'), search: words('search'), claude: help.map((h) => h.claude ?? '').join('') }, ids);
   return withEntries(core, help.flatMap((h) => h.commands ?? []));
 }

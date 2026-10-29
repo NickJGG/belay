@@ -1,4 +1,4 @@
-import { grillsDir } from "../../../../../../src/config.ts";
+import { sessionsDir } from "../../../../../../src/config.ts";
 import { owned } from "../../../../../../src/extensions.ts";
 import { linkedPath } from "../../../../../../src/open.ts";
 import type { Issue } from "../../../../../../src/store.ts";
@@ -11,7 +11,7 @@ import type { GrillSession } from "./sessions.ts";
 /** Grills claim the live sessions no other kind reads, as every session was a grill before lessons. */
 export const server = {
   id: "grill",
-  root: grillsDir,
+  root: (data) => sessionsDir("grill", data),
   fallback: true,
   load: async () => (await import("./runtime.server.ts")).runtime,
 } satisfies ServerKind;

@@ -4,10 +4,10 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
+import { extensionInfo } from '../../../extension-ids.ts';
 import { owned, type OwnedField } from '../../../extensions.ts';
 import { Ctx, addComment, addIssue, editIssue, replaceBody, setPriority, setStatus } from '../../../ops.ts';
 import { KNOWN_ISSUE_KEYS, loadIssues, parseIssue, serializeIssue, unknownKeys } from '../../../store.ts';
-import { manifest } from '../manifest.ts';
 
 let dir: string;
 
@@ -20,7 +20,7 @@ beforeEach(() => {
 
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-const [grill, plan] = manifest.fields as [OwnedField, OwnedField];
+const [grill, plan] = extensionInfo('grill')!.fields as [OwnedField, OwnedField];
 
 /** PIX-1 in canonical form, with `mid` between `source` and `created`. */
 const file = (mid = 'grill: some-slug\nplan: C:/plans/x.md\n', id = 'PIX-1') =>
@@ -44,7 +44,7 @@ function belay(...args: string[]) {
 }
 
 test('grill and plan are owned fields, after source', () => {
-  assert.deepEqual(manifest.fields, [
+  assert.deepEqual(extensionInfo('grill')!.fields, [
     { key: 'grill', after: 'source' },
     { key: 'plan', after: 'grill' },
   ]);

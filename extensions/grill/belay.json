@@ -1,0 +1,16 @@
+{
+  "id": "grill",
+  "name": "Grill",
+  "summary": "Design interviews with /grill, their pages, Tabs and the grill and plan fields on issues.",
+  "mark": {
+    "path": "M25 56.5C15 53 10 45 10 37.5C10 28.5 16 22.5 20 16C21 22 23 25 26.5 27C27.5 18 30.5 11 34 6C41 14 54 24 54 38C54 49 45.5 57 35 57.5",
+    "dot": { "x": 32, "y": 43, "r": 6 }
+  },
+  "fields": [
+    { "key": "grill", "after": "source" },
+    { "key": "plan", "after": "grill" }
+  ],
+  "paths": ["/s", "/legacy", "/api/s/*/files", "/p/unfiled", "/p/*/grills"],
+  "sessions": "grills",
+  "history": true
+}

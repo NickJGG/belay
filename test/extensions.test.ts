@@ -6,7 +6,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
-import { BUILT_IN, matchesPattern, ownerOfPath } from '../src/extension-ids.ts';
+import { matchesPattern, ownerOfPath, type OwnedField } from '../src/extension-ids.ts';
 import {
   ATTACHED_SCAN_MS,
   attachedSessions,
@@ -17,7 +17,6 @@ import {
   ownedFields,
   parseEnabled,
   withFieldOptions,
-  type ExtensionManifest,
 } from '../src/extensions.ts';
 import { Ctx, setExtension, switchExtension } from '../src/ops.ts';
 import { ISSUE_FIELDS, KNOWN_ISSUE_KEYS } from '../src/store.ts';
@@ -44,23 +43,26 @@ test('patterns match whole segments, with * for any one', () => {
   assert.equal(ownerOfPath('/learn/x', ['grill', 'learn']), 'learn');
 });
 
-test('the extensions map switches built-ins over their defaults, accepting on/off and true/false', () => {
-  assert.deepEqual(parseEnabled(''), BUILT_IN);
-  assert.deepEqual(parseEnabled('accent: iris\n'), { grill: true, learn: false });
+const ALL_ON = { grill: true, learn: true };
+
+test('the extensions map switches the installed extensions, each on unless it says off, accepting on/off and true/false', () => {
+  assert.deepEqual(parseEnabled(''), ALL_ON);
+  assert.deepEqual(parseEnabled('accent: iris\n'), ALL_ON);
   assert.deepEqual(parseEnabled('extensions:\n  learn: on\n  grill: off\n'), { grill: false, learn: true });
   assert.deepEqual(parseEnabled('extensions: { learn: true, grill: false, other: on }\n'), { grill: false, learn: true });
-  assert.deepEqual(parseEnabled('extensions:\n  learn: maybe\n'), BUILT_IN);
+  assert.deepEqual(parseEnabled('extensions:\n  learn: maybe\n'), ALL_ON);
+  assert.deepEqual(parseEnabled('extensions:\n  learn: off\n  grill: off\n', ['grill']), { grill: false }, "an uninstalled one's entry is ignored");
   assert.throws(() => parseEnabled('extensions: on\n'), /not a map/);
   assert.throws(() => parseEnabled('extensions: [\n'));
 });
 
-test('the reader keeps the last good value through a broken file, and turns every built-in on if none was good', () => {
-  assert.deepEqual(enabledExtensions(dir), BUILT_IN);
-  writeFileSync(join(dir, 'settings.yaml'), 'extensions:\n  learn: on\n');
-  assert.deepEqual(enabledExtensions(dir), { grill: true, learn: true });
+test('the reader keeps the last good value through a broken file, and turns every installed one on if none was good', () => {
+  assert.deepEqual(enabledExtensions(dir), ALL_ON);
+  writeFileSync(join(dir, 'settings.yaml'), 'extensions:\n  learn: off\n');
+  assert.deepEqual(enabledExtensions(dir), { grill: true, learn: false });
   writeFileSync(join(dir, 'settings.yaml'), 'extensions: [\n');
   utimesSync(join(dir, 'settings.yaml'), new Date(), new Date(Date.now() + 5000));
-  assert.deepEqual(enabledExtensions(dir), { grill: true, learn: true });
+  assert.deepEqual(enabledExtensions(dir), { grill: true, learn: false });
 
   const fresh = mkdtempSync(join(tmpdir(), 'belay-'));
   try {
@@ -71,9 +73,10 @@ test('the reader keeps the last good value through a broken file, and turns ever
   }
 });
 
-test('each extension follows its setting, over its built-in default', () => {
+test('each installed extension follows its setting, on without one; an unbundled id is never active', () => {
   assert.equal(isActive('grill', dir), true);
-  assert.equal(isActive('learn', dir), false);
+  assert.equal(isActive('learn', dir), true);
+  assert.equal(isActive('nope', dir), false);
   writeFileSync(join(dir, 'settings.yaml'), 'extensions:\n  learn: on\n  grill: off\n');
   assert.equal(isActive('grill', dir), false);
   assert.equal(isActive('learn', dir), true);
@@ -100,29 +103,29 @@ test('a switched-off extension stays active while one of its sessions has a live
 });
 
 test('owned fields may claim neither a core key nor another extension’s key', () => {
-  const m = (id: 'grill' | 'learn', key: string): ExtensionManifest => ({ id, fields: [{ key, after: 'source' }], skills: [] });
+  const m = (id: string, key: string) => ({ id, fields: [{ key, after: 'source' }] });
   assert.deepEqual(ownedFields(ISSUE_FIELDS, [m('grill', 'x')]).map((f) => f.key), ['x']);
   assert.throws(() => ownedFields(ISSUE_FIELDS, [m('grill', 'title')]), /claims the core issue key 'title'/);
   assert.throws(() => ownedFields(ISSUE_FIELDS, [m('grill', 'x'), m('learn', 'x')]), /both claim the issue key 'x'/);
   assert.deepEqual(KNOWN_ISSUE_KEYS, [...ISSUE_FIELDS, 'grill', 'plan']);
 });
 
-const estimates: ExtensionManifest = { id: 'grill', fields: [{ key: 'estimate', after: 'source' }], skills: [] };
+const estimate: OwnedField = { key: 'estimate', after: 'source' };
 
 test('owned fields become add/edit options, read back as values, and refuse to shadow an option', () => {
-  const options = withFieldOptions({ title: { type: 'string' } }, [estimates]);
+  const options = withFieldOptions({ title: { type: 'string' } }, [estimate]);
   assert.deepEqual(options, { title: { type: 'string' }, estimate: { type: 'string' } });
   assert.deepEqual(withFieldOptions({ title: { type: 'string' } }, []), { title: { type: 'string' } });
-  assert.deepEqual(fieldValues({ title: 't', estimate: '3' }, [estimates]), [{ field: estimates.fields[0], value: '3' }]);
-  assert.deepEqual(fieldValues({ estimate: '' }, [estimates]), [{ field: estimates.fields[0], value: '' }]);
-  assert.deepEqual(fieldValues({ title: 't' }, [estimates]), []);
-  assert.throws(() => withFieldOptions({ estimate: { type: 'boolean' } }, [estimates]), /owned field 'estimate' clashes with the option --estimate/);
+  assert.deepEqual(fieldValues({ title: 't', estimate: '3' }, [estimate]), [{ field: estimate, value: '3' }]);
+  assert.deepEqual(fieldValues({ estimate: '' }, [estimate]), [{ field: estimate, value: '' }]);
+  assert.deepEqual(fieldValues({ title: 't' }, [estimate]), []);
+  assert.throws(() => withFieldOptions({ estimate: { type: 'boolean' } }, [estimate]), /owned field 'estimate' clashes with the option --estimate/);
 });
 
 test("show lines list an issue's owned fields that have a value", () => {
-  assert.deepEqual(fieldLines({ extra: [{ key: 'estimate', value: 3, after: 'source' }] }, [estimates]), ['estimate:   3']);
-  assert.deepEqual(fieldLines({ extra: [{ key: 'other', value: 3, after: 'source' }] }, [estimates]), []);
-  assert.deepEqual(fieldLines({}, [estimates]), []);
+  assert.deepEqual(fieldLines({ extra: [{ key: 'estimate', value: 3, after: 'source' }] }, [estimate]), ['estimate:   3']);
+  assert.deepEqual(fieldLines({ extra: [{ key: 'other', value: 3, after: 'source' }] }, [estimate]), []);
+  assert.deepEqual(fieldLines({}, [estimate]), []);
 });
 
 test('switching an extension edits only its entry, keeping the other values and comments', () => {

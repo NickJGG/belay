@@ -58,7 +58,7 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   extensions' sections (`/p/<key>/[section]`, grill's Grills) under one layout holding the project header, `/i/<id>` and `/l/<day>/<n>?at=`. Their pieces are in
   `src/components/belay/`; their writes are the server actions in `src/app/actions.ts`, each a thin wrapper around
   one CLI op on a fresh strict `Ctx`.
-- Settings (`/settings`, core): Glow, and a card per built-in extension (`components/settings/`) whose switch is the
+- Settings (`/settings`, core): Glow, and a card per installed extension (`components/settings/`) whose switch is the
   `setExtensionOn` action over the CLI's `switchExtension`, refusing Off while one of its sessions is attached.
 - At the repo root: `bridge/`: the MCP server's TypeScript source. `plugin/`: the plugin (`.claude-plugin/plugin.json` declares the
   `belay` MCP server and binds a `channels` entry to it). `.claude-plugin/marketplace.json`: the local `belay`
@@ -158,7 +158,7 @@ open. The core message kinds live in `bridge/protocol.mts`, event types in `brid
   In the browser, its `_components/manifest.client.tsx` (`lib/extensions.client.ts`) draws its Tabs' title, place and
   mark, its Drawer messages, banners and composer (grill's comment mode), and adds its shell mounts, refresh events
   and provider state (grill's pending comment, a lesson's focus and the start queue), read through its own hooks. The
-  root layout passes the active ids; every built-in kind's provider stays mounted, and each active kind's entry
+  root layout passes the active ids; every installed kind's provider stays mounted, and each active kind's entry
   renderers are tried for every session, as before kinds.
 - Slots (`lib/slots.ts`): beside its kind, an extension's `manifest.server.ts` exports `slots` with its palette names
   (merged flat into `/api/search`), Home section, activity-grid source, In flight group, Projects cards, project
@@ -169,7 +169,7 @@ open. The core message kinds live in `bridge/protocol.mts`, event types in `brid
   description and holds its page rules (`shell`): Workspace pages, Tabs, Not found lines, project sections, a
   pseudo-project (grill's Unfiled) and a place's section rows (learn's courses, passed as `<ShellSlot owner>`).
   `lib/shell.ts` and `lib/sidebar.ts` take the active ids, so an inactive extension's addresses get the generic Not
-  found line. Only active extensions' slots are used, but Settings lists every built-in's `name`, `summary` and `Mark`.
+  found line. Only active extensions' slots are used, but Settings lists every installed one's `name`, `summary` and `Mark` (from its `belay.json`).
 - `sessions.ts` reads a session folder in its kind's format: session.json, else a bare `bridge.json` (in progress),
   else, for a grill, `<slug>.md` frontmatter (`legacy`). A legacy grill is read-only and renders its `.md`, with its old preview at
   `/legacy/sessions/<slug>/preview.html`; the shared shell it loads is served from `web/legacy/`. Lessons come from

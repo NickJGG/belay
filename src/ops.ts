@@ -3,12 +3,11 @@
  * so the file it saves was read just before, and a concurrent edit by Claude isn't clobbered.
  */
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
 import { isMap, parseDocument } from 'yaml';
-import { dataDir, runDir } from './config.ts';
+import { dataDir } from './config.ts';
 import type { ExtensionId } from './extension-ids.ts';
-import { attachedSessions, settingsFile, type OwnedValue } from './extensions.ts';
+import { attachedSessions, MANIFESTS, settingsFile, type OwnedValue } from './extensions.ts';
 import { commitPaths } from './gitlog.ts';
 import { loadLog, loadLogDays, loadLogs, logFile, parseLogAddress, saveLog, type DatedEntry, type LogEntry } from './logs.ts';
 import { suggestKey } from './projectkey.ts';
@@ -766,7 +765,7 @@ export function editLog(ctx: Ctx, addr: string, patch: LogPatch, expectAt?: stri
 
 /**
  * Sets `id`'s switch in `settings.yaml`'s `extensions:` map, keeping the file's other values and comments. Switching
- * learn off also drops a queued lesson start, which isn't part of the history. False when the file already said so.
+ * it off runs its `disabled` hook first (learn drops a queued lesson start). False when the file already said so.
  */
 export function setExtension(ctx: Ctx, id: ExtensionId, on: boolean): boolean {
   return ctx.record(
@@ -776,7 +775,7 @@ export function setExtension(ctx: Ctx, id: ExtensionId, on: boolean): boolean {
       const doc = parseDocument(src);
       if (doc.errors.length) throw new Error(`settings.yaml: ${doc.errors[0].message.split('\n')[0]}`);
       if (doc.get('extensions') != null && !isMap(doc.get('extensions'))) throw new Error("settings.yaml: 'extensions' is not a map");
-      if (!on && id === 'learn') rmSync(join(runDir(ctx.dir), 'start.json'), { force: true });
+      if (!on) MANIFESTS.find((m) => m.id === id)?.cli?.disabled?.(ctx.dir);
       doc.setIn(['extensions', id], on ? 'on' : 'off');
       const text = doc.toString();
       if (text === src) return false;

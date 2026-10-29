@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { extensionInfo, type ExtensionId } from './extension-ids.ts';
 
 /**
  * Resolves the data dir from `BELAY_DATA` (default `~/Belay`) and ensures its subfolders exist.
@@ -19,11 +20,12 @@ export function claudeDir(): string {
   return resolve(/*turbopackIgnore: true*/ process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'));
 }
 
-/** Grill sessions: `<dataDir>/grills/<slug>/`. */
-export const grillsDir = (dir = dataDir()) => join(dir, 'grills');
-
-/** Lesson sessions' runtime folders: `<dataDir>/lessons/<lesson-…>/`. */
-export const lessonsDir = (dir = dataDir()) => join(dir, 'lessons');
+/** Extension `id`'s sessions: `<dataDir>/<its belay.json's sessions>/<slug>/`. */
+export function sessionsDir(id: ExtensionId, dir = dataDir()): string {
+  const info = extensionInfo(id);
+  if (!info) throw new Error(`no extension '${id}'`);
+  return join(dir, info.sessions);
+}
 
 /** The lesson start queue and restart marker. */
 export const runDir = (dir = dataDir()) => join(dir, '.run');

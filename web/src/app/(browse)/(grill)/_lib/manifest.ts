@@ -1,4 +1,3 @@
-import { PATH_PATTERNS } from "../../../../../../src/extension-ids.ts";
 import type { PureKind } from "../../../../lib/session-kind.ts";
 import type { ShellRules } from "../../../../lib/slots.ts";
 
@@ -28,4 +27,4 @@ const shell: ShellRules = {
   pseudo: { key: UNFILED, name: "Unfiled" },
 };
 
-export const manifest = { id: "grill", noun: "grills", patterns: PATH_PATTERNS.grill, session, shell } as const;
+export const manifest = { id: "grill", noun: "grills", session, shell } as const;

@@ -1,4 +1,3 @@
-import { PATH_PATTERNS } from "../../../../../../src/extension-ids.ts";
 import { SECTIONS, sectionOf } from "./course-nav.ts";
 import { courseHref } from "./hrefs.ts";
 import { toShow, type LessonShow } from "./lesson.ts";
@@ -43,4 +42,4 @@ const shell: ShellRules = {
   },
 };
 
-export const manifest = { id: "learn", noun: "courses", patterns: PATH_PATTERNS.learn, session, shell } as const;
+export const manifest = { id: "learn", noun: "courses", session, shell } as const;

@@ -4,7 +4,7 @@
  */
 import "server-only";
 import { dataDir } from "../../../src/config.ts";
-import { EXTENSION_IDS, type ExtensionId } from "../../../src/extension-ids.ts";
+import { installedIds, type ExtensionId } from "../../../src/extension-ids.ts";
 import { isActive } from "../../../src/extensions.ts";
 import type { ComponentType } from "react";
 import type { GridSource } from "../../../src/home.ts";
@@ -35,8 +35,9 @@ export type SearchParts = GrillSearch & LearnSearch;
 type Widen<T, U> = T & { [K in Exclude<keyof U, keyof T>]?: undefined };
 
 type Runtimes = { grill: typeof grillRuntime; learn: typeof learnRuntime };
+type RuntimeOf<K extends ExtensionId> = K extends keyof Runtimes ? Runtimes[K] : KindRuntime;
 
-export const activeIds = (data = dataDir()): ExtensionId[] => EXTENSION_IDS.filter((id) => isActive(id, data));
+export const activeIds = (data = dataDir()): ExtensionId[] => installedIds().filter((id) => isActive(id, data));
 
 export const activeKinds = (data = dataDir()) => SERVER_KINDS.filter((k) => isActive(k.id, data));
 
@@ -48,11 +49,11 @@ export const sessionRoots = (data = dataDir()): Partial<Record<ExtensionId, stri
 const g = globalThis as typeof globalThis & { __belayKinds?: Map<ExtensionId, Promise<KindRuntime>> };
 
 /** A kind's runtime, loaded on first use. */
-export function runtimeOf<K extends ExtensionId>(id: K): Promise<Runtimes[K]> {
+export function runtimeOf<K extends ExtensionId>(id: K): Promise<RuntimeOf<K>> {
   const loaded = (g.__belayKinds ??= new Map());
   let p = loaded.get(id);
   if (!p) loaded.set(id, (p = SERVER_KINDS.find((k) => k.id === id)!.load()));
-  return p as Promise<Runtimes[K]>;
+  return p as Promise<RuntimeOf<K>>;
 }
 
 export type Loaded = { id: ExtensionId; root: string; fallback: boolean; runtime: KindRuntime };

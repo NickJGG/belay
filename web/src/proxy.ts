@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { EXTENSION_IDS, ownerOfPath } from "../../src/extension-ids.ts";
+import { installedIds, ownerOfPath } from "../../src/extension-ids.ts";
 import { isActive } from "../../src/extensions.ts";
 import { hostAllowed } from "../../src/guard.ts";
 
@@ -11,7 +11,7 @@ export function proxy(request: NextRequest) {
   if (!hostAllowed(h.get("host") ?? undefined, h.get("origin") ?? undefined, request.method, Number(process.env.PORT ?? 4747))) {
     return new NextResponse("forbidden", { status: 403 });
   }
-  if (ownerOfPath(pathname, EXTENSION_IDS.filter((id) => !isActive(id)))) {
+  if (ownerOfPath(pathname, installedIds().filter((id) => !isActive(id)))) {
     if (pathname.startsWith("/api/")) return new NextResponse("not found", { status: 404 });
     // No page lives at /_off, so the root not-found renders, with a 404.
     return NextResponse.rewrite(new URL("/_off", request.url));

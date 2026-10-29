@@ -1,13 +1,9 @@
 import { resolve } from 'node:path';
-import { grillsDir } from '../../config.ts';
+import { sessionsDir } from '../../config.ts';
 import { owned, type ExtensionManifest } from '../../extensions.ts';
 
 export const manifest: ExtensionManifest = {
   id: 'grill',
-  fields: [
-    { key: 'grill', after: 'source' },
-    { key: 'plan', after: 'grill' },
-  ],
   skills: ['grill'],
   cli: {
     commands: { grill: async () => (await import('./cli.ts')).cmdGrill },
@@ -16,7 +12,7 @@ export const manifest: ExtensionManifest = {
     linked: {
       grill: async (issue, data) => {
         const { grill } = owned(issue, 'grill');
-        return grill ? (await import('./sessions.ts')).grillFile(grillsDir(data), grill) : undefined;
+        return grill ? (await import('./sessions.ts')).grillFile(sessionsDir('grill', data), grill) : undefined;
       },
       plan: async (issue) => {
         const { plan } = owned(issue, 'grill');

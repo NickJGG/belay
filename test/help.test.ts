@@ -27,7 +27,6 @@ test("the built-ins' entries follow the commands they name, wrapped at 110 colum
 test('entries after the same command keep manifest order; an unknown command throws', () => {
   const ext = (usage: string, after = 'week'): ExtensionManifest => ({
     id: 'grill',
-    fields: [],
     skills: [],
     cli: { help: { commands: [{ after, usage, text: usage }] } },
   });

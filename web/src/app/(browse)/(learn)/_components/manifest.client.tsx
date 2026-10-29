@@ -12,6 +12,7 @@ import type { MarkdownContext } from "@/lib/markdown";
 import type { ClientKind } from "@/lib/session-kind";
 import type { ClientSlots } from "@/lib/slots";
 import { cn } from "@/lib/utils";
+import info from "../../../../../../extensions/learn/belay.json";
 import type { LearnSearch } from "../_lib/manifest.server";
 import type { LessonLive } from "../_lib/runtime.server";
 import { LessonProvider } from "./lesson-state";
@@ -88,8 +89,8 @@ const under = (base: string) => (p: string) => p === base || p.startsWith(`${bas
 
 export const slots: ClientSlots<LearnSearch> = {
   id: "learn",
-  name: "Learn",
-  summary: "Courses and /learn lessons from ~/Learning, with their pages and Tabs.",
+  name: info.name,
+  summary: info.summary,
   Mark: LearnMark,
   nav: [{ href: "/learn", label: "Learn", icon: LearnIcon, on: under("/learn"), parent: (slot) => slot.owner?.id === "learn" }],
   sectionIcons: {

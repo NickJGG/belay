@@ -10,8 +10,8 @@ import type { LessonEvent, LessonMessage } from "./learn.runtime.mts";
 
 export const KINDS: readonly Kind[] = [grill, learn];
 
-/** Whether each is on when `settings.yaml` doesn't say, as in `src/extension-ids.ts` (a test checks they agree). */
-export const BUILT_IN: Readonly<Record<string, boolean>> = { grill: true, learn: false };
+/** Whether each is on when `settings.yaml` doesn't say: every installed extension, as `src/extensions.ts` reads it (a test checks they agree). */
+export const BUILT_IN: Readonly<Record<string, boolean>> = { grill: true, learn: true };
 
 export type Message = CoreMessage | GrillMessage | LessonMessage;
 export type KindEvent = GrillEvent | LessonEvent;

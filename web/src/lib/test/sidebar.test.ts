@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { EXTENSION_IDS } from "../../../../src/extension-ids.ts";
+import { installedIds } from "../../../../src/extension-ids.ts";
 import { sidebarSections } from "../sidebar.ts";
 
 // Each extension's own cases are in its `_lib/test/shell.test.ts`.
-const ALL = EXTENSION_IDS;
+const ALL = installedIds();
 const bel = { key: "BEL", name: "Belay" };
 const lit = (s: ReturnType<typeof sidebarSections>) => s?.rows.filter((r) => r.on).map((r) => r.label);
 

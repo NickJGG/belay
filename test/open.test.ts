@@ -23,7 +23,6 @@ const issue = (over: Partial<Issue> = {}): Issue => ({
 
 const notes: ExtensionManifest = {
   id: 'grill',
-  fields: [],
   skills: [],
   cli: { linked: { notes: async (t, dir) => (t.body ? join(dir, 'notes', `${t.id}.md`) : undefined) } },
 };

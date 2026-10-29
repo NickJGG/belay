@@ -1,11 +1,11 @@
-import { lessonsDir } from "../../../../../../src/config.ts";
+import { sessionsDir } from "../../../../../../src/config.ts";
 import type { ServerKind } from "../../../../lib/session-kind.ts";
 import type { ServerSlots } from "../../../../lib/slots.ts";
 
 /** Its runtime loads courses.ts, which loads the learn skill's scripts, so it waits until learn is first needed. */
 export const server = {
   id: "learn",
-  root: lessonsDir,
+  root: (data) => sessionsDir("learn", data),
   load: async () => (await import("./runtime.server.ts")).runtime,
 } satisfies ServerKind;
 

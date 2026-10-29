@@ -1,11 +1,11 @@
-/** The bridge's settings reader against the CLI's (`src/extensions.ts`), and its built-in list against `src/extension-ids.ts`. */
+/** The bridge's settings reader against the CLI's (`src/extensions.ts`), and its kinds and defaults against the installed extensions. */
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
 import * as yaml from "yaml";
-import { BUILT_IN as CORE_BUILT_IN, EXTENSION_IDS } from "../../src/extension-ids.ts";
+import { installedIds } from "../../src/extension-ids.ts";
 import { parseEnabled as coreParse } from "../../src/extensions.ts";
 import { BUILT_IN, KINDS } from "../kinds/index.mts";
 import { loadYaml, parseEnabled, readEnabled } from "../settings.mts";
@@ -13,9 +13,9 @@ import { loadYaml, parseEnabled, readEnabled } from "../settings.mts";
 const dir = mkdtempSync(path.join(os.tmpdir(), "belay-bridge-settings-"));
 after(() => rmSync(dir, { recursive: true, force: true }));
 
-test("the bridge's kinds are the built-in extensions, with the same defaults", () => {
-  assert.deepEqual(KINDS.map((k) => k.id), [...EXTENSION_IDS]);
-  assert.deepEqual(BUILT_IN, CORE_BUILT_IN);
+test("the bridge's kinds are the installed extensions, with the CLI's defaults", () => {
+  assert.deepEqual(KINDS.map((k) => k.id), installedIds());
+  assert.deepEqual(BUILT_IN, coreParse(""));
 });
 
 const CASES = [

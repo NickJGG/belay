@@ -5,6 +5,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { bundled, type ExtensionInfo } from './extension-ids.ts';
 
 /** stdout, or `undefined` when git fails or isn't installed. */
 export function git(dir: string, args: string[]): string | undefined {
@@ -58,13 +59,18 @@ export function commitPaths(dir: string, paths: string[], subject: string, body?
   }
 }
 
-export const GITIGNORE = 'cache/\n.run/\nlessons/\ngrills/*/bridge.json\n';
+/** The data dir's `.gitignore`. An extension's sessions stay out of the history whole, or, if it keeps them there, only their `bridge.json`. */
+export function gitignore(infos: readonly ExtensionInfo[] = bundled()): string {
+  const untracked = infos.filter((e) => !e.history).map((e) => `${e.sessions}/`);
+  const tracked = infos.filter((e) => e.history).map((e) => `${e.sessions}/*/bridge.json`);
+  return ['cache/', '.run/', ...untracked, ...tracked].map((l) => `${l}\n`).join('');
+}
 
 export function initHistory(dir: string): void {
   if (hasHistory(dir)) throw new Error(`${dir} already has git history`);
   gitOrThrow(dir, ['init', '-q']);
   const ignore = join(dir, '.gitignore');
-  if (!existsSync(ignore)) writeFileSync(ignore, GITIGNORE);
+  if (!existsSync(ignore)) writeFileSync(ignore, gitignore());
   gitOrThrow(dir, ['add', '-A']);
   gitOrThrow(dir, ['commit', '-q', '-m', 'init - user']);
 }

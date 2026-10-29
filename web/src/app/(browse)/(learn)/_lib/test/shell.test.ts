@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { EXTENSION_IDS as ALL } from "../../../../../../../src/extension-ids.ts";
+import { installedIds } from "../../../../../../../src/extension-ids.ts";
 import { missing, pageKind, pageTab } from "../../../../../lib/shell.ts";
 import { sidebarSections } from "../../../../../lib/sidebar.ts";
 
+const ALL = installedIds();
 const on = ["learn"] as const;
 const course = { id: "learn", key: "llm", title: "LLM architecture" } as const;
 const lit = (s: ReturnType<typeof sidebarSections>) => s?.rows.filter((r) => r.on).map((r) => r.label);
