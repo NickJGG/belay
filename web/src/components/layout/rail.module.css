@@ -1,4 +1,4 @@
-/* The sidebar (≥768px): square 40×40 rows that widen in place to labels on hover, or pinned open at full width. */
+/* The sidebar (≥768px): square 40×40 rows labelled by tips (side-tip.tsx), or pinned open at full width. */
 
 .railWrap {
   position: relative;
@@ -32,17 +32,6 @@
     overflow: hidden;
   }
 
-  /* Keyboard focus only: a clicked row keeps focus, which would hold the rail open after the pointer leaves. */
-  .railWrap:hover .rail,
-  .rail:has(:focus-visible) {
-    width: var(--side-w);
-    box-shadow: 14px 0 40px rgb(0 0 0 / 0.35);
-    background: color-mix(in srgb, var(--bg) 72%, transparent);
-    backdrop-filter: blur(24px);
-  }
-
-  .railWrap:hover .railLabel,
-  .rail:has(:focus-visible) .railLabel,
   .open .railLabel {
     display: flex;
   }
@@ -50,16 +39,12 @@
   .railWrap.open,
   .railWrap.open .rail {
     width: var(--side-w);
-    box-shadow: none;
-    background: none;
-    backdrop-filter: none;
   }
 
   .open .footLine .railLabel {
     display: none;
   }
 
-  /* Only pinned open: on the hovered rail it would push the rows below it down. */
   .open .railHead {
     display: block;
   }

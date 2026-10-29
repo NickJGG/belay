@@ -346,32 +346,6 @@
   background: var(--line);
 }
 
-.olTip {
-  position: fixed;
-  z-index: 50;
-  padding: 4px 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--panel);
-  color: var(--text);
-  font-size: var(--text-xs);
-  white-space: nowrap;
-  pointer-events: none;
-  box-shadow: 0 6px 18px rgb(0 0 0 / 0.25);
-  transform: translateY(-50%);
-  animation: olTip 100ms var(--ease);
-}
-
-.olTipBelow {
-  transform: translateX(-50%);
-}
-
-@keyframes olTip {
-  from {
-    opacity: 0;
-  }
-}
-
 /* The phone's "Qn of N" sheet. */
 .olSheet {
   display: flex;

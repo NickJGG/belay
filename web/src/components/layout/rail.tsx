@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { Mark } from "./logo";
 import { openPalette } from "./palette";
 import { useSlot } from "./shell-slot";
+import { tip, useTip } from "./side-tip";
 import { useNav, type NavItem } from "./site-nav";
 import styles from "./rail.module.css";
 
@@ -30,7 +31,7 @@ function useSectionIcons(): Record<string, Icon> {
 }
 
 /**
- * The sidebar (>=768px; the phone keeps the dock), collapsed to icons or pinned `open` with labels: the mark and the
+ * The sidebar (>=768px; the phone keeps the dock), collapsed to icons (each labelled by a tip) or pinned `open` with labels: the mark and the
  * app nav on top, then a Reading page's project or course sections, and Theme, Settings and Collapse/Expand at the foot:
  * one line of icons when open, a stack of rows when collapsed.
  */
@@ -44,12 +45,13 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
   const navRow = (item: NavItem) => {
     const Icon = item.icon;
     const parent = !!item.parent?.(slot);
-    return <RailRow key={item.href} href={item.href} icon={<Icon size={16} aria-hidden />} label={item.label} title={item.label} on={item.on(pathname) && !(parent && sectionLit)} />;
+    return <RailRow key={item.href} href={item.href} icon={<Icon size={16} aria-hidden />} label={item.label} title={item.label} shut={!open} on={item.on(pathname) && !(parent && sectionLit)} />;
   };
   const [home, ...rest] = useNav();
+  const [railRef, tipNode] = useTip<HTMLElement>();
   return (
     <div className={cn(styles.railWrap, open && styles.open)}>
-      <nav className={styles.rail} aria-label="Primary">
+      <nav ref={railRef} className={styles.rail} aria-label="Primary">
         <Link href="/" className={cn(styles.railRow, styles.railLogo)} aria-label="Belay home">
           <span className={styles.railKey}>
             <Mark className={styles.railMark} />
@@ -66,6 +68,7 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
             </>
           }
           title="Search (Ctrl K)"
+          shut={!open}
         />
         {rest.map(navRow)}
         {sections ? (
@@ -76,12 +79,13 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
             </span>
             {sections.rows.map((r) => {
               const Icon = icons[r.label];
-              return <RailRow key={r.label} href={r.href} icon={Icon ? <Icon size={16} aria-hidden /> : null} label={r.label} title={r.label} on={r.on} />;
+              return <RailRow key={r.label} href={r.href} icon={Icon ? <Icon size={16} aria-hidden /> : null} label={r.label} title={r.label} shut={!open} on={r.on} />;
             })}
           </>
         ) : null}
         <RailFoot open={open} onToggle={onToggle} label="sidebar" />
       </nav>
+      {tipNode}
     </div>
   );
 }
@@ -91,24 +95,25 @@ export function RailFoot({ open, onToggle, label }: { open: boolean; onToggle: (
   const pathname = usePathname();
   return (
     <div className={cn(styles.railFoot, open && styles.footLine)}>
-      <ThemeRow />
-      <RailRow href="/settings" icon={<Cog size={16} aria-hidden />} label="Settings" title="Settings" on={pathname === "/settings"} />
+      <ThemeRow shut={!open} />
+      <RailRow href="/settings" icon={<Cog size={16} aria-hidden />} label="Settings" title="Settings" shut={!open} on={pathname === "/settings"} />
       {open ? (
         <RailRow onClick={onToggle} icon={<PanelLeftClose size={16} aria-hidden />} label={`Collapse ${label}`} title={`Collapse ${label}`} />
       ) : (
-        <RailRow onClick={onToggle} icon={<PanelLeftOpen size={16} aria-hidden />} label={`Expand ${label}`} title={`Expand ${label}`} />
+        <RailRow onClick={onToggle} icon={<PanelLeftOpen size={16} aria-hidden />} label={`Expand ${label}`} title={`Expand ${label}`} shut />
       )}
     </div>
   );
 }
 
-/** A rail row: a link (`#…` stays a plain anchor) or, without `href`, a button. */
+/** A rail row: a link (`#…` stays a plain anchor) or, without `href`, a button. `shut`: collapsed, so `title` becomes its tip and name. */
 export function RailRow({
   href,
   onClick,
   icon,
   label,
   title,
+  shut,
   on,
 }: {
   href?: string;
@@ -116,9 +121,11 @@ export function RailRow({
   icon: React.ReactNode;
   label: React.ReactNode;
   title?: string;
+  shut?: boolean;
   on?: boolean;
 }) {
   const className = cn(styles.railRow, on && styles.on);
+  const named = title ? { ...tip(!shut, title), "aria-label": shut ? title : undefined } : {};
   const body = (
     <>
       <span className={styles.railKey}>{icon}</span>
@@ -127,20 +134,20 @@ export function RailRow({
   );
   if (!href) {
     return (
-      <button type="button" className={className} title={title} onClick={onClick}>
+      <button type="button" className={className} {...named} onClick={onClick}>
         {body}
       </button>
     );
   }
   if (href.startsWith("#")) {
     return (
-      <a href={href} className={className} title={title}>
+      <a href={href} className={className} {...named}>
         {body}
       </a>
     );
   }
   return (
-    <Link href={href} className={className} title={title} aria-current={on ? "page" : undefined}>
+    <Link href={href} className={className} {...named} aria-current={on ? "page" : undefined}>
       {body}
     </Link>
   );
@@ -163,7 +170,7 @@ export function useMountedTheme() {
   return mounted ? resolvedTheme : undefined;
 }
 
-function ThemeRow() {
+function ThemeRow({ shut }: { shut: boolean }) {
   const { setTheme } = useTheme();
   const resolvedTheme = useMountedTheme();
   const ready = resolvedTheme !== undefined;
@@ -174,6 +181,7 @@ function ThemeRow() {
       icon={ready ? next === "light" ? <Sun size={16} aria-hidden /> : <Moon size={16} aria-hidden /> : null}
       label="Theme"
       title={ready ? `Switch to ${next} theme` : "Toggle theme"}
+      shut={shut}
     />
   );
 }
