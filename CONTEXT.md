@@ -40,7 +40,7 @@
 
 **Extension** — An optional part of Belay beyond its core project management, such as grill or learn, switched on in `settings.yaml`'s `extensions:` map. It contributes to core-owned surfaces through a manifest, and may own issue frontmatter fields (grill owns `grill` and `plan`). Distinct from the `belay` Claude Code plugin. Its two states are independent: Installed and Enabled. _Avoid_: plugin, module, add-on.
 
-**Installed** — An extension whose deps are installed, whose pages are built into the Dashboard and whose Claude Code plugin is registered. Changing it is a rare, explicit act that takes a rebuild. An uninstalled extension's source may sit on disk, but nothing of it runs.
+**Installed** — An extension whose deps are installed, whose pages are built into the Dashboard and whose Claude Code plugin is registered. Changed only by `belay extension install|uninstall`, a rare, explicit act that takes a rebuild; a clone starts with none. An uninstalled extension's source may sit on disk, but nothing of it runs.
 
 **Enabled** — An installed extension switched on: the instant runtime toggle. Off hides its pages, nav, search and Tabs; its data stays. _Avoid_: active (an extension is Active while Enabled or while one of its sessions is attached).
 

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
-import { buildStale } from '../src/web.ts';
+import { buildStale, serveLoop } from '../src/web.ts';
 
 let root: string;
 
@@ -57,4 +57,21 @@ test('generated files and dependencies are ignored', () => {
   touch('web/next-env.d.ts', 10);
   touch('web/tsconfig.tsbuildinfo', 10);
   assert.equal(buildStale(root), false);
+});
+
+test('serve prepares and starts Next again while it exits leaving the restart marker, clearing a stale one first', async () => {
+  const marker = join(root, '.run', 'serve-restart');
+  touch('.run/serve-restart', 0);
+  const seen: string[] = [];
+  let runs = 0;
+  const code = await serveLoop(marker, {
+    prepare: () => void seen.push(`prepare ${existsSync(marker)}`),
+    async start() {
+      seen.push('start');
+      if (++runs < 3) writeFileSync(marker, '');
+      return runs;
+    },
+  });
+  assert.equal(code, 3);
+  assert.deepEqual(seen, ['prepare false', 'start', 'prepare false', 'start', 'prepare false', 'start']);
 });

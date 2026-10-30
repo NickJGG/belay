@@ -142,11 +142,11 @@ export function parseInstalled(src: string): ExtensionId[] {
   return j.installed;
 }
 
-const records = new Map<string, { stamp: string; ids: readonly ExtensionId[] | null }>();
+const records = new Map<string, { stamp: string; ids: readonly ExtensionId[] }>();
 
 /**
- * The Installed extensions, in bundled order: those the clone's record lists that are bundled. With no record, every
- * bundled one counts as installed (until `belay extension install` writes the record).
+ * The Installed extensions, in bundled order: those the clone's record (written by `belay extension install`) lists
+ * that are bundled. With no record, none are.
  */
 export function installedIds(root = REPO): ExtensionId[] {
   const ids = bundled(root).map((e) => e.id);
@@ -154,11 +154,11 @@ export function installedIds(root = REPO): ExtensionId[] {
   const stamp = stampOf(file);
   let cached = records.get(file);
   if (cached?.stamp !== stamp) {
-    cached = { stamp, ids: stamp === 'missing' ? null : parseInstalled(readFileSync(/*turbopackIgnore: true*/ file, 'utf8')) };
+    cached = { stamp, ids: stamp === 'missing' ? [] : parseInstalled(readFileSync(/*turbopackIgnore: true*/ file, 'utf8')) };
     records.set(file, cached);
   }
   const listed = cached.ids;
-  return listed ? ids.filter((id) => listed.includes(id)) : ids;
+  return ids.filter((id) => listed.includes(id));
 }
 
 export const extensionInfo = (id: ExtensionId, root = REPO): ExtensionInfo | undefined => bundled(root).find((e) => e.id === id);

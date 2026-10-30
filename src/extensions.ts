@@ -231,8 +231,8 @@ function hasAttached(dir: string, id: ExtensionId): boolean {
 }
 
 /** The slugs of `id`'s sessions with a bridge attached: a `bridge.json` whose pid is alive and whose port answers. */
-export async function attachedSessions(dir: string, id: ExtensionId): Promise<string[]> {
-  const root = sessionsDir(id, dir);
+export async function attachedSessions(dir: string, id: ExtensionId, clone?: string): Promise<string[]> {
+  const root = sessionsDir(id, dir, clone);
   if (!existsSync(root)) return [];
   const found = await Promise.all(
     readdirSync(root).map(async (slug) => {

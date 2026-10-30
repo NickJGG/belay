@@ -7,8 +7,8 @@ const usage = (text: string, cmd: string) => text.split('\n').filter((l) => l.st
 
 test('with no extension active, help has none of their commands, flags or clauses', () => {
   const text = helpText([]);
-  // `belay extension` names every built-in, on or off.
-  assert.doesNotMatch(text.replace(/\(grill, learn\)/, ''), /grill|lesson|learn/i);
+  // `belay extension` names every installed one, on or off, and every bundled one.
+  assert.doesNotMatch(text.replaceAll('(grill, learn)', ''), /grill|lesson|learn/i);
   assert.match(text, /^ {16}\[--priority high\] \[--source user\|claude\]\n/m);
   assert.match(text, /^ {12}\[--body <text> \| --body-file <path\|->\]\n/m);
   assert.deepEqual(usage(text, 'claude'), ['  claude [args]                     Claude Code with the Belay channel (args go to claude)']);

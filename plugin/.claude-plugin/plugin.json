@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "belay",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Belay: the channel bridge that lets the Belay site read, answer and steer your Claude Code sessions.",
   "author": {
     "name": "Nick",

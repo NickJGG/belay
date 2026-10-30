@@ -94,10 +94,10 @@ test('two extensions may not claim one issue key or one session folder', () => {
   assert.throws(() => bundled(root), /extensions 'a' and 'b' both keep sessions in 'as'/);
 });
 
-test('with no record every bundled extension is installed; a record lists the installed ones, ignoring unbundled ids', () => {
+test('with no record none is installed; a record lists the installed ones, ignoring unbundled ids', () => {
   extension('a', info('a'));
   extension('b', info('b'));
-  assert.deepEqual(installedIds(root), ['a', 'b']);
+  assert.deepEqual(installedIds(root), []);
   const record = join(root, 'extensions', 'installed.json');
   writeFileSync(record, JSON.stringify({ installed: ['b', 'gone'] }));
   assert.deepEqual(installedIds(root), ['b']);

@@ -1,6 +1,6 @@
 /**
  * Which extensions are Installed, read the way `src/extension-ids.ts` reads it (a test checks they agree): the
- * folders under `<clone>/extensions/` with a `belay.json`, narrowed by `extensions/installed.json` when there is one.
+ * folders under `<clone>/extensions/` with a `belay.json` that `extensions/installed.json` lists (none without it).
  * Claude Code runs the plugin from a copy in its cache, so the clone is found by `BELAY_REPO`, else two folders above
  * this file when the plugin runs in place, else the `belay` marketplace's directory in Claude Code's
  * `known_marketplaces.json`.
@@ -37,7 +37,7 @@ export function installedIn(root) {
         .sort();
     const record = path.join(dir, "installed.json");
     if (!existsSync(record))
-        return ids;
+        return [];
     const listed = JSON.parse(readFileSync(record, "utf8"))?.installed;
     if (!Array.isArray(listed))
         throw new Error('extensions/installed.json: expected { "installed": [<id>, …] }');

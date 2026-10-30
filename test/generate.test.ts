@@ -21,8 +21,11 @@ function put(rel: string, text: string): void {
 const read = (rel: string) => readFileSync(join(root, rel), 'utf8');
 const has = (rel: string) => existsSync(join(root, rel));
 
+/** A bundled extension, added to the Installed record. */
 function extension(id: string): void {
   put(`extensions/${id}/belay.json`, JSON.stringify({ id, name: id, summary: id, mark: { path: 'M0 0', dot: { x: 0, y: 0, r: 1 } }, paths: [`/${id}`], sessions: `${id}s` }));
+  const installed = has('extensions/installed.json') ? JSON.parse(read('extensions/installed.json')).installed : [];
+  put('extensions/installed.json', JSON.stringify({ installed: [...installed, id] }));
 }
 
 const STUBS = 'web/src/app/(browse)';

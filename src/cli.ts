@@ -4,6 +4,7 @@ import { basename } from 'node:path';
 import { args, print } from './argv.ts';
 import { claudeDir, dataDir, DEFAULT_PORT } from './config.ts';
 import { clip, digestLines, plural } from './digest.ts';
+import { REPO } from './extension-ids.ts';
 import {
   activeFields,
   activeManifests,
@@ -653,9 +654,23 @@ function projectSet(argv: string[]): void {
 async function cmdExtension(argv: string[]): Promise<void> {
   const { positionals } = args(argv, {}, 2);
   const [action, raw] = positionals;
-  if (action !== 'on' && action !== 'off') throw new Error(`expected on or off, got '${action}' — see 'belay help'`);
+  if (action === 'install' || action === 'uninstall') return installCommand(action, raw);
+  if (action !== 'on' && action !== 'off') throw new Error(`expected on, off, install or uninstall, got '${action}' — see 'belay help'`);
   const id = extensionId(raw);
   print((await switchExtension(new Ctx(), id, action === 'on')) ? `${id} ${action}` : `${id} was already ${action}`);
+}
+
+async function installCommand(action: 'install' | 'uninstall', id: string): Promise<void> {
+  const { installExtension, uninstallExtension, realSteps } = await import('./install.ts');
+  const run = action === 'install' ? installExtension : uninstallExtension;
+  const changed = await run(id, {
+    root: REPO,
+    data: dataDir(),
+    steps: realSteps,
+    onStep: (step, n, of) => console.error(`belay: ${step} (${n} of ${of})…`),
+  });
+  print(changed ? `${action}ed ${id}` : `${id} was already ${action}ed; its steps ran again`);
+  print("restart 'belay serve' (if it's running) to rebuild the site");
 }
 
 const COMMANDS: Record<string, Command> = {

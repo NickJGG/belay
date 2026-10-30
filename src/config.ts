@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { extensionInfo, type ExtensionId } from './extension-ids.ts';
+import { extensionInfo, REPO, type ExtensionId } from './extension-ids.ts';
 
 /**
  * Resolves the data dir from `BELAY_DATA` (default `~/Belay`) and ensures its subfolders exist.
@@ -21,14 +21,17 @@ export function claudeDir(): string {
 }
 
 /** Extension `id`'s sessions: `<dataDir>/<its belay.json's sessions>/<slug>/`. */
-export function sessionsDir(id: ExtensionId, dir = dataDir()): string {
-  const info = extensionInfo(id);
+export function sessionsDir(id: ExtensionId, dir = dataDir(), root = REPO): string {
+  const info = extensionInfo(id, root);
   if (!info) throw new Error(`no extension '${id}'`);
   return join(dir, info.sessions);
 }
 
 /** The lesson start queue and restart marker. */
 export const runDir = (dir = dataDir()) => join(dir, '.run');
+
+/** Left by the site after it installs or uninstalls an extension: `belay serve` regenerates, rebuilds and restarts Next once it exits. */
+export const serveRestartMarker = (dir = dataDir()) => join(runDir(dir), 'serve-restart');
 
 /** `belay serve`'s port unless `--port` overrides it. */
 export const DEFAULT_PORT = 4747;

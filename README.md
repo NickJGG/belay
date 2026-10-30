@@ -4,14 +4,12 @@ A personal issue tracker for Claude Code work, and the Belay app around it: the 
 
 ## Plugin setup
 
-The plugin's MCP server is compiled from `bridge/` into `plugin/bridge/` with `pnpm build:bridge` in `web/`; the output is committed. Install its runtime deps once, then add the repo as a local marketplace and install the plugin, and the plugin of each extension you use:
+The plugin's MCP server is compiled from `bridge/` into `plugin/bridge/` with `pnpm build:bridge` in `web/`; the output is committed. Install its runtime deps once, then add the repo as a local marketplace and install the plugin (`belay extension install` installs each extension's own):
 
 ```sh
 cd plugin && npm install && cd ..
 claude plugin marketplace add .
 claude plugin install belay@belay
-claude plugin install grill@belay
-claude plugin install learn@belay
 ```
 
 Claude Code runs each plugin from a copy in its cache, so after a change run `claude plugin update belay@belay` (or `grill@belay`, `learn@belay`) and start a new session.
@@ -20,7 +18,16 @@ Claude Code runs each plugin from a copy in its cache, so after a change run `cl
 
 ## Extensions
 
-Grills and courses are extensions on top of the issue tracker. `belay extension on|off <id>` switches one in `~/Belay/settings.yaml`'s `extensions:` map; an installed extension starts on. An extension that's off leaves no trace in the site, the CLI or the channel's tools (the channel's instructions drop it at Claude Code's next start), but its data stays where it is. Switching off is refused while one of its sessions is attached, and a session attached before the switch keeps working until it detaches. With grill off, issues keep their `grill:` and `plan:` lines untouched.
+Grills and courses are extensions on top of the issue tracker. Their source ships in `extensions/<id>/`, but none is installed until you install it:
+
+```sh
+belay extension install grill
+belay extension install learn
+```
+
+Install installs its dependencies, writes its site pages and installs its Claude Code plugin (`<id>@belay`, so the marketplace must be added first), then records it in `extensions/installed.json` (gitignored). A failed step stops before the record and says which; run it again to finish. `belay extension uninstall <id>` undoes it, record first, and is refused while one of its sessions is attached; its data and its switch stay. Restart `belay serve` afterwards to rebuild the site.
+
+`belay extension on|off <id>` switches one in `~/Belay/settings.yaml`'s `extensions:` map; an installed extension starts on. An extension that's off leaves no trace in the site, the CLI or the channel's tools (the channel's instructions drop it at Claude Code's next start), but its data stays where it is. Switching off is refused while one of its sessions is attached, and a session attached before the switch keeps working until it detaches. With grill off, issues keep their `grill:` and `plan:` lines untouched.
 
 ## Dashboard setup
 
@@ -30,10 +37,10 @@ The dashboard is a Next.js package in `web/`. The repo is a pnpm workspace (`web
 pnpm install
 ```
 
-Then `belay serve [--port <n>] [--no-open]` starts it at http://127.0.0.1:4747/. The first run builds it with `next build`. Later runs start straight away, rebuilding only when a file under `web/`, `src/` or `extensions/` is newer than the last build. Re-run `pnpm install` at the root after a `package.json` changes.
+A fresh clone has no extension installed: see Extensions above. Then `belay serve [--port <n>] [--no-open]` starts it at http://127.0.0.1:4747/. The first run builds it with `next build`. Later runs start straight away, rebuilding only when a file under `web/`, `src/` or `extensions/` is newer than the last build. Re-run `pnpm install` at the root after a `package.json` changes.
 
 Before building, `belay serve` writes the site's generated files from the installed extensions (`node scripts/generate.ts` does the same by hand; `pnpm install` runs it too): the route stubs that re-export each extension's pages, the lists of its manifests and the site's tsconfig `include`. They're gitignored.
 
-With `--dev` it runs `next dev` instead of building, so edits to `web/` or `src/` show up without a restart.
+With `--dev` it runs `next dev` instead of building, so edits to `web/` or `src/` show up without a restart. When the site leaves `~/Belay/.run/serve-restart` and Next exits, `belay serve` regenerates, rebuilds if needed and starts it again.
 
 For development, `pnpm dev` in `web/` serves on port 4747, regenerating as `extensions/` changes. Point `BELAY_DATA` at a copy of `~/Belay` so experiments can't touch the real data.

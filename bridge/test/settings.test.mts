@@ -37,6 +37,8 @@ test("the clone is BELAY_REPO, else the folder above bridge/, else the belay mar
   assert.deepEqual(findClone({}, home, cache), { root: clone });
   assert.match((findClone({}, path.join(dir, "nohome"), cache) as { why: string }).why, /^no Belay clone at /);
   assert.deepEqual(installedIn(repo), installedIds());
+  assert.deepEqual(installedIn(clone), []);
+  writeFileSync(path.join(clone, "extensions", "installed.json"), JSON.stringify({ installed: ["demo", "gone"] }));
   assert.deepEqual(installedIn(clone), ["demo"]);
   writeFileSync(path.join(clone, "extensions", "installed.json"), JSON.stringify({ installed: [] }));
   assert.deepEqual(installedIn(clone), []);

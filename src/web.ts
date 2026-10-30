@@ -1,14 +1,15 @@
 /**
  * `belay serve`: writes the site's generated files (`generate.ts`), builds `web/` when its sources changed, then runs
  * `next start` on loopback. `--dev` runs `next dev` instead, which picks up edits live, and regenerates as `extensions/`
- * changes; its output goes to `.next/dev`, apart from the build.
+ * changes; its output goes to `.next/dev`, apart from the build. When Next exits leaving the restart marker
+ * (`serveRestartMarker`), it does it all again.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { dataDir } from './config.ts';
+import { dataDir, serveRestartMarker } from './config.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
@@ -68,6 +69,25 @@ function openBrowser(url: string): void {
   child.unref();
 }
 
+export interface ServeDeps {
+  /** Regenerates and builds if stale. */
+  prepare(): void;
+  /** Runs Next to its exit and resolves with its exit code. */
+  start(): Promise<number>;
+}
+
+/** Resolves with Next's exit code once it exits without the restart marker. */
+export async function serveLoop(marker: string, deps: ServeDeps): Promise<number> {
+  rmSync(marker, { force: true });
+  for (;;) {
+    deps.prepare();
+    const code = await deps.start();
+    if (!existsSync(marker)) return code;
+    rmSync(marker, { force: true });
+    console.log('belay: restarting the dashboard…');
+  }
+}
+
 export async function serve({ port, open, dev }: { port: number; open: boolean; dev: boolean }): Promise<void> {
   const web = join(ROOT, 'web');
   // Run Next's JS entry with this Node rather than `.bin/next`, which is a .cmd shim on Windows.
@@ -76,19 +96,28 @@ export async function serve({ port, open, dev }: { port: number; open: boolean; 
   if (!(await portFree(port))) throw new Error(`port ${port} is in use — already running? (try --port)`);
 
   // dataDir() resolves BELAY_DATA to an absolute path, so a relative one survives the cwd change.
-  const env = { ...process.env, BELAY_DATA: dataDir(), PORT: String(port) };
+  const data = dataDir();
+  const env = { ...process.env, BELAY_DATA: data, PORT: String(port) };
   const { describe, generate, watchExtensions } = await import('./generate.ts');
-  const line = describe(generate(ROOT));
-  if (line) console.log(line);
   if (dev) watchExtensions(ROOT);
-  if (!dev && buildStale(ROOT)) {
-    console.log('belay: building the dashboard…');
-    const build = spawnSync(process.execPath, [next, 'build'], { cwd: web, env, stdio: 'inherit' });
-    if (build.status !== 0) throw new Error('next build failed');
-  }
-
-  const child = spawn(process.execPath, [next, dev ? 'dev' : 'start', '-H', '127.0.0.1', '-p', String(port)], { cwd: web, env, stdio: 'inherit' });
-  child.on('exit', (code) => process.exit(code ?? 0));
   const url = `http://127.0.0.1:${port}/`;
-  if ((await waitUntilUp(url)) && open) openBrowser(url);
+  let first = true;
+  const code = await serveLoop(serveRestartMarker(data), {
+    prepare() {
+      const line = describe(generate(ROOT));
+      if (line) console.log(line);
+      if (!dev && buildStale(ROOT)) {
+        console.log('belay: building the dashboard…');
+        const build = spawnSync(process.execPath, [next, 'build'], { cwd: web, env, stdio: 'inherit' });
+        if (build.status !== 0) throw new Error('next build failed');
+      }
+    },
+    start() {
+      const child = spawn(process.execPath, [next, dev ? 'dev' : 'start', '-H', '127.0.0.1', '-p', String(port)], { cwd: web, env, stdio: 'inherit' });
+      if (first && open) waitUntilUp(url).then((up) => up && openBrowser(url));
+      first = false;
+      return new Promise((resolve) => child.on('exit', (c) => resolve(c ?? 0)));
+    },
+  });
+  process.exit(code);
 }

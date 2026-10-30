@@ -215,7 +215,7 @@ test('belay extension switches, and refuses off while a session of that kind is 
   assert.equal(belay('extension', 'on', 'learn').out, 'learn on\n');
   assert.equal(belay('extension', 'on', 'learn').out, 'learn was already on\n');
   assert.match(belay('extension', 'off', 'nope').err, /no extension 'nope'/);
-  assert.match(belay('extension', 'up', 'learn').err, /expected on or off/);
+  assert.match(belay('extension', 'up', 'learn').err, /expected on, off, install or uninstall/);
 
   const server = createServer((_, res) => res.end()).listen(0, '127.0.0.1');
   await new Promise((r) => server.once('listening', r));
