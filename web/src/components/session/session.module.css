@@ -241,6 +241,19 @@
   overflow-wrap: anywhere;
 }
 
+/* Drawer text: softer body so bold lead-ins and code stand out. The `.msgs` prefix outranks prose.module.css whatever the load order. */
+.msgs .msgProse {
+  color: color-mix(in srgb, var(--text) 80%, var(--bg));
+}
+
+.msgs .msgProse :is(strong, h1, h2, h3, h4) {
+  color: var(--text);
+}
+
+.msgs .msgProse :not(pre) > code {
+  color: var(--brand);
+}
+
 .bubblePerm {
   border-color: color-mix(in srgb, var(--warn) 45%, transparent);
 }

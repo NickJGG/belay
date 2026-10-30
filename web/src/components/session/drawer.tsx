@@ -202,7 +202,7 @@ function Entry({
       <div className={cn(styles.msg, styles.claude)}>
         <Speaker name="Claude" extra={e.kind === "terminal" ? "terminal" : undefined} />
         <div className={styles.bubble}>
-          <Prose markdown={text} context={md} compact />
+          <Prose markdown={text} context={md} compact className={styles.msgProse} />
         </div>
       </div>
     );
@@ -214,7 +214,7 @@ function Entry({
         <SentPics slug={slug} names={imagesOf(e)} />
         {str(e.text) ? (
           <div className={styles.bubble}>
-            <Prose markdown={str(e.text)} compact />
+            <Prose markdown={str(e.text)} compact className={styles.msgProse} />
           </div>
         ) : null}
       </div>
@@ -229,7 +229,7 @@ function Entry({
       <div className={cn(styles.msg, styles.claude)}>
         <Speaker name="Claude asks" />
         <div className={styles.bubble}>
-          <Prose markdown={str(e.prompt)} compact />
+          <Prose markdown={str(e.prompt)} compact className={styles.msgProse} />
           <div className={styles.choices}>
             {options.map((o) => (
               <button
@@ -317,7 +317,7 @@ function PermInput({ name, raw }: { name: string; raw: string }) {
     case "markdown":
       return (
         <div className={styles.permInset}>
-          <Prose markdown={v.text} compact />
+          <Prose markdown={v.text} compact className={styles.msgProse} />
           {v.options?.length ? (
             <div className={styles.permChips}>
               {v.options.map((o) => (
