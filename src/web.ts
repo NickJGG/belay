@@ -97,7 +97,8 @@ export async function serve({ port, open, dev }: { port: number; open: boolean; 
 
   // dataDir() resolves BELAY_DATA to an absolute path, so a relative one survives the cwd change.
   const data = dataDir();
-  const env = { ...process.env, BELAY_DATA: data, PORT: String(port) };
+  // BELAY_SERVE tells the site this loop restarts it (Settings' Install and Uninstall).
+  const env = { ...process.env, BELAY_DATA: data, PORT: String(port), BELAY_SERVE: '1' };
   const { describe, generate, watchExtensions } = await import('./generate.ts');
   if (dev) watchExtensions(ROOT);
   const url = `http://127.0.0.1:${port}/`;

@@ -3,7 +3,7 @@ import { statSync } from "node:fs";
 import { connection } from "next/server";
 import { cache } from "react";
 import { dataDir } from "../../../src/config.ts";
-import { installedIds, type ExtensionId } from "../../../src/extension-ids.ts";
+import { bundled, installedIds, type ExtensionId } from "../../../src/extension-ids.ts";
 import { attachedSessions, enabledExtensions } from "../../../src/extensions.ts";
 import { activity, activityGrid, doingSince, inFlight, type ActivityDay, type GridDay } from "../../../src/home.ts";
 import { loadLog, type DatedEntry, type LogEntry } from "../../../src/logs.ts";
@@ -313,10 +313,21 @@ export async function logDetail(day: string, n: number, at: string | undefined):
   };
 }
 
-/** Settings' Extension cards: each built-in's setting, and its sessions with a bridge attached. */
+/** Settings' Extension cards: every bundled extension, whether it's installed, its setting and its attached sessions. */
 export async function extensionStates(): Promise<ExtensionState[]> {
   await connection();
   const dir = dataDir();
   const enabled = enabledExtensions(dir);
-  return Promise.all(installedIds().map(async (id) => ({ id, on: enabled[id], attached: await attachedSessions(dir, id) })));
+  const installed = installedIds();
+  return Promise.all(
+    bundled().map(async ({ id, name, summary, mark }) => ({
+      id,
+      name,
+      summary,
+      mark,
+      installed: installed.includes(id),
+      on: !!enabled[id],
+      attached: await attachedSessions(dir, id),
+    })),
+  );
 }

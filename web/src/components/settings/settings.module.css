@@ -24,10 +24,6 @@
   border-top: 1px solid var(--line);
 }
 
-.rowOff .seg {
-  opacity: 0.4;
-}
-
 .name {
   font-weight: 600;
 }
@@ -38,13 +34,56 @@
   font-size: var(--text-sm);
 }
 
-.seg {
+.switch {
+  position: relative;
   flex: none;
-  width: 96px;
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-hover);
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
 }
 
-.seg button:disabled {
+.switch[aria-checked="true"] {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 150ms ease, background-color 150ms ease;
+}
+
+.switch[aria-checked="true"] .knob {
+  background: var(--brand-fg);
+  transform: translateX(16px);
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Glow in light, or a locked Off: the CLI's rule, while one of its sessions is attached. */
+.switch:disabled {
+  opacity: 0.4;
   cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .knob {
+    transition: none;
+  }
 }
 
 .cards {
@@ -57,6 +96,8 @@
 }
 
 .card {
+  display: flex;
+  flex-direction: column;
   padding: var(--space-4);
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -98,12 +139,24 @@
   color: var(--muted);
 }
 
-/* A locked Off: the CLI's rule, while one of its sessions is attached. */
-.card .seg button[aria-disabled="true"] {
-  opacity: 0.35;
+.badge {
+  flex: none;
+  padding: 1px var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+
+.foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: var(--space-3);
 }
 
 .why,
+.job,
 .error {
   margin-top: var(--space-1);
   font-size: var(--text-xs);
@@ -113,8 +166,24 @@
   color: var(--warn);
 }
 
+.job {
+  color: var(--muted);
+}
+
 .error {
   color: var(--bad);
+}
+
+.info {
+  flex: none;
+  margin-top: 1px;
+}
+
+.job,
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
 }
 
 .note {

@@ -29,7 +29,7 @@ An Extension's icon, drawn like the Belay mark (one heavy run-on stroke and a do
 _Avoid_: logo, project mark (for this meaning)
 
 **Settings**:
-The `/settings` page, opened from the cog at the sidebar's foot: Appearance (Glow, saved per browser) and an Extension card each, with its switch.
+The `/settings` page, opened from the cog at the sidebar's foot: Appearance (Glow, saved per browser) and a card for each bundled Extension: an installed one with its switch and Uninstall, an uninstalled one greyed with Install. Installing or uninstalling rebuilds the site.
 
 ### Shell
 

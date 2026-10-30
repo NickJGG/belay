@@ -29,7 +29,9 @@ import {
   switchExtension,
 } from "../../../src/ops.ts";
 import { isDay } from "../../../src/workday.ts";
+import { currentJob, startJob } from "@/lib/extension-job";
 import { projectHref } from "@/lib/hrefs";
+import type { ExtensionJob } from "@/lib/settings";
 
 export interface Result {
   error?: string;
@@ -272,4 +274,24 @@ export async function setExtensionOn(id: unknown, on: unknown): Promise<Result> 
   }
   revalidatePath("/", "layout");
   return {};
+}
+
+/**
+ * Starts installing or uninstalling a bundled extension, as `belay extension install|uninstall` does; `extensionJob`
+ * reports its progress.
+ */
+export async function changeExtensionInstall(id: unknown, install: unknown): Promise<Result> {
+  try {
+    const ext = str(id, "id");
+    if (!isExtensionId(ext)) throw new Error(`no extension '${ext}'`);
+    if (typeof install !== "boolean") throw new Error("install must be a boolean");
+    startJob(ext, install ? "install" : "uninstall");
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  return {};
+}
+
+export async function extensionJob(): Promise<ExtensionJob | null> {
+  return currentJob();
 }
