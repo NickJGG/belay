@@ -1,9 +1,10 @@
 /** `belay review`, its `belay search` hits and its digest line. Decisions are written here first; the site wraps these. */
 import { args, print } from '../../../src/argv.ts';
-import { DEFAULT_PORT, dataDir, sessionsDir } from '../../../src/config.ts';
+import { dataDir, sessionsDir } from '../../../src/config.ts';
 import { clip, plural } from '../../../src/digest.ts';
-import { addIssue, commentAuthor, Ctx, oneOf } from '../../../src/ops.ts';
+import { commentAuthor, oneOf } from '../../../src/ops.ts';
 import { normalizeStoredPath, type Issue, type Project } from '../../../src/store.ts';
+import { decideFindings, reviewUrl, trackFinding } from './ops.ts';
 import { deleteReview, getReview, loadChecking, loadReviews, reviewFolder, updateDecisions, type SavedReview } from './reviews.ts';
 import {
   campaignLabel,
@@ -11,15 +12,11 @@ import {
   OUTCOMES,
   reviewCounts,
   verdictText,
-  withDecision,
   withOutcome,
-  withTracked,
   type DecisionEntry,
   type Finding,
   type Section,
 } from './state.ts';
-
-export const reviewUrl = (id: string) => `http://127.0.0.1:${DEFAULT_PORT}/r/${id}`;
 
 const SECTION_LABEL: Record<Section, string> = {
   critical: 'Critical',
@@ -105,17 +102,6 @@ function findingLine(f: Finding, decision: string): string {
   return `  #${String(f.n).padEnd(3)} ${(f.severity ?? '').toLowerCase().padEnd(9)}  ${clip(f.title, 80)}  ${at}${decision ? `  [${decision}]` : ''}`;
 }
 
-function trackBody(review: SavedReview['review'], f: Finding): string {
-  const at = f.line == null ? f.file : `${f.file}:${f.line}`;
-  return [
-    `\`${at}\`, finding #${f.n} of review ${review.id} (${review.target}): ${reviewUrl(review.id)}`,
-    f.impact ?? '',
-    f.fix ? `Suggested fix: ${f.fix}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n\n');
-}
-
 export function cmdReview(argv: string[]): void {
   const [sub, ...rest] = argv;
   const dir = reviewsDir();
@@ -139,21 +125,14 @@ export function cmdReview(argv: string[]): void {
       const [id, ...more] = positionals;
       const action = oneOf(more.pop()!, [...DECISIONS.filter((d) => d !== 'track'), 'clear'] as const, 'decision');
       const ns = findingNumbers(more);
-      updateDecisions(dir, id, ns, (d) => withDecision(d, ns, action, author.by, at));
+      decideFindings(dir, id, ns, action, author.by, at);
       return print(`${id}: ${ns.map((n) => `#${n}`).join(' ')} ${action === 'clear' ? 'cleared' : action}`);
     }
     case 'track': {
       const { values, positionals } = args(rest, { project: { type: 'string' } }, 2);
       const [id] = positionals;
       const [n] = findingNumbers([positionals[1]]);
-      const { review, findings, decisions } = getReview(dir, id);
-      const f = findings.find((x) => x.n === n);
-      if (!f) throw new Error(`review '${id}' has no finding #${n}`);
-      if (decisions[n]?.issue) throw new Error(`#${n} is already tracked as ${decisions[n].issue}`);
-      const project = values.project ?? review.project;
-      if (!project) throw new Error(`review '${id}' has no project: pass --project <key>`);
-      const issue = addIssue(new Ctx(), { title: f.title, project, status: 'idea', source: 'claude', body: trackBody(review, f) }, author);
-      updateDecisions(dir, id, [n], (d) => withTracked(d, n, issue.id, author.by, at));
+      const issue = trackFinding(dir, id, n, values.project, author, at);
       return print(`added ${issue.id} "${issue.title}" (idea) for ${id} #${n}`);
     }
     case 'outcome': {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { installedIds } from "../../../../src/extension-ids.ts";
-import { sidebarSections } from "../sidebar.ts";
+import { mergeEntries, sidebarSections } from "../sidebar.ts";
 
 // Each extension's own cases are in its `_lib/test/shell.test.ts`.
 const ALL = installedIds();
@@ -27,4 +27,16 @@ describe("sidebar sections", () => {
     assert.equal(rows?.[0], "Issues");
     assert.deepEqual(rows?.slice(-2), ["Activity", "Logs"]);
   });
+});
+
+test("cards for one key merge into one, their facts joined", () => {
+  const merged = mergeEntries([
+    { key: "unfiled", name: "Unfiled", facts: "2 grills" },
+    { key: "X", name: "X", facts: "1" },
+    { key: "unfiled", name: "Unfiled", facts: "1 review" },
+  ]);
+  assert.deepEqual(merged, [
+    { key: "unfiled", name: "Unfiled", facts: "2 grills · 1 review" },
+    { key: "X", name: "X", facts: "1" },
+  ]);
 });

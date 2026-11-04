@@ -14,8 +14,8 @@ export { MANIFESTS };
 export const shellRules = (active: readonly ExtensionId[]): (ShellRules & { id: ExtensionId })[] =>
   MANIFESTS.filter((m) => active.includes(m.id)).map((m) => ({ id: m.id, ...(m.shell as ShellRules) }));
 
-/** The extension whose pseudo-project `key` is, active or not. */
-export const pseudoOwner = (key: string): ExtensionId | undefined => MANIFESTS.find((m) => (m.shell as ShellRules).pseudo?.key === key)?.id;
+/** The extensions whose pseudo-project `key` is, active or not; several may share one (grill's and review's Unfiled). */
+export const pseudoOwners = (key: string): ExtensionId[] => MANIFESTS.filter((m) => (m.shell as ShellRules).pseudo?.key === key).map((m) => m.id);
 
 /** What a live session's page can follow, as its kind's `focus` parsed it; the kind reads its own. */
 export type Focus = Readonly<Record<string, unknown>>;

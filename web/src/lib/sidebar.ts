@@ -1,10 +1,10 @@
 /** The sidebar's section rows: the open project's sections, or those of a place an extension owns, on a Reading page. */
 
 import type { ExtensionId } from "../../../src/extension-ids.ts";
-import { pseudoOwner, shellRules } from "./extensions.ts";
+import { pseudoOwners, shellRules } from "./extensions.ts";
 import { projectHref } from "./hrefs.ts";
 import type { PageKind } from "./shell.ts";
-import type { ProjectSection, SidebarRow } from "./slots.ts";
+import type { ProjectEntry, ProjectSection, SidebarRow } from "./slots.ts";
 
 export type { SidebarRow };
 
@@ -14,17 +14,26 @@ const CORE_AFTER: ProjectSection[] = [
   { label: "Logs", suffix: "/logs" },
 ];
 
-/** The pseudo-project `key` is, if its extension is active. */
+/** The first active extension whose pseudo-project `key` is, if any. */
 export function pseudoProject(key: string, active: readonly ExtensionId[]): ExtensionId | undefined {
-  const owner = pseudoOwner(key);
-  return owner && active.includes(owner) ? owner : undefined;
+  return pseudoOwners(key).find((id) => active.includes(id));
 }
 
-/** A project's sections: Issues, the active extensions', Activity and Logs. A pseudo-project has only its own. */
+/** Projects cards with one key (a shared pseudo-project's) as one card, their facts joined, in first-seen order. */
+export function mergeEntries(entries: readonly ProjectEntry[]): ProjectEntry[] {
+  const out = new Map<string, ProjectEntry>();
+  for (const e of entries) {
+    const had = out.get(e.key);
+    out.set(e.key, had ? { ...had, facts: `${had.facts} · ${e.facts}` } : e);
+  }
+  return [...out.values()];
+}
+
+/** A project's sections: Issues, the active extensions', Activity and Logs. A pseudo-project has only its owners'. */
 export function sectionsOf(key: string, active: readonly ExtensionId[]): ProjectSection[] {
   const rules = shellRules(active);
-  const pseudo = rules.find((r) => r.pseudo?.key === key);
-  if (pseudo) return [...(pseudo.sections ?? [])];
+  const owners = rules.filter((r) => r.pseudo?.key === key);
+  if (owners.length) return owners.flatMap((r) => r.sections ?? []);
   return [ISSUES, ...rules.flatMap((r) => r.sections ?? []), ...CORE_AFTER];
 }
 

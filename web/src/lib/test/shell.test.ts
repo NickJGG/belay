@@ -143,7 +143,8 @@ test("an inactive extension's project sections and pseudo-project get the generi
       assert.equal(missing(`/p/zzz${suffix}`, ALL).what, "No project ZZZ.");
       assert.equal(missing(`/p/zzz${suffix}`, others).what, `No page at /p/zzz${suffix}.`);
     }
-    if (rules.pseudo) {
+    // A pseudo-project another active extension shares stays a page.
+    if (rules.pseudo && !MANIFESTS.some((o) => o.id !== m.id && (o.shell as ShellRules).pseudo?.key === rules.pseudo!.key)) {
       for (const p of [`/p/${rules.pseudo.key}`, `/p/${rules.pseudo.key}/activity`]) {
         assert.deepEqual(missing(p, others), { what: `No page at ${p}.`, back: { href: "/", label: "Back home" } });
       }

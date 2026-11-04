@@ -11,7 +11,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 # Belay web
 
 The Belay app: this Next app, served by `belay serve` on 4747. Everything it reads lives in the data dir
-(`~/Belay`, `BELAY_DATA`): grills in `grills/<slug>/`, lesson folders in `lessons/`, the start queue and restart marker
+(`~/Belay`, `BELAY_DATA`): grills in `grills/<slug>/`, saved reviews in `reviews/<id>/`, lesson folders in `lessons/`, the start queue and restart marker
 in `.run/`. Courses are in `~/Learning`, and the Claude Code channel bridge ships as the `belay` plugin at the repo root. Vocabulary is in `CONTEXT.md` beside this file (the CLI's glossary is the
 root `CONTEXT.md`).
 
@@ -61,6 +61,14 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   projects, `issues` for the stages, `session-doc`, `mock`, `behaviours`, and `detail.server.ts` for the page's data).
   The Drawer and `session.module.css` (buttons, Drawer, meters) stay core; the workspace's rules are in its
   `_components/workspace.module.css`. A CSS module can't name another's classes, so the two never share a selector.
+- Review pages: `/r/<id>` (a saved review's Workspace: its Overview, a finding at `#f-<n>`, or its stage timeline while
+  it runs), `/r/<id>/lines` (read-only context lines for Show 20 lines, read live from the reviewed repo, only for a
+  finding with a saved hunk) and the Reviews section (`/p/<key>/reviews`, a Needs you · Done · All filter) are review's, in
+  `../extensions/review/web/`. Its `_lib/` holds `view` (groups, chips, segments, list rows and filters, the timeline),
+  `sessions` (saved reviews as sessions, over `cli/reviews.ts`), `detail.server.ts` and `review-actions.ts`: Decide and
+  Track wrap the same ops as `belay review decide|track` (`cli/ops.ts`), then tell a live session; Apply sends `apply`,
+  or with no session opens a terminal. The diff's colours are in its `_components/review.module.css`, its highlighting
+  is `syntax.ts`'s `highlightFileLines`.
 - Belay's pages: `/p` (project cards), `/p/<key>` (Issues; `?view=ideas`), `/p/<key>/{activity,logs}` and the
   extensions' sections (`/p/<key>/[section]`, grill's Grills) under one layout holding the project header, `/i/<id>` and `/l/<day>/<n>?at=`. Their pieces are in
   `src/components/belay/`; their writes are the server actions in `src/app/actions.ts`, each a thin wrapper around
@@ -89,7 +97,7 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   `BELAY_SITE_PORT`.
 - Keep the tested data modules free of `server-only` and `@/` imports: `src/lib/`'s (`sessions`, `projects`, `issues`,
   `frontmatter`, `upstream`, `format`, `shell`, `course-art`, `belay-view`, `watch-paths`, `sidebar`, `settings`) and each extension's
-  `_lib/` ones (grill's `sessions`, `filing`, `issues`, `flight`, `session-doc`, `mock`, `behaviours`; learn's `courses`, `calendar`, `course-paths`, `course-home`, `course-nav`, `wiki-target`, `work`,
+  `_lib/` ones (grill's `sessions`, `filing`, `issues`, `flight`, `session-doc`, `mock`, `behaviours`; review's `view`, `sessions`, `manifest`; learn's `courses`, `calendar`, `course-paths`, `course-home`, `course-nav`, `wiki-target`, `work`,
   `session-log`, `routines`, `lesson`, `start-queue`, `run`, `ts-env`). `pnpm test:site` runs `src/lib/test/`
   and `../extensions/*/test/site/` under plain `node --test`, which resolves neither. They may import the CLI's `src/*.ts` by relative path.
 - Client components take only types from `lib/data`, `lib/belay-view`, learn's `_lib/courses` and `_lib/course-home`, and the CLI's
@@ -184,11 +192,11 @@ open. The core message kinds live in `bridge/protocol.mts`, event types in `brid
 - Slots (`lib/slots.ts`): beside its kind, an extension's `manifest.server.ts` exports `slots` with its palette names
   (merged flat into `/api/search`), Home section, activity-grid source, In flight group, Projects cards, project
   section pages (by address segment, rendered by `p/[key]/[section]`) and the plain data its issue facts and actions
-  draw from, each loaded on call; its `manifest.client.tsx` exports `slots` with its nav entries, sidebar section
+  draw from, each loaded on call, and each given only its own kind's listed sessions; its `manifest.client.tsx` exports `slots` with its nav entries, sidebar section
   icons, palette groups, issue facts and ⋯ actions. Its Markdown syntax is a handler (`lib/extensions.markdown.ts`),
   picked by the `id` of the context a page passes `Prose`. Its pure `manifest.ts` names its noun for the site
   description and holds its page rules (`shell`): Workspace pages, Tabs, Not found lines, project sections, a
-  pseudo-project (grill's Unfiled) and a place's section rows (learn's courses, passed as `<ShellSlot owner>`).
+  pseudo-project (Unfiled, shared by grill and review: its sections are its owners', and their Projects cards merge) and a place's section rows (learn's courses, passed as `<ShellSlot owner>`).
   `lib/shell.ts` and `lib/sidebar.ts` take the active ids, so an inactive extension's addresses get the generic Not
   found line. Only active extensions' slots are used, but Settings lists every bundled one's `name`, `summary` and mark (from its `belay.json`).
 - `sessions.ts` reads a session folder in its kind's format: session.json, else a bare `bridge.json` (in progress),

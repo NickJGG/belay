@@ -12,7 +12,7 @@ import type { Issue } from "../../../src/store.ts";
 import { KINDS, SLOTS } from "./extensions.server.generated.ts";
 import { sessionKind, shellRules } from "./extensions.ts";
 import type { ItemBase, ItemContext, KindRuntime, LiveBase, LiveSession, ServerKind } from "./session-kind.ts";
-import { pseudoProject } from "./sidebar.ts";
+import { mergeEntries, pseudoProject } from "./sidebar.ts";
 import type { FlightGroup, ListsContext, ProjectEntry, SearchContext, ServerSlots } from "./slots.ts";
 import type { SessionBase, SessionMemo } from "./sessions.ts";
 
@@ -23,6 +23,13 @@ export const SERVER_SLOTS: readonly ServerSlots[] = SLOTS;
 export type ListedSession = SessionBase;
 export type SessionItem = ItemBase;
 export type LiveItem = LiveBase;
+
+/** Each kind's listed sessions, by extension: a slot sees only its own. */
+export type OwnSessions = Map<ExtensionId, ListedSession[]>;
+
+type Own<C> = Omit<C, "sessions"> & { own: OwnSessions };
+
+const mine = <C extends { sessions: ListedSession[] }>({ own, ...c }: Own<C>, id: ExtensionId) => ({ ...c, sessions: own.get(id) ?? [] }) as unknown as C;
 
 /** The palette's names the extensions add, merged flat; each reads its own. */
 export type SearchParts = Partial<Record<string, unknown>>;
@@ -100,8 +107,8 @@ export function reattachHint(slug: string, id?: ExtensionId): string {
 const activeSlots = (data = dataDir()) => SERVER_SLOTS.filter((s) => isActive(s.id, data));
 
 /** The active extensions' palette names, merged in built-in order. */
-export async function searchParts(c: SearchContext<ListedSession>): Promise<SearchParts> {
-  const parts = await Promise.all(activeSlots().map((s) => s.search?.(c)));
+export async function searchParts(c: Own<SearchContext<ListedSession>>): Promise<SearchParts> {
+  const parts = await Promise.all(activeSlots().map((s) => s.search?.(mine(c, s.id))));
   return Object.assign({}, ...parts) as SearchParts;
 }
 
@@ -113,19 +120,19 @@ export const homeSections = (): Promise<{ id: ExtensionId; Section: ComponentTyp
 export const gridSources = (): Promise<GridSource[]> => Promise.all(activeSlots().flatMap((s) => (s.grid ? [s.grid()] : [])));
 
 /** The active extensions' In flight groups that have something in flight, in built-in order. */
-export async function flightGroups(c: ListsContext<ListedSession>): Promise<FlightGroup[]> {
-  const groups = await Promise.all(activeSlots().map((s) => s.flight?.(c)));
+export async function flightGroups(c: Own<ListsContext<ListedSession>>): Promise<FlightGroup[]> {
+  const groups = await Promise.all(activeSlots().map((s) => s.flight?.(mine(c, s.id))));
   return groups.filter((g) => !!g);
 }
 
-/** The active extensions' cards on Projects, in built-in order. */
-export async function projectEntries(c: ListsContext<ListedSession>): Promise<ProjectEntry[]> {
-  return (await Promise.all(activeSlots().map((s) => s.projects?.(c) ?? []))).flat();
+/** The active extensions' cards on Projects, in built-in order; cards for a shared pseudo-project become one. */
+export async function projectEntries(c: Own<ListsContext<ListedSession>>): Promise<ProjectEntry[]> {
+  return mergeEntries((await Promise.all(activeSlots().map((s) => s.projects?.(mine(c, s.id)) ?? []))).flat());
 }
 
 /**
  * The project section at `/p/<key>/<segment>`, from the active extension that has it; null when none does, or when
- * `key` is another extension's pseudo-project.
+ * `key` is a pseudo-project that extension doesn't share.
  */
 export async function projectSection(key: string, segment: string): Promise<{ label: string; Section: ComponentType<{ projectKey: string }> } | null> {
   const active = activeIds();
@@ -133,7 +140,7 @@ export async function projectSection(key: string, segment: string): Promise<{ la
   for (const rules of shellRules(active)) {
     const section = rules.sections?.find((s) => s.suffix === `/${segment}`);
     const page = SERVER_SLOTS.find((s) => s.id === rules.id)?.sections?.[segment];
-    if (!section || !page || (pseudo && pseudo !== rules.id)) continue;
+    if (!section || !page || (pseudo && rules.pseudo?.key !== key)) continue;
     return { label: section.label, Section: await page() };
   }
   return null;

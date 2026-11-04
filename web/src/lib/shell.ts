@@ -1,6 +1,6 @@
 /** The shell's rules: what kind of page is open, the sidebar each kind opens with, and the Tab the Drawer shows. */
 import type { ExtensionId } from "../../../src/extension-ids.ts";
-import { pseudoOwner, shellRules } from "./extensions.ts";
+import { pseudoOwners, shellRules } from "./extensions.ts";
 import type { LiveRef, Missing } from "./slots.ts";
 
 /** A Workspace opens with the sidebar collapsed to the rail; a Reading page opens it expanded. */
@@ -140,8 +140,8 @@ export function missing(pathname: string, active: readonly ExtensionId[]): Missi
   const sections = ["activity", "logs", ...rules.flatMap((r) => r.sections ?? []).map((s) => s.suffix.slice(1))];
   const project = new RegExp(`^/p/([^/?#]+)(/(${sections.join("|")}))?/?$`).exec(pathname)?.[1];
   if (project) {
-    const owner = pseudoOwner(decodeURIComponent(project));
-    if (owner && !active.includes(owner)) return generic;
+    const owners = pseudoOwners(decodeURIComponent(project));
+    if (owners.length && !owners.some((id) => active.includes(id))) return generic;
     return { what: `No project ${decodeURIComponent(project).toUpperCase()}.`, back: { href: "/p", label: "Back to Projects" } };
   }
   const issue = /^\/i\/([^/?#]+)\/?$/.exec(pathname)?.[1];

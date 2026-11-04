@@ -18,6 +18,10 @@ _Avoid_: grill session, session (for this meaning)
 One sitting of a Course's lesson routine on one Topic, inside a Session.
 _Avoid_: session (for this meaning)
 
+**Review**:
+A saved `/review:review` code review (`~/Belay/reviews/<id>/`): its findings, numbered as in its report, and the Fix, Skip or Track decisions made on them. It **needs you** while a must-fix finding is undecided or a queued fix isn't applied yet.
+_Avoid_: review session, report (for this meaning)
+
 **Build**:
 A Session working on a project's Issues, with no Grill or Lesson.
 
@@ -34,7 +38,7 @@ The `/settings` page, opened from the cog at the sidebar's foot: Appearance (Glo
 ### Shell
 
 **Tab**:
-A live Grill or Lesson in the strip above the page, showing its turn dot, its project mark (a Lesson: its course's book) and title. One not yet opened in this browser shows **New**, until it's clicked or its page is visited; reattaching never brings it back.
+A live Grill, Lesson or Review in the strip above the page, showing its turn dot, its project mark (a Lesson: its course's book) and title. One not yet opened in this browser shows **New**, until it's clicked or its page is visited; reattaching never brings it back.
 _Avoid_: live card
 
 **Drawer**:
@@ -44,17 +48,20 @@ The docked conversation panel showing the selected Tab, on every page while a Ta
 The narrow layout's bar for the selected Tab, above the bottom dock.
 
 **In flight**:
-Every `doing` Issue plus every in-progress Grill not yet linked to an Issue.
+Every `doing` Issue plus every in-progress Grill not yet linked to an Issue, and every Review that's attached, running or needs you.
 
 **Workspace**:
-A page you work in rather than read (a Grill, a Lesson, a Course's Work). A Lesson or Work opens with the sidebar collapsed to the rail; a Grill shows its Outline instead.
+A page you work in rather than read (a Grill, a Review, a Lesson, a Course's Work). A Lesson or Work opens with the sidebar collapsed to the rail; a Grill or Review shows its Outline instead.
 _Avoid_: session page
 
 **Outline**:
-A Grill Workspace's left pane, in place of the sidebar: the app nav, its questions and the selected question's options. Collapsible to a column of question numbers. On a phone it opens as a sheet from the stage header's "Qn of N".
+A Grill or Review Workspace's left pane (a Review's lists its findings under their groups, with their decisions), in place of the sidebar: the app nav, its questions and the selected question's options. Collapsible to a column of question numbers. On a phone it opens as a sheet from the stage header's "Qn of N".
 
 **Overview**:
 A Grill's first view, a status card (status, decided count, where it stands, its issues) opened from the Outline's head row, and the one a settled Grill opens on.
+
+**Dock**:
+A Review Workspace's floating pill of actions at the canvas's foot: bulk fixes on its Overview, Fix, Skip, Track, Ask, Investigate, Write test and Apply on a finding.
 
 **Reading page**:
 Any page that isn't a Workspace (Home, Projects, an Issue, a Course's tabs), which opens with the sidebar expanded.

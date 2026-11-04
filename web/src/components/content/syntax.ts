@@ -4,7 +4,7 @@
 import { HighlightStyle, LanguageDescription, type LanguageSupport } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { EditorView } from "@codemirror/view";
-import { tags as t } from "@lezer/highlight";
+import { highlightTree, tags as t } from "@lezer/highlight";
 import { StyleModule } from "style-mod";
 
 // Colours are the site's tokens, so the editor follows the theme toggle with no reconfigure.
@@ -102,4 +102,42 @@ export function loadFileLanguage(path: string) {
 /** The language a fence's word names (see `fenceLanguage`): a name or alias (`ts`), else an extension (`py`). */
 export function loadFenceLanguage(word: string) {
   return load(LanguageDescription.matchLanguageName(languages, word, false) ?? LanguageDescription.matchFilename(languages, `.${word}`));
+}
+
+/** A highlighted run of a line: plain text, or text with its highlight class. */
+export type Run = string | { text: string; cls: string };
+
+/**
+ * Lines highlighted for `path`'s language, one run list per line, or null when it has none. The lines are parsed
+ * together, so a construct spanning lines still colours.
+ */
+export async function highlightFileLines(path: string, texts: string[]): Promise<Run[][] | null> {
+  const support = await loadFileLanguage(path);
+  if (!support) return null;
+  mountHighlightStyle();
+  const code = texts.join("\n");
+  const starts: number[] = [];
+  let p = 0;
+  for (const text of texts) {
+    starts.push(p);
+    p += text.length + 1;
+  }
+  const out: Run[][] = texts.map(() => []);
+  const push = (from: number, to: number, cls: string | null) => {
+    for (let i = 0; i < texts.length && from < to; i++) {
+      const end = starts[i] + texts[i].length;
+      if (from > end) continue;
+      const stop = Math.min(to, end);
+      if (stop > from) out[i].push(cls ? { text: code.slice(from, stop), cls } : code.slice(from, stop));
+      from = Math.max(from, end + 1);
+    }
+  };
+  let pos = 0;
+  highlightTree(support.language.parser.parse(code), highlightStyle, (from, to, classes) => {
+    if (from > pos) push(pos, from, null);
+    push(from, to, classes);
+    pos = to;
+  });
+  if (pos < code.length) push(pos, code.length, null);
+  return out;
 }

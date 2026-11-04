@@ -10,7 +10,7 @@ import { StatusIcon } from "@/components/belay/status-icon";
 import { useLive } from "@/components/live/live-provider";
 import { ProjectMark } from "@/components/project-mark";
 import type { SearchIndex } from "@/lib/data";
-import { pseudoOwner } from "@/lib/extensions";
+import { pseudoOwners } from "@/lib/extensions";
 import { activeClientSlots } from "@/lib/extensions.client";
 import { issueHref, projectHref } from "@/lib/hrefs";
 import { setGlow, useGlow } from "./ambient-glow";
@@ -149,7 +149,7 @@ function Palette({ commands }: { commands: PageCommandGroup | null }) {
       const href = projectHref(key, a.section);
       if (pathname !== href) router.push(href);
     });
-  const here = slot.project && !pseudoOwner(slot.project.key) ? slot.project : null;
+  const here = slot.project && !pseudoOwners(slot.project.key).length ? slot.project : null;
   const slots = activeClientSlots(active);
   const searching = query.trim() !== "";
 

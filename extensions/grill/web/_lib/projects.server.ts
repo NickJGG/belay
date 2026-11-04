@@ -15,7 +15,8 @@ export type WorkItem = GrillItem & Partial<Pick<LiveSession, "working">>;
 
 /** A project's grills (or Unfiled's) by stage. An archived project shows only while it still has some. */
 export async function projectStages(key: string): Promise<Record<Stage, WorkItem[]>> {
-  const { live, sessions, projects, ctx, item } = await sessionLists();
+  const { live, own, projects, ctx, item } = await sessionLists();
+  const sessions = (own.get("grill") ?? []) as GrillSession[];
   const filed = fileSessions(sessions, projects, byGrillOf(ctx.issues));
   const node = filed.projects.find((p) => p.project.key === key.toUpperCase());
   const mine = key === UNFILED ? filed.unfiled : node ? [...node.tagged, ...node.byIssues, ...node.matched].sort(byUpdated) : [];

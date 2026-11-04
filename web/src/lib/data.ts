@@ -26,6 +26,7 @@ import {
   searchParts,
   type ListedSession,
   type LiveItem,
+  type OwnSessions,
   type SearchParts,
   type SessionItem,
 } from "./extensions.server";
@@ -83,10 +84,11 @@ export async function sessionLists() {
   const issues = belay().issues;
   const rows = new Map<string, (s: ListedSession, ctx: ItemContext) => SessionItem>();
   const filed = new Map<string, Project>();
-  const sessions: ListedSession[] = kinds.flatMap(({ root, runtime: { list, item, filed: fileOf } }) => {
+  const own: OwnSessions = new Map();
+  const sessions: ListedSession[] = kinds.flatMap(({ id, root, runtime: { list, item, filed: fileOf } }) => {
     if (!list || !item) return [];
-    // Only grills are listed so far.
     const listed = list(root, sessionMemo()) as ListedSession[];
+    own.set(id, listed);
     for (const s of listed) rows.set(s.slug, item as (s: ListedSession, ctx: ItemContext) => SessionItem);
     for (const [slug, p] of fileOf?.(listed, projects, issues) ?? []) filed.set(slug, p);
     return listed;
@@ -96,7 +98,7 @@ export async function sessionLists() {
   const live = all.filter((l) => l.connected && claims.has(l.slug) && (claims.get(l.slug)!.s?.status ?? "in-progress") === "in-progress");
   const ctx: ItemContext = { live: new Set(live.map((l) => l.slug)), marks: marksOf(filed), issues };
   const item = (s: ListedSession) => rows.get(s.slug)!(s, ctx);
-  return { live, sessions, projects, ctx, claims, item };
+  return { live, sessions, own, projects, ctx, claims, item };
 }
 
 /** What every page's chrome needs: the live tabs, and what the Drawer starts from for each. */
@@ -111,7 +113,7 @@ export type FlightIssue = Pick<BelayIssue, "id" | "title" | "status" | "priority
 
 /** Home's In flight: belay's rule for doing issues, then the active extensions' groups. */
 export async function homeFlight(): Promise<{ issues: FlightIssue[]; groups: FlightGroup[] }> {
-  const { live, sessions, projects, ctx } = await sessionLists();
+  const { live, own, projects, ctx } = await sessionLists();
   const c = belay();
   const today = workDay();
   // Back to the oldest doing issue's start, so each one's latest linked log entry is in range.
@@ -125,7 +127,7 @@ export async function homeFlight(): Promise<{ issues: FlightIssue[]; groups: Fli
     priority: issue.priority,
     mark: marks.get(issue.project) ?? null,
   }));
-  return { issues, groups: await flightGroups({ sessions, projects, ctx, live }) };
+  return { issues, groups: await flightGroups({ own, projects, ctx, live }) };
 }
 
 export type HomePulse = { today: string; grid: GridDay[]; usage: Usage | null };
@@ -146,7 +148,7 @@ export type ProjectCard = Pick<Project, "key" | "name" | "group" | "status" | "f
 
 /** The Projects page: every project in belay's order, and the active extensions' cards. */
 export async function projectsIndex(): Promise<{ projects: ProjectCard[]; entries: ProjectEntry[] }> {
-  const { live, sessions, projects, ctx } = await sessionLists();
+  const { live, own, projects, ctx } = await sessionLists();
   const open = new Map<string, number>();
   for (const i of belay().issues) if (i.status === "todo" || i.status === "doing") open.set(i.project, (open.get(i.project) ?? 0) + 1);
   return {
@@ -159,7 +161,7 @@ export async function projectsIndex(): Promise<{ projects: ProjectCard[]; entrie
       mark: markOf(p),
       open: open.get(p.key) ?? 0,
     })),
-    entries: await projectEntries({ sessions, projects, ctx, live }),
+    entries: await projectEntries({ own, projects, ctx, live }),
   };
 }
 
@@ -170,9 +172,9 @@ export type SearchIndex = SearchParts & {
 
 /** The command palette's names: every non-archived project and issue, and what the active extensions add. */
 export async function searchIndex(): Promise<SearchIndex> {
-  const { sessions, projects, ctx } = await sessionLists();
+  const { own, projects, ctx } = await sessionLists();
   return {
-    ...(await searchParts({ sessions, ctx })),
+    ...(await searchParts({ own, ctx })),
     projects: projects.filter((p) => p.status !== "archived").map((p) => ({ ...markOf(p), status: p.status })),
     issues: belay().issues.map(({ id, title, status, project }) => ({ id, title, status, project })),
   };
