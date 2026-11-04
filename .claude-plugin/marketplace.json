@@ -20,6 +20,11 @@
       "name": "learn",
       "source": "./extensions/learn/plugin",
       "description": "Learn: a research-backed tutor (/learn:learn) that builds verified courses, runs explain-then-practise sessions and schedules spaced review, followed on the Belay site."
+    },
+    {
+      "name": "review",
+      "source": "./extensions/review/plugin",
+      "description": "Review: multi-agent code reviews (/review:review), saved and steerable from the Belay site."
     }
   ]
 }

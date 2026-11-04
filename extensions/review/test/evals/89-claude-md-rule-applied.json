@@ -1,0 +1,44 @@
+{
+  "id": "89-claude-md-rule-applied",
+  "skill": "review",
+  "query": "/review:review",
+  "fixture": {
+    "kind": "synthetic-diff",
+    "files": {
+      "CLAUDE.md": {
+        "before": "# Project conventions\n\n- NEVER call console.log in library code under src/lib/ — use the logger module (src/lib/logger.js) instead.\n"
+      },
+      "package.json": {
+        "before": "{\n  \"name\": \"parcel-tracker\",\n  \"scripts\": {\n    \"test\": \"jest\"\n  }\n}\n"
+      },
+      "src/lib/logger.js": {
+        "before": "const levels = ['debug', 'info', 'warn', 'error'];\n\nfunction log(level, message) {\n  if (!levels.includes(level)) {\n    throw new Error('unknown level: ' + level);\n  }\n  process.stderr.write(`[${level}] ${message}\\n`);\n}\n\nmodule.exports = { log };\n"
+      },
+      "src/lib/format.js": {
+        "after": "const { log } = require('./logger');\n\nfunction formatLabel(parcel) {\n  console.log('formatting parcel', parcel.id);\n  return `${parcel.id} — ${parcel.destination}`.toUpperCase();\n}\n\nmodule.exports = { formatLabel };\n"
+      }
+    },
+    "description": "The repo's CLAUDE.md bans console.log in library code under src/lib/ in favour of the logger module. The diff adds src/lib/format.js, which imports the logger and still calls console.log. Claude Code loads the project CLAUDE.md into every reviewer; the case checks the rule reaches a finding and that the finding quotes it."
+  },
+  "success_criteria": {
+    "must_detect": [
+      {
+        "root_cause_key_like": "rule-violation",
+        "file": "src/lib/format.js",
+        "min_severity": "DEBT",
+        "verdict": "confirmed"
+      }
+    ]
+  },
+  "grader": {
+    "method": "llm-rubric",
+    "rubric": "The repo's CLAUDE.md says: 'NEVER call console.log in library code under src/lib/ — use the logger module (src/lib/logger.js) instead.' The new file src/lib/format.js calls console.log. PASS only if the report has a finding (any severity, in the main report or Quality section; not only in Plausible or Refuted) that the console.log call in src/lib/format.js breaks that rule, and the finding cites or quotes the CLAUDE.md rule (or names the logger module as the required alternative). FAIL if the violation is not reported, or is reported only as generic style advice with no reference to the project rule."
+  },
+  "expected_behavior": [
+    "console.log in src/lib/format.js is flagged as breaking the CLAUDE.md rule, with the logger module as the fix",
+    "The finding quotes the rule with its source (CLAUDE.md:<line>)"
+  ],
+  "expected_not_behavior": [
+    "The violation is not dropped as a mere style nit"
+  ]
+}

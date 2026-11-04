@@ -368,7 +368,7 @@ test("learn off: no lesson tools or instructions, an attach by course is refused
     assert.doesNotMatch(off.getInstructions() ?? "", /lesson|\/learn/i);
     const { tools } = await off.listTools();
     assert.deepEqual(tools.map((t) => t.name), ["attach"]);
-    assert.deepEqual(Object.keys((tools[0].inputSchema as { properties: object }).properties).sort(), ["sessionId", "slug"]);
+    assert.deepEqual(Object.keys((tools[0].inputSchema as { properties: object }).properties).sort(), ["id", "sessionId", "slug"]);
     assert.doesNotMatch(tools[0].description ?? "", /lesson/);
 
     const r = await off.callTool({ name: "attach", arguments: { course: "demo-course" } });

@@ -33,12 +33,13 @@ function extension(folder: string, json: unknown) {
 
 const ids = () => bundled(root).map((e) => e.id);
 
-test("the repo's bundled extensions are grill and learn, with today's fields, paths and session folders", () => {
+test("the repo's bundled extensions are grill, learn and review, with today's fields, paths and session folders", () => {
   assert.deepEqual(
     bundled(REPO).map((e) => [e.id, e.fields, e.sessions, e.history]),
     [
       ['grill', [{ key: 'grill', after: 'source' }, { key: 'plan', after: 'grill' }], 'grills', true],
       ['learn', [], 'lessons', false],
+      ['review', [], 'reviews', false],
     ],
   );
   assert.equal(ownerOfPath('/p/BEL/grills', ['grill', 'learn']), 'grill');

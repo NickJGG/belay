@@ -1,0 +1,12 @@
+{
+  "id": "review",
+  "name": "Review",
+  "summary": "Multi-agent code reviews with /review, saved with your decisions on their findings, and their pages.",
+  "mark": {
+    "path": "M54 54L40.7 40.7A18 18 0 1 1 46 28",
+    "dot": { "x": 28, "y": 28, "r": 6 }
+  },
+  "paths": ["/r", "/p/*/reviews"],
+  "sessions": "reviews",
+  "history": false
+}

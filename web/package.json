@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "build:bridge": "tsc -p ../bridge",
     "test:bridge": "tsc -p ../bridge && node --test \"../bridge/test/*.test.mts\" \"../extensions/*/test/bridge/*.test.mts\"",
-    "test:plugin": "node --test \"../extensions/*/test/plugin/*.test.js\"",
+    "test:plugin": "node --test \"../extensions/*/test/plugin/*.test.js\" \"../extensions/*/test/plugin/*.test.mjs\"",
     "test:site": "node --test \"src/lib/test/*.test.ts\" \"../extensions/*/test/site/*.test.ts\""
   },
   "dependencies": {

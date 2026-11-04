@@ -43,13 +43,13 @@ test('patterns match whole segments, with * for any one', () => {
   assert.equal(ownerOfPath('/learn/x', ['grill', 'learn']), 'learn');
 });
 
-const ALL_ON = { grill: true, learn: true };
+const ALL_ON = { grill: true, learn: true, review: true };
 
 test('the extensions map switches the installed extensions, each on unless it says off, accepting on/off and true/false', () => {
   assert.deepEqual(parseEnabled(''), ALL_ON);
   assert.deepEqual(parseEnabled('accent: iris\n'), ALL_ON);
-  assert.deepEqual(parseEnabled('extensions:\n  learn: on\n  grill: off\n'), { grill: false, learn: true });
-  assert.deepEqual(parseEnabled('extensions: { learn: true, grill: false, other: on }\n'), { grill: false, learn: true });
+  assert.deepEqual(parseEnabled('extensions:\n  learn: on\n  grill: off\n'), { grill: false, learn: true, review: true });
+  assert.deepEqual(parseEnabled('extensions: { learn: true, grill: false, other: on }\n'), { grill: false, learn: true, review: true });
   assert.deepEqual(parseEnabled('extensions:\n  learn: maybe\n'), ALL_ON);
   assert.deepEqual(parseEnabled('extensions:\n  learn: off\n  grill: off\n', ['grill']), { grill: false }, "an uninstalled one's entry is ignored");
   assert.throws(() => parseEnabled('extensions: on\n'), /not a map/);
@@ -59,15 +59,15 @@ test('the extensions map switches the installed extensions, each on unless it sa
 test('the reader keeps the last good value through a broken file, and turns every installed one on if none was good', () => {
   assert.deepEqual(enabledExtensions(dir), ALL_ON);
   writeFileSync(join(dir, 'settings.yaml'), 'extensions:\n  learn: off\n');
-  assert.deepEqual(enabledExtensions(dir), { grill: true, learn: false });
+  assert.deepEqual(enabledExtensions(dir), { grill: true, learn: false, review: true });
   writeFileSync(join(dir, 'settings.yaml'), 'extensions: [\n');
   utimesSync(join(dir, 'settings.yaml'), new Date(), new Date(Date.now() + 5000));
-  assert.deepEqual(enabledExtensions(dir), { grill: true, learn: false });
+  assert.deepEqual(enabledExtensions(dir), { grill: true, learn: false, review: true });
 
   const fresh = mkdtempSync(join(tmpdir(), 'belay-'));
   try {
     writeFileSync(join(fresh, 'settings.yaml'), 'extensions: [\n');
-    assert.deepEqual(enabledExtensions(fresh), { grill: true, learn: true });
+    assert.deepEqual(enabledExtensions(fresh), ALL_ON);
   } finally {
     rmSync(fresh, { recursive: true, force: true });
   }
@@ -135,7 +135,7 @@ test('switching an extension edits only its entry, keeping the other values and 
   assert.equal(setExtension(new Ctx(dir), 'learn', true), false);
   assert.equal(setExtension(new Ctx(dir), 'grill', false), true);
   assert.equal(settings(), '# look\naccent: iris # the colour\ntheme: system\nextensions:\n  learn: on\n  grill: off\n');
-  assert.deepEqual(enabledExtensions(dir), { grill: false, learn: true });
+  assert.deepEqual(enabledExtensions(dir), { grill: false, learn: true, review: true });
 });
 
 test('switching creates settings.yaml when there is none', () => {

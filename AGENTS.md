@@ -27,4 +27,4 @@ Never run `belay serve`, `pnpm dev`, `next dev` or `next start`. The user starts
 
 - Repo root: `npm test` and `npm run typecheck`
 - `web/`: `pnpm typecheck`, `pnpm lint`, `pnpm test:site`, `pnpm test:bridge`, `pnpm test:plugin`
-- After a fresh clone: `pnpm install` at the root, `npm install` in `plugin/`, then `belay extension install` for grill and learn.
+- After a fresh clone: `pnpm install` at the root, `npm install` in `plugin/`, then `belay extension install` for grill, learn and review.

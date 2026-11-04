@@ -91,12 +91,12 @@ test("reads the file with the defaults when it's missing, the last good value wh
   const file = (d: string) => path.join(d, "settings.yaml");
   mkdirSync(broken);
   writeFileSync(file(broken), "extensions: {learn: on\n");
-  assert.deepEqual(readEnabled(broken, DEFAULTS), { grill: true, learn: true });
+  assert.deepEqual(readEnabled(broken, DEFAULTS), { grill: true, learn: true, review: true });
 
   const good = path.join(dir, "good");
   mkdirSync(good);
   writeFileSync(file(good), "extensions:\n  learn: on\n  grill: off\n");
-  assert.deepEqual(readEnabled(good, DEFAULTS), { grill: false, learn: true });
+  assert.deepEqual(readEnabled(good, DEFAULTS), { grill: false, learn: true, review: true });
   writeFileSync(file(good), "extensions: [\n");
-  assert.deepEqual(readEnabled(good, DEFAULTS), { grill: false, learn: true });
+  assert.deepEqual(readEnabled(good, DEFAULTS), { grill: false, learn: true, review: true });
 });

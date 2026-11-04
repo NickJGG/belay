@@ -57,7 +57,7 @@ test('initHistory refuses an existing repo; the baseline commit ignores cache/ a
   mkdirSync(join(dir, '.run'));
   writeFileSync(join(dir, '.run', 'restart'), '');
   initHistory(dir);
-  assert.equal(readFileSync(join(dir, '.gitignore'), 'utf8'), 'cache/\n.run/\nlessons/\ngrills/*/bridge.json\n');
+  assert.equal(readFileSync(join(dir, '.gitignore'), 'utf8'), 'cache/\n.run/\nlessons/\nreviews/\ngrills/*/bridge.json\n');
   assert.deepEqual(subjects(), ['init - user']);
   assert.deepEqual(git('ls-files').trim().split('\n'), ['.gitignore', 'grills/g/g.md']);
 });

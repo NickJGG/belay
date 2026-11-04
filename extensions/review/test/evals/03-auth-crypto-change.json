@@ -1,0 +1,39 @@
+{
+  "id": "03-auth-crypto-change",
+  "skill": "review",
+  "query": "/review:review",
+  "fixture": {
+    "kind": "synthetic-diff",
+    "files": {
+      "src/auth/session.ts": {
+        "before": "import { createHmac } from 'crypto';\nexport function signSession(payload, secret) {\n  return createHmac('sha256', secret).update(payload).digest('hex');\n}\n",
+        "after": "import { createHmac } from 'crypto';\nexport function signSession(payload, secret) {\n  return createHmac('md5', secret).update(payload).digest('hex');\n}\n"
+      }
+    }
+  },
+  "success_criteria": {
+    "must_detect": [
+      {
+        "root_cause_key_like": "security",
+        "file": "src/auth/session.ts",
+        "min_severity": "CRITICAL",
+        "verdict": "confirmed"
+      }
+    ],
+    "must_run_reviewer": "06-security-deep-dive"
+  },
+  "grader": {
+    "method": "llm-rubric",
+    "rubric": "PASS only if the report contains a CRITICAL finding (main report, not Plausible) about the MD5 downgrade in src/auth/session.ts that names SHA-256 (or stronger) as the fix. FAIL if the finding is absent, below CRITICAL, Plausible-only, or dropped as 'pre-existing'."
+  },
+  "expected_behavior": [
+    "Security Deep Dive reviewer runs (an auth/ path changed)",
+    "Bugs & Security agent OR Security Deep Dive flags MD5 downgrade as CRITICAL",
+    "Verifier confirms the finding; it may show as found by 2 reviewers",
+    "Fix suggestion explicitly names SHA-256 (or stronger) as replacement"
+  ],
+  "expected_not_behavior": [
+    "Report does NOT leave the finding in Plausible",
+    "Verifier does NOT drop the finding citing 'pre-existing'"
+  ]
+}

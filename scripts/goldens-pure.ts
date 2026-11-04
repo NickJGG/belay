@@ -57,7 +57,7 @@ const URLS = [
 ];
 const LIVE = [{ slug: 'some-grill' }, { slug: 'lesson-1', course: 'c' }];
 // From phase 6 the page rules take the active ids, and a course is an `owner` place; master ignores both.
-const ALL = ['grill', 'learn'];
+const ALL = ['grill', 'learn', 'review'];
 const asOwner = (place: any) => (place.course ? { ...place, owner: { id: 'learn', key: place.course.slug, title: place.course.title } } : place);
 
 const PLACES: [object, string][] = [];

@@ -1,0 +1,39 @@
+{
+  "id": "06-preexisting-sink-reached",
+  "skill": "review",
+  "query": "/review:review",
+  "fixture": {
+    "kind": "synthetic-diff",
+    "description": "New in-diff code passes user input into a pre-existing string-concatenation SQL helper. The rawQuery line is unchanged, but the change calls into it, so the change reaches it: the injection belongs in the main report (as a new finding in findUser, or as a 'reached' pre-existing one tagged as older code the change now calls), never only in Already there.",
+    "files": {
+      "src/db/query.ts": {
+        "before": "export function rawQuery(sql) {\n  return db.exec(sql);\n}\n"
+      },
+      "src/api/users.ts": {
+        "before": "import { rawQuery } from '../db/query';\n\nexport function listUsers() {\n  return rawQuery('SELECT * FROM users');\n}\n",
+        "after": "import { rawQuery } from '../db/query';\n\nexport function listUsers() {\n  return rawQuery('SELECT * FROM users');\n}\n\nexport function findUser(name) {\n  return rawQuery(\"SELECT * FROM users WHERE name = '\" + name + \"'\");\n}\n"
+      }
+    }
+  },
+  "success_criteria": {
+    "must_detect": [
+      {
+        "root_cause_key_like": "injection",
+        "file": "src/api/users.ts",
+        "min_severity": "CRITICAL",
+        "verdict": "confirmed"
+      }
+    ]
+  },
+  "grader": {
+    "method": "llm-rubric",
+    "rubric": "PASS if the report flags a SQL-injection vulnerability reachable through the new findUser() in src/api/users.ts (user input concatenated into SQL passed to rawQuery) at CRITICAL or IMPORTANT severity, in the main report. Either framing passes: a finding on the new findUser() line, or a finding on the unchanged rawQuery sink tagged as older code the change now calls. FAIL if no injection finding surfaces, if it sits only in Already there or Plausible, or if it is dropped as 'pre-existing'."
+  },
+  "expected_behavior": [
+    "Bugs & Security or Security Deep Dive flags SQL injection in findUser (user input concatenated into SQL)",
+    "The unchanged rawQuery sink is treated as reached by the change (main report), not as Already there"
+  ],
+  "expected_not_behavior": [
+    "Does NOT silently drop the injection as 'pre-existing'"
+  ]
+}

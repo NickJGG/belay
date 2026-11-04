@@ -1,0 +1,51 @@
+{
+  "id": "09-untested-exported-logic",
+  "skill": "review",
+  "query": "/review:review",
+  "fixture": {
+    "kind": "synthetic-diff",
+    "description": "The repo keeps its tests in test/ by feature (test/money.test.js covers src/money.js). The diff adds src/duration.js, an exported parseDuration() with real branching logic (a regex parse, a validation throw, a unit table) and no test anywhere, plus src/duration-types.js, which only exports constants. There is no file-name convention to check: the test-quality reviewer has to judge that new behaviour lacks tests, and that the constants file needs none.",
+    "files": {
+      "package.json": {
+        "before": "{\n  \"name\": \"demo\",\n  \"type\": \"module\",\n  \"scripts\": { \"test\": \"node --test\" }\n}\n"
+      },
+      "src/money.js": {
+        "before": "export function toCents(amount) {\n  return Math.round(amount * 100);\n}\n"
+      },
+      "test/money.test.js": {
+        "before": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { toCents } from '../src/money.js';\n\ntest('toCents rounds to whole cents', () => {\n  assert.equal(toCents(1.25), 125);\n  assert.equal(toCents(2), 200);\n});\n"
+      },
+      "src/duration-types.js": {
+        "after": "export const SECOND = 1;\nexport const MINUTE = 60;\nexport const HOUR = 3600;\n"
+      },
+      "src/duration.js": {
+        "after": "import { HOUR, MINUTE, SECOND } from './duration-types.js';\n\nconst UNITS = { h: HOUR, m: MINUTE, s: SECOND };\n\n// Parses durations such as \"1h30m\" or \"45s\" into seconds.\nexport function parseDuration(text) {\n  const input = text.trim();\n  const parts = input.match(/\\d+[hms]/g);\n  if (!parts || parts.join('') !== input) {\n    throw new Error(`invalid duration: ${text}`);\n  }\n  return parts.reduce((total, part) => total + Number(part.slice(0, -1)) * UNITS[part.at(-1)], 0);\n}\n"
+      }
+    }
+  },
+  "success_criteria": {
+    "must_detect": [
+      {
+        "root_cause_key_like": "missing-test",
+        "file": "src/duration.js",
+        "min_severity": "SUGGESTED",
+        "verdict": "confirmed"
+      }
+    ],
+    "must_not_flag": [
+      "a missing test for src/duration-types.js (constants only)"
+    ]
+  },
+  "grader": {
+    "method": "llm-rubric",
+    "rubric": "PASS if the report has a finding (in the main report or Quality section, at SUGGESTED severity or higher; not only in Plausible or Refuted) that the new exported parseDuration() in src/duration.js has no tests, ideally naming what to cover (valid input such as '1h30m', and the invalid-input throw). FAIL if no such finding appears, or if the report demands a test for src/duration-types.js, which only exports constants. Findings about parseDuration's behaviour on other grounds are fine and do not by themselves satisfy or fail the case."
+  },
+  "expected_behavior": [
+    "The test-quality reviewer flags that parseDuration() is new exported logic with no test",
+    "The finding names the cases a test should cover (a valid duration, the invalid-input throw)"
+  ],
+  "expected_not_behavior": [
+    "Does NOT demand a test for src/duration-types.js (constants only)",
+    "Does NOT demand a test for the unchanged src/money.js (test/money.test.js covers it)"
+  ]
+}

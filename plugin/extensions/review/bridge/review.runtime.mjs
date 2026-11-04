@@ -1,0 +1,10 @@
+import { SLUG } from "../../../bridge/protocol.mjs";
+export const runtime = {
+    messages: [],
+    exclusive: false,
+    format: () => undefined,
+    target: ({ id }) => (typeof id === "string" && SLUG.test(id) ? { id } : "id must be lowercase letters, digits and dashes"),
+    same: (state, target) => state.id === target.id,
+    slug: (target) => target.id,
+    head: (id) => ({ head: `Belay site, review \`${id}\``, meta: {} }),
+};

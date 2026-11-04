@@ -46,4 +46,6 @@
 
 **Bundled** — An extension whose source ships in Belay's own repo (`extensions/<id>/`), like grill and learn. Bundled says where it comes from, not whether it's Installed. _Avoid_: built-in.
 
+**Review** — One run of the review extension (`/review:review`) on a target (a change, or code as it stands), with its saved findings and your decisions on them. Saved reviews are for reading and acting on; a later Review never reads them. _Avoid_: audit, report (the report is what a Review prints).
+
 **Dashboard** — The local Belay app that `belay serve` runs (`web/`; its own vocabulary is in `web/CONTEXT.md`). Projects shows a card per project; each project has Issues (an Issues · Ideas filter, issues in collapsible status groups, + for a new one), Grills, Activity and Logs sections, and each issue (`/i/<id>`) and log entry (`/l/<day>/<n>`) has its own page with a facts table. It's where the user curates and triages issues: it edits every issue field except `project`, `grill` and `plan`, edits projects' name, group, status, focus, kinds and order (Move up/down in a project's ⋯), can delete issues and log entries, and adds log entries from a project's Logs. Pages follow the data dir live, whoever wrote it. Its data operations are a subset of the CLI's, so registering projects stays CLI-only.

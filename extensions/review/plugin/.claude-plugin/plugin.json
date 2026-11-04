@@ -1,0 +1,13 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "review",
+  "version": "0.1.0",
+  "description": "Review: multi-agent code reviews (/review:review), saved and steerable from the Belay site.",
+  "author": {
+    "name": "Nick",
+    "email": "nick.gilliam2@gmail.com"
+  },
+  "skills": [
+    "./"
+  ]
+}
