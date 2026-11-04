@@ -229,7 +229,10 @@ function hunkAround(rendered, line) {
   return null;
 }
 
+// True only for a `belay claude` session (one that can attach) with the site up: the summary form's whole condition,
+// so a headless or plain session always gets the full report.
 async function siteAnswers() {
+  if (process.env.BELAY_CHANNEL !== '1') return false;
   try {
     await fetch(`http://127.0.0.1:${PORT}/`, { signal: AbortSignal.timeout(1000) });
     return true;

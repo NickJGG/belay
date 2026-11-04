@@ -36,7 +36,7 @@ Unverified findings add `To settle: <needs_observation>` and keep the severity t
 ## Layout
 
 ```
-# Change review: <target>
+# Review: <target>
 
 <⚠️ PARTIAL REVIEW: … — only when something did not complete>
 

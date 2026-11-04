@@ -18,11 +18,11 @@ let input = "";
 process.stdin.on("data", (d) => (input += d)).on("end", () => {
   const mode = process.env.FAKE_MODE || "pass";
   const kind = input.startsWith("Run the") ? "review" : "judge";
-  fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify({ kind, args: process.argv.slice(2), cwd: process.cwd(), input }) + "\\n");
+  fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify({ kind, args: process.argv.slice(2), cwd: process.cwd(), data: process.env.BELAY_DATA, channel: process.env.BELAY_CHANNEL, dataExists: fs.existsSync(process.env.BELAY_DATA || ""), input }) + "\\n");
   if (kind === "review") {
     if (mode === "empty-report") return;
     const tally = mode === "no-tally" ? "" : '<!-- review-tally: {"critical":1,"important":2,"debt":0,"suggested":3,"question":0,"unverified":1,"plausible":0} -->';
-    process.stdout.write("# Change review\\n\\n## Scope\\nReviewed 1 file · Seed: 4242\\n\\n" + tally + "\\n");
+    process.stdout.write("# Review\\n\\n## Scope\\nReviewed 1 file · Seed: 4242\\n\\n" + tally + "\\n");
   } else if (mode !== "judge-empty") {
     process.stdout.write("The finding is present.\\n" + (mode === "fail" ? "FAIL" : "**PASS**") + "\\n");
   }
@@ -77,7 +77,18 @@ test("the review runs in a materialized repo and the judge gets the rubric, layo
     assert.ok(!fs.existsSync(review.cwd), "the fixture repo is removed after the run");
     assert.deepEqual(review.args, ["-p", "--dangerously-skip-permissions", "--output-format", "json"]);
     assert.equal(judge.kind, "judge");
-    assert.match(judge.input, /<report_layout>[\s\S]*Plausible[\s\S]*<rubric>\nPASS only if[\s\S]*<report>\n# Change review/);
+    assert.match(judge.input, /<report_layout>[\s\S]*Plausible[\s\S]*<rubric>\nPASS only if[\s\S]*<report>\n# Review/);
+  });
+});
+
+test("the review gets its own data dir, removed after the run, and no channel", () => {
+  withCtx((ctx) => {
+    const r = runner(ctx, ["01-small"], { BELAY_DATA: path.join(ctx.dir, "real-data"), BELAY_CHANNEL: "1" });
+    const [review] = r.calls;
+    assert.equal(review.channel, undefined);
+    assert.match(review.data, /review-eval-data-/);
+    assert.ok(review.dataExists);
+    assert.ok(!fs.existsSync(review.data), "the data dir is removed after the run");
   });
 });
 

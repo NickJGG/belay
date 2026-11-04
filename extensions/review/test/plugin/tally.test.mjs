@@ -8,7 +8,7 @@ const COUNTS = { critical: 2, important: 3, debt: 1, suggested: 0, question: 4, 
 const COMMENT = `<!-- review-tally: ${JSON.stringify(COUNTS)} -->`;
 
 // Shaped like references/report.md.
-const REPORT = `# Change review: working tree
+const REPORT = `# Review: working tree
 
 > **Verdict:** 3 must-fix: 1 🔴, 2 🟠 · 5 more below
 

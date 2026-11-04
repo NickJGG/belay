@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -10,7 +10,11 @@ const SAVE = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'plugin',
 
 function save(data, ...args) {
   // A port nothing listens on, so `site` is false whether or not belay serve is up.
-  const res = spawnSync(process.execPath, [SAVE, ...args], { encoding: 'utf8', env: { ...process.env, BELAY_DATA: data, BELAY_PORT: '1' } });
+  return saveWith({ BELAY_PORT: '1' }, data, ...args);
+}
+
+function saveWith(env, data, ...args) {
+  const res = spawnSync(process.execPath, [SAVE, ...args], { encoding: 'utf8', env: { ...process.env, BELAY_DATA: data, ...env } });
   assert.equal(res.status, 0, res.stderr);
   return JSON.parse(res.stdout);
 }
@@ -177,6 +181,24 @@ test("a campaign's rollup saves as one more review, one finding per root cause w
   const [f] = readJson(join(data, 'reviews', id, 'findings.json'));
   assert.deepEqual([f.n, f.section, f.file, f.sites], [1, 'critical', 'a.ts', ['b.ts:9', 'b.ts:20', 'a.ts:2']]);
   assert.deepEqual(readJson(join(data, 'reviews', id, 'review.json')).campaign, { unit: 'rollup', of: 12 });
+});
+
+test('finish says the site answers only in a belay claude session', async () => {
+  const server = spawn(process.execPath, ['-e', "const s = require('node:http').createServer((q, r) => r.end('ok')).listen(0, '127.0.0.1', () => console.log(s.address().port))"]);
+  try {
+    const port = await new Promise((resolve) => server.stdout.once('data', (d) => resolve(String(d).trim())));
+    const data = tempDir();
+    const rollup = join(tempDir(), 'rollup.json');
+    writeFileSync(rollup, '[]');
+    const finish = (channel) => {
+      const { id } = save(data, 'init', '--target', 'x', '--root', '.');
+      return saveWith({ BELAY_PORT: port, BELAY_CHANNEL: channel }, data, 'finish', '--id', id, '--merged', rollup).site;
+    };
+    assert.equal(finish('1'), true);
+    assert.equal(finish(''), false);
+  } finally {
+    server.kill();
+  }
 });
 
 test('a bad id or a missing review fails without writing', () => {

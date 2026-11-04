@@ -147,11 +147,11 @@ function killTree(child) {
 }
 
 // Resolves {stdout, ok, missing}; the prompt goes on stdin so no shell quoting is involved.
-function runClaude(cmd, args, input, cwd, timeoutMs) {
+function runClaude(cmd, args, input, cwd, timeoutMs, env = process.env) {
   return new Promise((resolve) => {
     let child;
     try {
-      child = spawn(cmd.file, [...cmd.pre, ...args], { cwd, shell: cmd.shell, stdio: ["pipe", "pipe", "ignore"], windowsHide: true });
+      child = spawn(cmd.file, [...cmd.pre, ...args], { cwd, env, shell: cmd.shell, stdio: ["pipe", "pipe", "ignore"], windowsHide: true });
     } catch (e) {
       resolve({ stdout: "", ok: false, missing: e.code === "ENOENT" });
       return;
@@ -241,8 +241,14 @@ export async function main(argv = process.argv.slice(2), env = process.env, out 
         err(`run: ${id}: materialize failed: ${e.message}`);
         continue;
       }
+      // The skill saves every review to Belay's data dir; a throwaway one keeps eval runs out of ~/Belay. Without
+      // BELAY_CHANNEL (inherited when the runner starts from a `belay claude` session) it prints the full report.
+      const data = fs.mkdtempSync(path.join(os.tmpdir(), "review-eval-data-"));
       try {
-        const review = () => runClaude(cmd, ["-p", "--dangerously-skip-permissions", "--output-format", "json", ...effort, ...model], prompt, repo, timeoutS * 1000);
+        const { BELAY_CHANNEL: _, ...inherited } = { ...process.env, ...env };
+        const reviewEnv = { ...inherited, BELAY_DATA: data };
+        const review = () =>
+          runClaude(cmd, ["-p", "--dangerously-skip-permissions", "--output-format", "json", ...effort, ...model], prompt, repo, timeoutS * 1000, reviewEnv);
         let res = await review();
         if (res.missing) {
           err(`run: '${cmd.file}' not found. Install Claude Code or set REVIEW_EVAL_CLAUDE.`);
@@ -275,6 +281,7 @@ export async function main(argv = process.argv.slice(2), env = process.env, out 
         out(usageLine(id, r, usage));
       } finally {
         fs.rmSync(repo, { recursive: true, force: true, maxRetries: 3 });
+        fs.rmSync(data, { recursive: true, force: true, maxRetries: 3 });
       }
     }
 

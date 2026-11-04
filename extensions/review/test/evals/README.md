@@ -38,7 +38,7 @@ Pass an arm with `REVIEW_EVAL_ARGS`, and keep the model and effort pinned across
 
 The old skill is saved in `~/.claude/change-review-baseline/`. To run it as the baseline arm, swap it into `extensions/review/plugin/` for that run.
 
-Each run materializes the fixture into a fresh temp git repo (`node materialize.mjs CASE.json [DEST]` does just that step): the `before` files are committed, the `after` files written and staged, so the review sees an uncommitted change. The review runs there with `claude -p --dangerously-skip-permissions` (the repo is throwaway). The judge gets the rubric, the report and a short description of the report's sections (see `JUDGE_GUIDE` in `run.mjs`), and ends with PASS or FAIL. A case passes when more than half its graded runs pass.
+Each run materializes the fixture into a fresh temp git repo (`node materialize.mjs CASE.json [DEST]` does just that step): the `before` files are committed, the `after` files written and staged, so the review sees an uncommitted change. The review runs there with `claude -p --dangerously-skip-permissions` (the repo is throwaway), `BELAY_DATA` set to a temp dir so its saved review never reaches your data dir, and `BELAY_CHANNEL` cleared so it prints the full report even when the runner starts from a `belay claude` session. The judge gets the rubric, the report and a short description of the report's sections (see `JUDGE_GUIDE` in `run.mjs`), and ends with PASS or FAIL. A case passes when more than half its graded runs pass.
 
 | Env | Effect |
 |---|---|
