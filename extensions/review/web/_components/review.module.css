@@ -356,7 +356,9 @@ a.olRow:hover {
 .canvas {
   position: relative;
   flex: 1;
-  padding: var(--space-6) var(--space-8) 120px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-6) var(--space-8);
 }
 
 .body {
