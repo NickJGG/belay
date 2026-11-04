@@ -436,10 +436,20 @@ export function Drawer({
     el.style.height = `${el.scrollHeight}px`;
   }, [text, open]);
 
-  React.useLayoutEffect(() => {
+  // Pinned on size changes rather than data changes: the Working row (driven by `link`), late-rendering prose, the
+  // composer growing and the banner all change heights without a new entry.
+  const visible = open || sheet;
+  React.useEffect(() => {
     const el = scroller.current;
-    if (el && stuck.current) el.scrollTop = el.scrollHeight;
-  }, [chat, open, liveTurn]);
+    const body = el?.firstElementChild;
+    if (!el || !body) return;
+    const ro = new ResizeObserver(() => {
+      if (stuck.current) el.scrollTop = el.scrollHeight;
+    });
+    ro.observe(el);
+    ro.observe(body);
+    return () => ro.disconnect();
+  }, [visible]);
 
   const deletePic = (name: string) => void fetch(imageUrl(slug, name), { method: "DELETE" }).catch(() => {});
 
@@ -590,11 +600,13 @@ export function Drawer({
           stuck.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
         }}
       >
-        {chat.length === 0 && !working ? <p className={styles.dim}>No messages yet.</p> : null}
-        {shown.map((e, i) => (
-          <Entry key={`${e.kind}-${e.at}-${i}`} slug={slug} e={e} all={chat} open={prompts} link={link} send={send} md={md} kinds={kinds} />
-        ))}
-        {working ? <LiveGroup turn={liveTurn} /> : null}
+        <div className={styles.msgsBody}>
+          {chat.length === 0 && !working ? <p className={styles.dim}>No messages yet.</p> : null}
+          {shown.map((e, i) => (
+            <Entry key={`${e.kind}-${e.at}-${i}`} slug={slug} e={e} all={chat} open={prompts} link={link} send={send} md={md} kinds={kinds} />
+          ))}
+          {working ? <LiveGroup turn={liveTurn} /> : null}
+        </div>
       </div>
       {composer?.chip}
       <form

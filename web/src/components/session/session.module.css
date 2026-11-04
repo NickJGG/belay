@@ -208,10 +208,14 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding: var(--space-2) var(--space-4) var(--space-4);
+}
+
+/* Its own box so the drawer's ResizeObserver sees the content grow. */
+.msgsBody {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-4) var(--space-4);
 }
 
 /* A message: the tag row above a bordered bubble. */
