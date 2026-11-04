@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "learn",
   "version": "0.1.0",
-  "description": "A research-backed tutor. Builds verified courses, runs Socratic sessions, schedules spaced review.",
+  "description": "A research-backed tutor. Builds verified courses, runs explain-then-practise sessions, schedules spaced review.",
   "author": {
     "name": "Nick",
     "email": "nick.gilliam2@gmail.com"

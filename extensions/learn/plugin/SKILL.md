@@ -1,6 +1,6 @@
 ---
 name: learn
-description: Run a tutoring session on a course in C:\Users\Nick\Learning ("/learn:learn <course>", "let's study <course>"). Reviews due cards, teaches one objective Socratically from the verified corpus, practises, quizzes, and updates the course logs.
+description: Run a tutoring session on a course in C:\Users\Nick\Learning ("/learn:learn <course>", "let's study <course>"). Reviews due cards, teaches one objective from the verified corpus (explain, then question), practises, quizzes, and updates the course logs.
 argument-hint: "[<course>] [--quick | --voice]"
 ---
 
@@ -47,10 +47,10 @@ Pick 1–2 entries from *Mine* in `misconceptions.md`: the ones never revisited 
 - The objective is the overview's `next` topic, unless the learner names another topic in a ready unit. Set its syllabus status to `in-progress`.
 - State the objective as something they'll be able to do, not a topic name.
 - **Unit reading:** if **Reading** applies and the overview's `next.reading` is set (a `todo` reading line before the objective in its unit), name the unit's unread lines and ask whether they've read them. Mark each one they have read (see **Reading**). If any are still unread, offer to stop after this step so they can read them, and run step 7 for what was done. If they go on without it, log it as `skipped`.
-- Diagnose with 2–3 questions, one at a time, starting from the topic's prerequisites and the first claims in `knowledge/<topic>.md`. What they get right sets where teaching starts.
+- Diagnose with 2–3 questions, one at a time, starting from the topic's prerequisites and the first claims in `knowledge/<topic>.md`. Use `level` in `course.md`: don't probe what it says they already know, and aim the questions at the gaps it names. What they get right sets where teaching starts.
 
 ### 4. Teach
-- Socratic and grounded: walk the claims in `knowledge/<topic>.md` in order, starting where the diagnostic left off. Ask a question that leads toward each claim before stating it. Cite `[k:<topic>^c<n>]` when you state one.
+- Explain, then ask: walk the claims in `knowledge/<topic>.md` in order, starting where the diagnostic left off. State each claim plainly with a concrete example, citing `[k:<topic>^c<n>]`, then ask one question that has them apply it. Lead with a question only for a claim the diagnostic showed they can reach from what they know.
 - **Worked examples, then fading:** while the topic is new (status was `todo` before this session, or the diagnostic went badly), show a full worked example, then one with the last steps left for them, then one with only the setup. Once they cope, stop modelling and only ask.
 - Check every claim of theirs against `knowledge/` before agreeing.
 
@@ -71,7 +71,8 @@ Have them explain the objective as if to a classmate. You play a skeptical stude
 ### 7. Close
 1. **Quiz:** 5 questions, no notes, one at a time, on this session's topic plus anything reviewed. In `--quick`, quiz on the cards just reviewed and the misconceptions revisited. Score `/5`, and say which were wrong and why.
    - Ask about the idea, never a name only one source uses for it (not "what is the BTTC?" but "could a palindrome check beat $O(n)$? Why?"). Terms the field uses, like QPS or SLO, are fine.
-2. **Cards:** propose 2–5 cards from what was taught or got wrong (one fact each, Q answerable without context, maths in `$…$`). The quiz's idea-not-name rule applies.
+   - Never ask for an exact number, timing or percentage from a source (not "how many minutes for the API?" but "what should the API phase not get bogged down in?").
+2. **Cards:** propose 2–5 cards from what was taught or got wrong (one fact each, Q answerable without context, maths in `$…$`). The quiz's idea-not-name and no-exact-numbers rules apply.
    - A Q may have several parts, but no part may give away another's answer. Before proposing, read each Q as the learner would and ask what it reveals; rewrite any that hint at their own answer.
    - The A must agree with `knowledge/` and with the correction logged in `misconceptions.md`.
    - Show them, edit until the learner approves, then write the approved ones as `### <topic>` blocks with `Q:`/`A:` to a scratch file and run `cards.js add <course> <file>`. Report the new IDs.
