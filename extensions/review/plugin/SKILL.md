@@ -3,7 +3,7 @@ name: review
 description: "Multi-agent code review of anything from a one-file diff to a whole codebase: uncommitted work, commits, a branch, a PR, a file or module as it stands, or a whole repo over several sessions. Reviewers cover bugs, security, performance, API contracts, tests, standards, comments, duplication, consistency, simplification and a11y/i18n, scaled to the size of the target; every finding is re-checked by a separate verifier before it is reported, and nothing is dropped without being listed. Use for /review:review, reviewing changes before a commit or PR, or auditing a file, module or repo."
 argument-hint: "[target | snapshot <path> | campaign | resume <id>] [--paths a,b] [--exclude x,y] [--seed n] [--tier t] [--quality merged|split] [--passes n] [--effort e]"
 effort: high
-allowed-tools: Bash(git:*) Bash(node:*) Bash(gh pr diff:*) Bash(gh pr view:*) Bash(belay review:*) Bash(belay project which:*) Read Write Glob Grep
+allowed-tools: Bash(git:*) Bash(node:*) Bash(gh pr diff:*) Bash(gh pr view:*) Bash(belay review:*) Bash(belay project which:*) Read Write Glob Grep mcp__plugin_belay_belay__attach mcp__plugin_belay_belay__reply mcp__plugin_belay_belay__choice mcp__plugin_belay_belay__detach
 ---
 
 # Review
@@ -46,7 +46,7 @@ Then start the saved review (`references/formats.md`, Saved review). Run `belay 
 node <skill>/scripts/save.mjs init --target "<the target as the user gave it, else what 0.1 resolved>" --root <root> --ref <short sha, range or PR #N> [--project <key>]
 ```
 
-Keep its `id`. From here, run `save.mjs progress --id <id> --packet <packet>` after each milestone: once `plan.mjs` has run; with `--checks doing` and `--checks done` around Phase 1; when each reviewer replies; after `collect.mjs`; and when each verifier replies. It reads the packet itself, so the site shows the review as it runs. If the review stops before its report (the user stops it, or it can't go on), run `save.mjs stop --id <id>`.
+Keep its `id`, and attach it to the Belay site ([Belay site](#belay-site)). From here, run `save.mjs progress --id <id> --packet <packet>` after each milestone: once `plan.mjs` has run; with `--checks doing` and `--checks done` around Phase 1; when each reviewer replies; after `collect.mjs`; and when each verifier replies. It reads the packet itself, so the site shows the review as it runs. If the review stops before its report (the user stops it, or it can't go on), run `save.mjs stop --id <id>`.
 
 ### 0.3 Plan
 
@@ -123,6 +123,24 @@ Read `references/report.md`, the `findings.json` it names and `<packet>/coverage
 ## Phase 5: After the report
 
 The report's last visible line before the tally is the command line from `references/actions.md`. Then end the turn. When the user replies with one of those commands, read `references/actions.md` and carry it out. Finding numbers are always `findings.json`'s, which the site and `belay review` show too.
+
+## Belay site
+
+**Channel check**, once, at 0.2: `echo "${BELAY_CHANNEL:-}"`. `1` means this terminal was started with `belay claude` and the session is **attached**: as soon as `save.mjs init` prints the id, call `mcp__plugin_belay_belay__attach` with `id` and `sessionId: "${CLAUDE_SESSION_ID}"`, and the review shows under Tabs on the site. Anything else, or a failed attach (say so in one line): **terminal-only**, never calling `reply` or `choice`. A re-run, delta review or resume attaches the id it works on; attaching a new one replaces the old.
+
+While attached the user may type in the terminal or act on the page: **answer wherever they last acted.** Answer a `<channel source="belay">` message with `mcp__plugin_belay_belay__reply`, and keep the terminal to one short line. Never open `AskUserQuestion` while attached: post the question with `mcp__plugin_belay_belay__choice` and print it in the terminal too, so either side can answer. By `kind`, where `n` is the page's finding number (`findings.json`'s):
+
+| kind | Do |
+|---|---|
+| `decide` (`n` list, `decision`) | The site already ran `belay review decide`. Acknowledge in one line; fix nothing until `apply` |
+| `track` (`n`, `issue`) | The site already ran `belay review track`. Acknowledge with the issue id |
+| `ask` (`n`, `question`), `investigate`, `tests` | That command from `references/actions.md` on finding n; reply with its answer. `tests` confirms with `choice` before writing |
+| `apply` | Apply the queued fixes as `references/actions.md`'s Resume does, from step 1, and reply with the Fix results |
+| `rerun` | `re-run` |
+| `stop` | While the review runs: spawn nothing more, run `save.mjs stop --id <id>` and reply with what finished. After the report there's nothing to stop: say so |
+| `chat`, `choice` | Free text, or the answer to a posted choice: act on it as if typed |
+
+A message whose `slug` isn't this review's id: tell the user to run `/review:review resume <slug>` in the terminal; never resume it yourself. If a tool says the session is disconnected (after `/clear`), call `attach` with the same id again. When the user says they're done with the review, call `mcp__plugin_belay_belay__detach`; closing the terminal drops the attachment anyway.
 
 ---
 

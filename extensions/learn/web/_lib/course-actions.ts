@@ -1,6 +1,6 @@
 "use server";
 /** Course actions that touch this machine, not belay's data, so they sit outside `actions.ts`'s CLI wrappers. */
-import { spawn } from "node:child_process";
+import { openTerminal } from "@/lib/terminal";
 import { isActive } from "../../../../src/extensions.ts";
 import { courseDir, fileCreated } from "./courses";
 import { sessionFor } from "./session-log";
@@ -20,16 +20,5 @@ export async function resumeLesson(course: unknown, slug: unknown): Promise<{ st
   const rel = `lessons/${slug}.md`;
   const id = sessionFor(course, rel, fileCreated(course, rel));
   if (!id || !SESSION_ID.test(id)) return { error: "No conversation found for this lesson." };
-  const command = `claude --resume ${id}`;
-  if (process.platform !== "win32") return { command };
-  const started = await new Promise<boolean>((resolve) => {
-    // Windows Terminal; its arguments are an argv, so nothing is parsed by a shell.
-    const child = spawn("wt.exe", ["-d", dir, "claude", "--resume", id], { detached: true, stdio: "ignore" });
-    child.once("error", () => resolve(false));
-    child.once("spawn", () => {
-      child.unref();
-      resolve(true);
-    });
-  });
-  return started ? { started } : { command };
+  return openTerminal(dir, ["claude", "--resume", id]);
 }

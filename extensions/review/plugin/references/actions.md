@@ -49,7 +49,7 @@ Every finding in scope appears in the table.
 
 `/review:review resume <id>` runs in a fresh session, usually opened from the site after decisions were queued there with no session attached. It needs only the saved review and the current code; nothing is re-reviewed.
 
-1. Run `belay review show <id> --json`: the review (its `root` is the repo to work in), its numbered `findings` and its `decisions`. Work in `root`.
+1. Run `belay review show <id> --json`: the review (its `root` is the repo to work in), its numbered `findings` and its `decisions`. Work in `root`. Do SKILL.md's channel check and, if attached, attach `<id>` (its Belay site section).
 2. The queued fixes are the findings whose decision is `fix` with no `outcome`. If there are none, say so, print the command line and end the turn.
 3. Apply them as in Applying a fix, with the finding's `file`, `line`, `evidence` and `fix` from the saved review. Step 4's evidence check is what catches code that moved since the review: it becomes manual follow-up, never a guess.
 4. Record the outcomes, run the checks, print Fix results and run the delta review, all as above.

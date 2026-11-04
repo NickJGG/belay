@@ -49,7 +49,8 @@ All run in `web/`; `bridge/` and `plugin/` are at the repo root.
   `scripts/courses.js` and `cards.js` (`../extensions/learn/plugin/scripts/`) (formats.md is the contract). The site never edits course Markdown: it writes
   `work/` (`/api/work`) and otherwise only runs the learn plugin's own write ops (Mark read, `/api/courses/<c>/read`
   → `courses.js read`). A lesson note's Resume conversation (`_lib/course-actions.ts`) opens `claude --resume` in
-  Windows Terminal.
+  Windows Terminal through `lib/terminal.ts`'s `openTerminal`, which hands back the command to copy when no terminal
+  starts; review's Apply on a closed review (`extensions/review/web/_lib/review-actions.ts`) uses it too.
 - Lessons: a live lesson's Tab opens `/learn/<c>/now`, its Workspace. Start buttons
   (`_components/start-buttons.tsx`) POST `/api/lesson/start`, which queues the routine (`_lib/start-queue.ts`) and asks a
   live lesson to restart into it; Follow along (`_components/follow.tsx`) follows the lesson's `show`s (`_lib/lesson.ts`).
@@ -127,7 +128,7 @@ An installed extension whose bridge isn't in the cached copy is skipped with a l
   `notifications/claude/channel/permission` verdict from the site answers it.
 
 ## Bridge protocol
-Idle, the server lists only `attach`: a grill by `slug` (`/grill:grill`) or a lesson by `course` (the learn plugin's skills).
+Idle, the server lists only `attach`: a grill by `slug` (`/grill:grill`), a lesson by `course` (the learn plugin's skills) or a review by `id` (`/review:review`).
 Attaching binds a free 127.0.0.1 port with a fresh token, writes `bridge.json` in the session's folder
 `{port, token, sessionId, pid, at, wt}`, and announces `reply`, `show`, `choice` and `detach`, plus `restart` for a
 lesson. The site's hub holds an upstream to every `bridge.json`'s `/events`; a session is Live while that stream is
@@ -142,6 +143,9 @@ open. The core message kinds live in `bridge/protocol.mts`, event types in `brid
   The site sends `attempt` (a `work/` file) and `restart` (a start button). A start: the site writes
   `.run/start.json`; `restart` checks it, writes `.run/restart` and ends `claude` (the parent pid); the
   launcher relaunches; the new bridge, idle in `~/Learning`, sends the queue as a `kind="command"` message.
+- Reviews (`extensions/review/bridge/review.mts`, `review.runtime.mts`): attach takes the `id` of a saved review
+  (`<data>/reviews/<id>/review.json` must exist). The site sends `decide` and `track` after writing them through
+  `belay review`, so they only tell a live session; `ask`, `investigate`, `tests`, `apply`, `rerun` and `stop` ask it to act.
 - Requests need a loopback `Host`; an `Origin`, if present, must be `http://{127.0.0.1,localhost}:4747`.
 - A `choice` or `permission` message must match an open one; a slug mismatch or disconnected session gets 409.
 - `focus` is the bridge's own: never forwarded, and answered before the disconnected check. Under Windows Terminal
