@@ -1,9 +1,9 @@
 ---
 name: review
 description: "Multi-agent code review of anything from a one-file diff to a whole codebase: uncommitted work, commits, a branch, a PR, a file or module as it stands, or a whole repo over several sessions. Reviewers cover bugs, security, performance, API contracts, tests, standards, comments, duplication, consistency, simplification and a11y/i18n, scaled to the size of the target; every finding is re-checked by a separate verifier before it is reported, and nothing is dropped without being listed. Use for /review:review, reviewing changes before a commit or PR, or auditing a file, module or repo."
-argument-hint: "[target | snapshot <path> | campaign] [--paths a,b] [--exclude x,y] [--seed n] [--tier t] [--quality merged|split] [--passes n] [--effort e]"
+argument-hint: "[target | snapshot <path> | campaign | resume <id>] [--paths a,b] [--exclude x,y] [--seed n] [--tier t] [--quality merged|split] [--passes n] [--effort e]"
 effort: high
-allowed-tools: Bash(git:*) Bash(node:*) Bash(gh pr diff:*) Bash(gh pr view:*) Read Write Glob Grep
+allowed-tools: Bash(git:*) Bash(node:*) Bash(gh pr diff:*) Bash(gh pr view:*) Bash(belay review:*) Bash(belay project which:*) Read Write Glob Grep
 ---
 
 # Review
@@ -16,7 +16,7 @@ Principles, in priority order:
 1. **Miss nothing.** No finding is dropped for count, tier or convenience. Anything set aside is listed with its reason (Refuted, Already there, skipped files, collapsed changes, skipped reviewers).
 2. **Prove everything.** A finding reaches the main sections only when a verifier confirms it from a quoted line, a check, or an observation.
 3. **Bugs first.** What must be fixed leads the report; quality findings follow, one line each.
-4. **Stateless, except a campaign's coverage.** Every run judges the code fresh. A campaign records which modules are finished so it can span sessions, and never uses that record to suppress a finding. Write nothing into the reviewed repo except what a requested fix changes.
+4. **Stateless judging.** Every run judges the code fresh. The review is saved to Belay's data dir for the site and `belay review`, and a campaign records which modules are finished so it can span sessions; neither is ever read to judge code or to suppress a finding. Write nothing into the reviewed repo except what a requested fix changes.
 5. **Never start a server, dev server or container.** Observations use scratch scripts and tests only.
 
 ## Phase 0: Target and context
@@ -34,10 +34,19 @@ Principles, in priority order:
 | file paths, `--paths a,b`, `--exclude x,y` | Narrow the target to / away from these paths. If no change touches the named paths, say so and review them as they stand | `--paths`, `--exclude` |
 | `snapshot <path>`, `repo <path>` | A file or folder as it stands, no diff | `--snapshot --paths` |
 | `repo`, `snapshot`, `campaign` | The whole repo, over several sessions: read `references/campaign.md` and follow it | see there |
+| `resume <id>` | A saved review's queued decisions: read `references/actions.md`'s Resume and follow it, skipping Phases 0–4 | — |
 
-### 0.2 Discover
+### 0.2 Discover and save
 
 Run `node <skill>/scripts/discover.mjs`. It returns the root, default branch, workspaces with their check commands, toolchains and rule files.
+
+Then start the saved review (`references/formats.md`, Saved review). Run `belay project which <root>` (no output: no project), then:
+
+```
+node <skill>/scripts/save.mjs init --target "<the target as the user gave it, else what 0.1 resolved>" --root <root> --ref <short sha, range or PR #N> [--project <key>]
+```
+
+Keep its `id`. From here, run `save.mjs progress --id <id> --packet <packet>` after each milestone: once `plan.mjs` has run; with `--checks doing` and `--checks done` around Phase 1; when each reviewer replies; after `collect.mjs`; and when each verifier replies. It reads the packet itself, so the site shows the review as it runs. If the review stops before its report (the user stops it, or it can't go on), run `save.mjs stop --id <id>`.
 
 ### 0.3 Plan
 
@@ -51,7 +60,7 @@ Pass the user's flags through. It writes the packet and prints the tier, a previ
 
 | `empty` / `tier` | Then |
 |---|---|
-| `empty: true` | Nothing to review: emit the report with Scope only, ending with the tally line |
+| `empty: true` | Nothing to review: run `save.mjs finish --id <id> --packet <packet>`, then emit the report with Scope only, ending with the tally line |
 | small, medium | Print one line with the tier and preview, and continue |
 | large (`ask: true`) | Print the preview. For a snapshot of the whole repo, or anything the plan calls large that a campaign could cover, offer a campaign. Offer to narrow with `--paths`/`--exclude`. Stop and wait. Never narrow on your own. Skip the wait when the user passed an explicit narrowing argument or `--tier` |
 
@@ -107,11 +116,13 @@ Scratch files go in <packet>/scratch. Write the verdict array to <verifier.outpu
 
 ## Phase 4: Report
 
-Read `references/report.md`, `<packet>/merged.json` and `<packet>/coverage.json`, and emit the report exactly as it specifies, ending with the tally line.
+Run `node <skill>/scripts/save.mjs finish --id <id> --packet <packet>`, adding `--partial "<what did not complete>"` when Phase 3.5 found something. It numbers every finding in report order into `findings.json` and saves the hunks and coverage.
+
+Read `references/report.md`, the `findings.json` it names and `<packet>/coverage.json`. If this session is attached to the Belay site and `finish` printed `site: true`, emit the report's summary form; otherwise the full report, exactly as `report.md` specifies, ending with the tally line.
 
 ## Phase 5: After the report
 
-The report's last visible line before the tally is the command line from `references/actions.md`. Then end the turn. When the user replies with one of those commands, read `references/actions.md` and carry it out.
+The report's last visible line before the tally is the command line from `references/actions.md`. Then end the turn. When the user replies with one of those commands, read `references/actions.md` and carry it out. Finding numbers are always `findings.json`'s, which the site and `belay review` show too.
 
 ---
 

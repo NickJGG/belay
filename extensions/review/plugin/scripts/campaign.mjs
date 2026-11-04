@@ -12,10 +12,10 @@
 // Every command prints JSON.
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { splitCsv } from './lib/files.mjs';
 import { args, emit, fail } from './lib/cli.mjs';
+import { reviewsHome } from './lib/data.mjs';
 import { dedupe } from './lib/dedupe.mjs';
 import { listModules } from './lib/modules.mjs';
 import { git, repoRoot } from './lib/repo.mjs';
@@ -28,13 +28,9 @@ const SECURITY_WEIGHT = 10;
 const SMALL_UNITS = '(small modules)';
 const CROSS_MODULE = '(cross-module)';
 
-function home() {
-  return join(process.env.BELAY_DATA || join(homedir(), 'Belay'), 'reviews');
-}
-
 function campaignDir(root) {
   const hash = createHash('sha256').update(root.toLowerCase()).digest('hex').slice(0, 10);
-  return join(home(), 'campaigns', `${basename(root)}-${hash}`);
+  return join(reviewsHome(), 'campaigns', `${basename(root)}-${hash}`);
 }
 
 // Splits at the next folder level until each unit fits. Loose files stay together as "(files)".

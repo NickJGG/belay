@@ -152,6 +152,7 @@ Every assigned file appears in `reviewed` or `skipped`. Finding nothing in a fil
 }
 ```
 
+- `title`: names the failure in sentence case, capitalised (`Cache never expires`); a title that starts with code keeps the code as written (`load() throws…`).
 - `rule`: null unless the finding rests on a written rule.
 - `trigger`: null when there is no input or state to name (a pure style finding).
 - `root_cause_key` categories: `missing-null-check`, `unbounded-loop`, `n-plus-one`, `injection`, `race-condition`, `resource-leak`, `unhandled-error`, `silent-failure`, `dead-code`, `duplicated-logic`, `bad-naming`, `bad-typing`, `api-break`, `missing-test`, `stale-comment`, `rule-violation`, `a11y`, `i18n`, `perf`, `security`, `style`, else `other`.

@@ -78,10 +78,11 @@ repeated flags or a comma list. Keys and IDs are case-insensitive. Data dir: $BE
 const USAGE_W = 34;
 const HELP_W = 110;
 
-/** A usage entry, its text from column 36 wrapped at `HELP_W`. */
+/** A usage entry, its text from column 36 wrapped at `HELP_W`; a usage too wide for its column gets a line of its own. */
 function entry(usage: string, text: string): string {
-  const out: string[] = [];
-  let line = `  ${usage.padEnd(USAGE_W)}`;
+  const wide = usage.length >= USAGE_W;
+  const out: string[] = wide ? [`  ${usage}`] : [];
+  let line = wide ? ' '.repeat(USAGE_W + 2) : `  ${usage.padEnd(USAGE_W)}`;
   let fresh = true;
   for (const word of text.split(' ')) {
     if (!fresh && line.length + 1 + word.length > HELP_W) {

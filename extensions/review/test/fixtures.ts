@@ -1,0 +1,28 @@
+import type { Finding, Section } from '../cli/state.ts';
+
+export const finding = (n: number, section: Section, over: Partial<Finding> = {}): Finding => ({
+  n,
+  section,
+  must_fix: section === 'critical' || section === 'important',
+  severity: (['critical', 'important', 'debt', 'suggested', 'question'].includes(section) ? section.toUpperCase() : 'IMPORTANT') as Finding['severity'],
+  kind: 'other',
+  key: `other:a.ts:${n}`,
+  title: `Finding ${n}`,
+  file: 'a.ts',
+  line: n,
+  sites: [`a.ts:${n}`],
+  impact: 'It breaks.',
+  fix: 'Fix it.',
+  trigger: null,
+  evidence: null,
+  rule: null,
+  confidence: 'HIGH',
+  claim_class: 'static',
+  pre_existing: 'no',
+  needs_observation: null,
+  found_by: ['02-bugs-security'],
+  passes: [1],
+  verdict: section === 'refuted' ? 'refuted' : 'confirmed',
+  reason: null,
+  ...over,
+});

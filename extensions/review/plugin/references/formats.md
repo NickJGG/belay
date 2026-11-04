@@ -22,6 +22,51 @@ The JSON shapes that pass between the orchestrator, the reviewers, the verifiers
 
 A spawn id is `<reviewer>.p<pass>.c<chunk>`. The `quality` reviewer covers areas 01, 03, 04 and 05 in one agent; `--quality split` runs them separately.
 
+## Saved review
+
+`save.mjs` keeps every review in Belay's data dir (`$BELAY_DATA`, else `~/Belay`) at `reviews/<id>/`, for the site and `belay review`. Nothing there is in the data dir's git history, and it's deleted only on request (`belay review delete`). The packet stays in the scratchpad. A review never reads a saved one to judge code.
+
+The id is `review-<yyyymmdd>-<hhmm>-<target slug>`, at most 64 characters, with `-2`, `-3`… on a clash.
+
+| Path | Written by | Holds |
+|---|---|---|
+| `review.json` | save `init`, `progress`, `finish`, `stop` | The review and its stage progress |
+| `checking.json` | save `progress` | While running: every finding sent to a verifier, with its verdict once it returns |
+| `findings.json` | save `finish` | Every finding, numbered in report order |
+| `hunks/<n>.json` | save `finish` | The diff hunk around finding `n`'s line |
+| `coverage.json` | save `finish` | What the Scope section lists |
+| `decisions.json` | `belay review decide`, `track`, `outcome` | Fix, Skip or Track per finding, and how fixes went |
+
+Secret files are saved by name only: no hunk, no contents.
+
+```json
+// review.json
+{
+  "id": "review-20261104-1530-last-commit", "project": "BEL or null", "root": "C:/repo", "target": "last commit",
+  "ref": "abc1234 or null", "mode": "diff | snapshot", "tier": "small | medium | large", "seed": 123, "preview": {"reviewers": 8, "files": 12},
+  "started": "ISO time", "finished": "ISO time or null", "status": "running | done | stopped",
+  "partial": "what did not complete, or null", "campaign": {"unit": "4 | cross-module | rollup", "of": 12},
+  "stages": [{"name": "plan | checks | reviewers | verifiers | report", "status": "todo | doing | done", "started": null, "finished": null, "done": 5, "of": 8}]
+}
+// findings.json: an array of
+{
+  "n": 3, "section": "critical | important | unverified | debt | suggested | question | plausible | already | refuted",
+  "must_fix": true, "severity": "IMPORTANT", "kind": "missing-null-check", "key": "<root_cause_key>",
+  "title": "load() throws when user.profile is missing", "file": "src/users/service.ts", "line": 42, "sites": ["src/users/service.ts:42"],
+  "impact": "…", "fix": "…", "trigger": "…", "evidence": "…", "rule": null, "confidence": "HIGH", "claim_class": "static",
+  "pre_existing": "no", "needs_observation": null, "found_by": ["02-bugs-security"], "passes": [1],
+  "verdict": "confirmed", "reason": "the verifier's reason"
+}
+// hunks/<n>.json: the hunk holding the line, clipped to 20 lines each side
+{"file": "src/users/service.ts", "line": 42, "context": "function load", "lines": [{"kind": "+ | - | space", "line": 42, "text": "…"}]}
+// decisions.json: by finding number
+{"3": {"decision": "fix | skip | track", "issue": "BEL-140", "outcome": "applied | manual", "note": "why manual", "at": "ISO time", "by": "user | claude"}}
+```
+
+- **Section** places a finding in the report: refuted → Refuted; `pre_existing: noticed` → Already there; plausible → Plausible; unverified → Unverified; confirmed → its severity's section. `must_fix` is Critical or Important.
+- **Needs you:** a must-fix finding with no decision, or a `fix` with no `outcome`. Everything else is done.
+- A cleared decision keeps its `issue`, so a finding is never tracked twice.
+
 ## Tiers
 
 | Tier | Diff: changed code/config lines | Snapshot: file lines | Reviewers |
@@ -98,6 +143,10 @@ All scripts are Node (`node scripts/<name>.mjs`), no dependencies.
 | `collect.mjs --packet d --verdicts` | `verify/`, `verdicts/` | `{complete, missing, malformed, counts, merged, coverage}` |
 | `collect.mjs --packet d --add f` | a bare array of findings in `f` | `{findings, verifiers}` |
 | `campaign.mjs init|status|next|record|rollup` | see `references/campaign.md` | JSON per command |
+| `save.mjs init --target t --root d [--ref r] [--project K] [--campaign u/of]` | — | `{id, dir}` |
+| `save.mjs progress --id i --packet d [--checks doing|done]` | the packet | `{id, stages}` |
+| `save.mjs finish --id i [--packet d] [--merged f] [--partial t]` | `merged.json` (or `f`), `coverage.json`, `plan.json`, `hunks/` | `{id, dir, url, site, mustFix:[{n, severity, title, file, line}], more, findings}` |
+| `save.mjs stop --id i` | — | `{id, status}` |
 | `discover.mjs [--repo <dir>]` | — | `{root, defaultBranch, workspaces:[{dir, manager, scripts:{typecheck, lint, test}}], languages, tools, ruleFiles:{review, claude:[…]}}` |
 | `select-files.mjs` | `[{path, status, insertions, deletions, bytes}]` | `{reviewable:[…], excluded:[{path, reason}], secrets:[path], oversized:[path]}` |
 | `select-agents.mjs [--tier t] [--quality q]` | output of `select-files.mjs` | `{agents:{<id>:{spawn, files, reason, model, passes, secondPassFiles, budget, chunks:[[file]]}}}` |

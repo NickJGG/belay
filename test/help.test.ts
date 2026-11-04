@@ -24,6 +24,13 @@ test("the built-ins' entries follow the commands they name, wrapped at 110 colum
   assert.equal(at('  learn [args]'), at('  claude [args]') + 2);
 });
 
+test('a usage too wide for its column puts its text on the next line', () => {
+  const lines = helpText(MANIFESTS).split('\n');
+  const at = lines.indexOf('  review decide <id> <n>... fix|skip|clear');
+  assert.notEqual(at, -1);
+  assert.match(lines[at + 1], /^ {36}queue fixes/);
+});
+
 test('entries after the same command keep manifest order; an unknown command throws', () => {
   const ext = (usage: string, after = 'week'): ExtensionManifest => ({
     id: 'grill',
