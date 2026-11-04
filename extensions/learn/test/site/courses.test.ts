@@ -3,11 +3,12 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync }
 import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
-import { cardData, currentUnit, exerciseRows, heroStep, homeSlice, journeySteps, readingBooks } from "../../web/_lib/course-home.ts";
+import { cardData, currentUnit, exerciseRows, heroStep, homeSlice, journeySteps, pip, readingBooks } from "../../web/_lib/course-home.ts";
 import { sectionOf } from "../../web/_lib/course-nav.ts";
 import {
   citedBy,
   courseDir,
+  exerciseMet,
   getCourse,
   inProgress,
   lessonStats,
@@ -21,6 +22,7 @@ import {
   splitTitle,
   visibleParts,
   type CourseSummary,
+  type Rung,
   type Unit,
 } from "../../web/_lib/courses.ts";
 import { routineCommand } from "../../web/_lib/routines.ts";
@@ -133,18 +135,19 @@ describe("course text", () => {
     assert.deepEqual(splitMisconception("no dash here"), { claim: "no dash here", correction: null });
   });
 
-  test("a lesson note's counts: exercises (and alone), claims, open questions", () => {
+  test("a lesson note's counts: exercises (and those at half without answers), claims, open questions", () => {
     const body = [
       "## Covered",
       "Why a matmul costs 2mkn [[matmul-flops#^c12]] [[matmul-flops#^c14]] and [k:matmul-flops^c12].",
       "## Exercises",
-      "- e1 · alone: FLOPs for a projection",
-      "- e2 · with hints: the backward pass",
+      "- e1 · alone, hint — FLOPs for a projection",
+      "- e2 · hint, shown, partial — the backward pass",
+      "- e3 · with hints — an old line",
       "- a note that isn't an exercise",
       "## Open questions",
       "- Does an FMA count as one FLOP or two?",
     ].join("\n");
-    assert.deepEqual(lessonStats(body), { exercises: 2, alone: 1, claims: 2, questions: 1 });
+    assert.deepEqual(lessonStats(body), { exercises: 3, met: 1, claims: 2, questions: 1 });
   });
 });
 
@@ -310,11 +313,11 @@ describe("course cards", () => {
       { kind: "checkpoint", result: "pending", date: null, score: null },
     ],
   };
-  const progress = (outcomes: (string | null)[]) => ({
-    applyAlone: outcomes.includes("alone"),
+  const progress = (attempts: (Rung[] | null)[]) => ({
+    practised: attempts.some(exerciseMet),
     lastQuiz: "4/5",
     quizOk: true,
-    exercises: outcomes.map((outcome, i) => ({ n: i + 3, kind: "apply" as const, outcome: outcome as "alone" | null })),
+    exercises: attempts.map((parts, i) => ({ n: i + 3, kind: "apply" as const, steps: parts?.length ?? 3, parts })),
   });
 
   test("reading lines group by book, chapters split at the last ' ch. '", () => {
@@ -333,14 +336,20 @@ describe("course cards", () => {
 
   test("exercise rows run apply, analyse, transfer, dropping empty kinds", () => {
     const rows = exerciseRows([
-      { n: 7, kind: "transfer", outcome: null },
-      { n: 3, kind: "apply", outcome: "with hints" },
-      { n: 6, kind: "apply", outcome: "not solved" },
+      { n: 7, kind: "transfer", steps: 4, parts: null },
+      { n: 3, kind: "apply", steps: 1, parts: ["hint"] },
+      { n: 6, kind: "apply", steps: 2, parts: ["shown", "alone"] },
     ]);
     assert.deepEqual(rows, [
-      { kind: "apply", items: [{ n: 3, outcome: "with hints" }, { n: 6, outcome: "not solved" }] },
-      { kind: "transfer", items: [{ n: 7, outcome: null }] },
+      { kind: "apply", items: [{ n: 3, steps: 1, parts: ["hint"] }, { n: 6, steps: 2, parts: ["shown", "alone"] }] },
+      { kind: "transfer", items: [{ n: 7, steps: 4, parts: null }] },
     ]);
+  });
+
+  test("a part's pip: alone and nudge are your own, partial and shown are given", () => {
+    const rungs: Rung[] = ["alone", "nudge", "hint", "partial", "shown"];
+    assert.deepEqual(rungs.map(pip), ["own", "own", "hint", "given", "given"]);
+    assert.deepEqual([exerciseMet(["hint", "shown"]), exerciseMet(["alone", "partial", "shown"]), exerciseMet(null)], [true, false, false]);
   });
 
   test("the hero shows the topic with its finish chips, past a review", () => {
@@ -353,19 +362,19 @@ describe("course cards", () => {
     const items = [card.lead!, ...card.rest];
     assert.equal(card.lead?.kind, "Review");
     assert.equal(currentUnit(c, items), 2);
-    const hero = heroStep(c, unit, items, progress(["with hints", null, "with hints"]));
+    const hero = heroStep(c, unit, items, progress([["hint", "partial", "shown"], null, ["alone", "shown", "shown"]]));
     assert.deepEqual(hero, {
       kind: "topic",
       title: "Document models",
       line: "Starts with your 25 due cards",
       chips: [
         { label: "Quiz 4/5 or better", detail: "4/5", met: true },
-        { label: "Solve an exercise alone", detail: "2 tried with hints", met: false, tip: "exercises" },
+        { label: "Half an exercise, no answers given", detail: "best 1/3 · e3", met: false, tip: "exercises" },
       ],
     });
     assert.equal(heroStep(c, unit, items, progress([null]))?.chips[1].detail, "None tried yet");
-    const met = heroStep(c, unit, items, progress(["alone", "with hints"]))!.chips[1];
-    assert.deepEqual([met.met, met.detail], [true, "1 solved alone"]);
+    const met = heroStep(c, unit, items, progress([["shown", "hint"], ["nudge", "hint", "alone", "shown"]]))!.chips[1];
+    assert.deepEqual([met.met, met.detail], [true, "best 3/4 · e4"]);
     const quiet = summary({ next: { topic: "documents", status: "todo", unit: 2 } });
     assert.equal(heroStep(quiet, unit, cardData(quiet, []).rest, null)?.line, null);
   });

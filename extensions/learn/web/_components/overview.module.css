@@ -24,6 +24,8 @@
  */
 .hero {
   position: relative;
+  /* Above the sections after it, so the chips' tips aren't drawn under them. */
+  z-index: 1;
   isolation: isolate;
   display: flex;
   flex-direction: column;
@@ -203,7 +205,7 @@
 .kindRow {
   display: grid;
   grid-template-columns: 72px auto;
-  align-items: center;
+  align-items: start;
   gap: 10px;
 }
 
@@ -212,8 +214,8 @@
 }
 
 .kindNums {
-  display: flex;
-  gap: 12px;
+  display: grid;
+  gap: 4px;
 }
 
 .num,
@@ -223,9 +225,39 @@
   gap: 5px;
 }
 
+.num {
+  gap: 8px;
+}
+
 .num b {
+  min-width: 2ch;
   font-family: var(--font-mono);
   font-weight: 500;
+}
+
+.pips {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.pips > i,
+.pip {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.pipOwn {
+  background: var(--ok);
+}
+
+.pipHint {
+  background: var(--warn);
+}
+
+.pipGiven {
+  background: var(--bad);
 }
 
 .tipLegend {
@@ -246,20 +278,12 @@
   color: inherit;
 }
 
-.hints {
-  color: var(--warn);
-}
-
-.alone {
+.met {
   color: var(--ok);
 }
 
-.untried {
-  color: var(--faint);
-}
-
-.unsolved {
-  color: var(--bad);
+.pipUntried {
+  background: var(--line-strong);
 }
 
 /* ---- journey strip: a line through one dot per step ---- */

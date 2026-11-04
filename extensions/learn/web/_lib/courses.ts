@@ -51,15 +51,29 @@ export type Session = {
 };
 
 export type ExerciseKind = "apply" | "analyse" | "transfer";
-export type ExerciseOutcome = "alone" | "with hints" | "not solved";
+/** How much one part of an exercise needed, least first (formats.md's `lessons/`). */
+export type Rung = "alone" | "nudge" | "hint" | "partial" | "shown";
 
-/** A topic's done criteria, as /learn's Close checks them; `exercises` are the ones that count, by number. */
+/** A topic's done criteria, as /learn's Close checks them; `exercises` are the ones that count, by number, each with its best attempt's parts. */
 export type TopicProgress = {
-  applyAlone: boolean;
+  practised: boolean;
   lastQuiz: string | null;
   quizOk: boolean;
-  exercises: { n: number; kind: ExerciseKind; outcome: ExerciseOutcome | null }[];
+  /** `steps`: the parts its worked solution has. */
+  exercises: { n: number; kind: ExerciseKind; steps: number; parts: Rung[] | null }[];
 };
+
+const RUNG = "(?:alone|nudge|hint|partial|shown)";
+const EXERCISE_LINE = new RegExp(`^\\s?[-*+]\\s+e\\d+ · (${RUNG}(?:, ${RUNG})*)\\b`);
+
+/** An exercise line's parts, or null when it isn't one. */
+export const exerciseParts = (line: string) => (line.match(EXERCISE_LINE)?.[1].split(", ") as Rung[] | undefined) ?? null;
+
+/** The parts not given away: alone, nudge or hint. */
+export const keptParts = (parts: Rung[]) => parts.filter((p) => p !== "partial" && p !== "shown").length;
+
+/** An exercise counts toward done when at least half its parts weren't given away. */
+export const exerciseMet = (parts: Rung[] | null) => !!parts && keptParts(parts) * 2 >= parts.length;
 
 export type Overview = {
   course: string;
@@ -473,7 +487,7 @@ function itemsUnder(body: string, heading: RegExp): string[] {
   return out;
 }
 
-export type LessonStats = { exercises: number; alone: number; claims: number; questions: number };
+export type LessonStats = { exercises: number; met: number; claims: number; questions: number };
 
 /** A lesson note's counts for its facts table, from formats.md's `lessons/` contents. */
 export function lessonStats(body: string): LessonStats {
@@ -484,7 +498,7 @@ export function lessonStats(body: string): LessonStats {
   ]);
   return {
     exercises: exercises.length,
-    alone: exercises.filter((l) => /\balone\b/i.test(l)).length,
+    met: exercises.filter((l) => exerciseMet(exerciseParts(l))).length,
     claims: claims.size,
     questions: itemsUnder(body, /^open questions?/i).length,
   };

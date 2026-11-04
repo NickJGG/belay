@@ -284,37 +284,58 @@ Q.
 Q.
 `;
 
-test('progress reads exercise outcomes and the last quiz on the topic', () => {
+test('progress reads exercise parts and the last quiz on the topic', () => {
   const dir = path.join(make({ sd: { 'course.md': READ_COURSE, 'syllabus.md': READ_SYLLABUS, 'log.md': NEW_LOG } }), 'sd');
   fs.mkdirSync(path.join(dir, 'exercises'));
   fs.mkdirSync(path.join(dir, 'lessons'));
   fs.writeFileSync(path.join(dir, 'exercises', 'framework.md'), EXERCISES);
-  fs.writeFileSync(path.join(dir, 'lessons', '2026-10-26-framework.md'), '## Exercises\n- e1 · alone\n- e2 · with hints — needed the API step\n');
+  fs.writeFileSync(path.join(dir, 'lessons', '2026-10-26-framework.md'), '## Exercises\n- e1 · alone\n- e2 · hint, partial, shown — needed the API step\n');
   assert.deepStrictEqual(courses.progress(dir, 'framework'), {
-    applyAlone: false, lastQuiz: '4/5', quizOk: true, exercises: [{ n: 2, kind: 'apply', outcome: 'with hints' }],
+    practised: false, lastQuiz: '4/5', quizOk: true, exercises: [{ n: 2, kind: 'apply', steps: 1, parts: ['hint', 'partial', 'shown'] }],
   });
-  assert.deepStrictEqual(courses.progress(dir, 'estimation'), { applyAlone: false, lastQuiz: '2/5', quizOk: false, exercises: [] });
+  assert.deepStrictEqual(courses.progress(dir, 'estimation'), { practised: false, lastQuiz: '2/5', quizOk: false, exercises: [] });
   fs.writeFileSync(path.join(dir, 'lessons', '2026-10-27-checkpoint-1.md'), '- e2 · alone\n');
   fs.writeFileSync(path.join(dir, 'lessons', '2026-10-27-other-framework.md'), '- e2 · alone\n');
-  assert.strictEqual(courses.progress(dir, 'framework').applyAlone, false);
-  fs.writeFileSync(path.join(dir, 'lessons', '2026-10-27-framework.md'), '## Exercises\r\n- e2 · alone — clean\r\n');
-  assert.strictEqual(courses.progress(dir, 'framework').applyAlone, true);
-  assert.deepStrictEqual(courses.progress(dir, 'chat'), { applyAlone: false, lastQuiz: null, quizOk: false, exercises: [] });
+  fs.writeFileSync(path.join(dir, 'lessons', '2026-10-27-other-framework-2.md'), '- e2 · alone\n');
+  assert.strictEqual(courses.progress(dir, 'framework').practised, false);
+  fs.writeFileSync(path.join(dir, 'lessons', '2026-10-27-framework.md'), '## Exercises\r\n- e2 · nudge, hint, shown — one answer given\r\n');
+  assert.strictEqual(courses.progress(dir, 'framework').practised, true);
+  assert.deepStrictEqual(courses.progress(dir, 'chat'), { practised: false, lastQuiz: null, quizOk: false, exercises: [] });
 });
 
-test('progress lists harder exercises in order with the best outcome across notes', () => {
+test('progress counts an exercise at half its parts not given away; partial and shown count against', () => {
+  const dir = path.join(make({ sd: { 'course.md': READ_COURSE, 'syllabus.md': READ_SYLLABUS, 'log.md': NEW_LOG } }), 'sd');
+  fs.mkdirSync(path.join(dir, 'exercises'));
+  fs.mkdirSync(path.join(dir, 'lessons'));
+  fs.writeFileSync(path.join(dir, 'exercises', 'framework.md'), EXERCISES);
+  const note = path.join(dir, 'lessons', '2026-10-26-framework.md');
+  const practised = line => (fs.writeFileSync(note, `${line}\n`), courses.progress(dir, 'framework').practised);
+  assert.strictEqual(practised('- e2 · hint, hint, partial, shown'), true);
+  assert.strictEqual(practised('- e2 · alone, partial, shown'), false);
+  assert.strictEqual(practised('- e2 · shown'), false);
+  assert.strictEqual(practised('- e2 · hint'), true);
+  assert.strictEqual(practised('- e1 · alone, alone'), false);
+});
+
+test('progress keeps each exercise\'s best attempt, reading same-day second notes, and counts solution steps', () => {
   const dir = path.join(make({ sd: { 'course.md': READ_COURSE, 'syllabus.md': READ_SYLLABUS, 'log.md': NEW_LOG } }), 'sd');
   fs.mkdirSync(path.join(dir, 'exercises'));
   fs.mkdirSync(path.join(dir, 'lessons'));
   fs.writeFileSync(path.join(dir, 'exercises', 'framework.md'),
-    '## e10 · transfer\nQ.\n\n## e1 · recall\nQ.\n\n## e3 · apply\nQ.\n\n## e4 · analyse\nQ.\n\n## e5 · apply\nQ.\n');
-  fs.writeFileSync(path.join(dir, 'lessons', '2026-10-26-framework.md'), '- e3 · not solved\n- e4 · with hints\n- e1 · alone\n');
-  fs.writeFileSync(path.join(dir, 'lessons', '2026-10-27-framework.md'), '- e3 · with hints\n- e4 · not solved\n');
+    '## e10 · transfer\nQ.\n\n## e1 · recall\nQ.\n\n## e3 · apply\n1. Not a step.\n<details>\n\n1. First\n   1. nested\n2. Second\n</details>\n\n## e4 · analyse\nQ.\n\n## e5 · apply\nQ.\n');
+  fs.writeFileSync(path.join(dir, 'lessons', '2026-10-26-framework.md'), '- e3 · shown, shown\n- e4 · hint, hint\n- e1 · alone\n');
+  fs.writeFileSync(path.join(dir, 'lessons', '2026-10-27-framework.md'), '- e3 · hint, partial\n- e4 · partial, shown\n');
+  fs.writeFileSync(path.join(dir, 'lessons', '2026-10-27-framework-2.md'), '- e3 · alone, shown\n- e5 · partial, partial\n');
   assert.deepStrictEqual(courses.progress(dir, 'framework').exercises, [
-    { n: 3, kind: 'apply', outcome: 'with hints' },
-    { n: 4, kind: 'analyse', outcome: 'with hints' },
-    { n: 5, kind: 'apply', outcome: null },
-    { n: 10, kind: 'transfer', outcome: null },
+    { n: 3, kind: 'apply', steps: 2, parts: ['alone', 'shown'] },
+    { n: 4, kind: 'analyse', steps: 1, parts: ['hint', 'hint'] },
+    { n: 5, kind: 'apply', steps: 1, parts: ['partial', 'partial'] },
+    { n: 10, kind: 'transfer', steps: 1, parts: null },
   ]);
-  assert.strictEqual(courses.progress(dir, 'framework').applyAlone, false);
+  assert.strictEqual(courses.progress(dir, 'framework').practised, true);
+  fs.writeFileSync(path.join(dir, 'lessons', '2026-10-26-framework.md'), '- e1 · alone\n');
+  assert.strictEqual(courses.progress(dir, 'framework').practised, true);
+  fs.writeFileSync(path.join(dir, 'lessons', '2026-10-27-framework.md'), '');
+  fs.writeFileSync(path.join(dir, 'lessons', '2026-10-27-framework-2.md'), '- e3 · old line, with hints\n- e3 · with hints\n');
+  assert.strictEqual(courses.progress(dir, 'framework').practised, false);
 });

@@ -34,7 +34,7 @@ export default async function LessonPage({ params }: Props) {
   const d = course && lessonDetail(course, slug);
   if (!course || !d) notFound();
   const base = courseHref(c);
-  const { exercises, alone, claims, questions } = d.stats;
+  const { exercises, met, claims, questions } = d.stats;
   return (
     <div className={belay.page}>
       <ShellSlot owner={{ id: "learn", key: c, title: course.title }} glow={courseColor(course)} section="Lessons" />
@@ -49,7 +49,7 @@ export default async function LessonPage({ params }: Props) {
           ["Date", weekDay(d.date)],
           ["Topic", course.knowledge.has(d.topic) ? <Link href={courseHref(c, `/knowledge/${d.topic}`)}>{topicTitle(course, d.topic)}</Link> : topicTitle(course, d.topic)],
           ["Unit", d.unit ? <Link href={`${base}/syllabus`}>{`${d.unit.n} · ${d.unit.title}`}</Link> : <None />],
-          ["Exercises", exercises ? `${exercises} · ${alone} alone` : <None />],
+          ["Exercises", exercises ? `${exercises} · ${met} half without answers` : <None />],
           ["Claims", claims || <None />],
           ["Open questions", questions || <None />],
         ]}

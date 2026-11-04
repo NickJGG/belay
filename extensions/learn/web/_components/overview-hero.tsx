@@ -2,8 +2,8 @@ import type * as React from "react";
 import { StatusIcon } from "@/components/belay/status-icon";
 import { buttonClass } from "@/components/ui/button";
 import tips from "@/components/ui/tip.module.css";
-import { exerciseRows, type HeroStep, type JourneyStep, type UpNextItem } from "../_lib/course-home";
-import type { ExerciseOutcome, TopicProgress, Unit } from "../_lib/courses";
+import { exerciseRows, pip, type HeroStep, type JourneyStep, type UpNextItem } from "../_lib/course-home";
+import { exerciseMet, type TopicProgress, type Unit } from "../_lib/courses";
 import { cn } from "@/lib/utils";
 import { action, UnitBar, UpNextButton } from "./course-card";
 import card from "./course-card.module.css";
@@ -16,47 +16,45 @@ import styles from "./overview.module.css";
 type Status = React.ComponentProps<typeof StatusIcon>["status"];
 type Exercises = TopicProgress["exercises"];
 
-const MARK: Record<ExerciseOutcome | "none", { status: Status; label: string; className: string }> = {
-  "with hints": { status: "doing", label: "With hints", className: styles.hints },
-  alone: { status: "done", label: "Alone", className: styles.alone },
-  none: { status: "todo", label: "Not tried", className: styles.untried },
-  "not solved": { status: "dropped", label: "Not solved", className: styles.unsolved },
+const PIP = {
+  own: { label: "On your own", className: styles.pipOwn },
+  hint: { label: "With a hint", className: styles.pipHint },
+  given: { label: "Answer given", className: styles.pipGiven },
+  untried: { label: "Not tried", className: styles.pipUntried },
 };
 
-function Mark({ outcome }: { outcome: ExerciseOutcome | "none" }) {
-  const m = MARK[outcome];
-  return (
-    <span className={cn(styles.mark, m.className)}>
-      <StatusIcon status={m.status} size={12} label={m.label} />
-    </span>
-  );
-}
-
-/** The exercises that count, one row per kind, numbered without the `e`, with a legend of the outcomes shown. */
+/** The exercises that count, one row per kind, each a column of exercises with one pip per part of its best attempt. */
 function ExerciseTip({ exercises }: { exercises: Exercises }) {
-  const legend: (ExerciseOutcome | "none")[] = ["with hints", "alone", "none"];
-  if (exercises.some((e) => e.outcome === "not solved")) legend.push("not solved");
   return (
     <>
-      <span className={styles.tipHead}>Exercises</span>
+      <span className={styles.tipHead}>Exercises, part by part</span>
       {exerciseRows(exercises).map((row) => (
         <span key={row.kind} className={styles.kindRow}>
           <span className={styles.kindName}>{row.kind[0].toUpperCase() + row.kind.slice(1)}</span>
           <span className={styles.kindNums}>
             {row.items.map((i) => (
               <span key={i.n} className={styles.num}>
-                <Mark outcome={i.outcome ?? "none"} />
                 <b>{i.n}</b>
+                <span className={styles.pips} aria-label={i.parts ? i.parts.join(", ") : "not tried"}>
+                  {i.parts
+                    ? i.parts.map((p, k) => <i key={k} className={PIP[pip(p)].className} />)
+                    : Array.from({ length: i.steps }, (_, k) => <i key={k} className={PIP.untried.className} />)}
+                </span>
+                {exerciseMet(i.parts) ? (
+                  <span className={cn(styles.mark, styles.met)}>
+                    <StatusIcon status="done" size={12} label="Half or more" />
+                  </span>
+                ) : null}
               </span>
             ))}
           </span>
         </span>
       ))}
       <span className={styles.tipLegend}>
-        {legend.map((o) => (
-          <span key={o}>
-            <Mark outcome={o} />
-            {MARK[o].label}
+        {Object.values(PIP).map((p) => (
+          <span key={p.label}>
+            <i className={cn(styles.pip, p.className)} />
+            {p.label}
           </span>
         ))}
       </span>

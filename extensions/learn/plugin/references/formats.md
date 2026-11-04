@@ -206,7 +206,14 @@ Newest last, one entry per session:
 
 `lessons/YYYY-MM-DD-<topic>.md`: what was covered, key claims as `[[<topic>#^cN]]` links, exercises done, the learner's teach-back, the reading given, open questions.
 
-Exercises done are one line each, `- e<n> · alone | with hints | not solved`, optionally followed by ` — <note>`. `scripts/courses.js` reads them to tell whether an apply-or-harder exercise was solved alone.
+Exercises done are one line each: `- e<n> · <rung>, <rung>, …`, one rung per part in the order of the worked solution's numbered steps (one part when it has none), optionally followed by ` — <note>`. E.g. `- e3 · alone, nudge, hint, hint, shown — the deep dive needed the answer`. Rungs, by what the tutor gave away:
+- `alone`: nothing.
+- `nudge`: where the problem is, not what it is.
+- `hint`: the idea to use, not how to apply it.
+- `partial`: part of the answer.
+- `shown`: the solution, or most of it.
+
+`scripts/courses.js` reads them, taking each exercise's best attempt across the topic's notes. It counts an apply-or-harder exercise toward done when at least half its parts are `hint` or less, and the Overview draws the parts as pips. A second note on the same day is `lessons/YYYY-MM-DD-<topic>-2.md` (and so on), and it is read too.
 
 A checkpoint's note is `lessons/YYYY-MM-DD-checkpoint-<n>.md`: the task file, the marking table (criterion · points · gap), score and result, clarifications given, weak topics as `[[<topic>#^cN]]` links.
 

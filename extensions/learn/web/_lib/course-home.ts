@@ -1,12 +1,13 @@
 import {
   checkpointLabel,
+  keptParts,
   topicTitle,
   unitFractions,
   type CourseSummary,
   type ExerciseKind,
-  type ExerciseOutcome,
   type Overview,
   type Reading,
+  type Rung,
   type Session,
   type TopicProgress,
   type TopicStatus,
@@ -294,19 +295,27 @@ export function readingBooks(items: Reading[]): ReadingBook[] {
 const KINDS: ExerciseKind[] = ["apply", "analyse", "transfer"];
 
 /** The exercise tip's rows: one per kind, hardest last, kinds without exercises dropped. */
-export function exerciseRows(exercises: TopicProgress["exercises"]): { kind: ExerciseKind; items: { n: number; outcome: ExerciseOutcome | null }[] }[] {
+export function exerciseRows(
+  exercises: TopicProgress["exercises"],
+): { kind: ExerciseKind; items: { n: number; steps: number; parts: Rung[] | null }[] }[] {
   return KINDS.map((kind) => ({
     kind,
-    items: exercises.filter((e) => e.kind === kind).map(({ n, outcome }) => ({ n, outcome })),
+    items: exercises.filter((e) => e.kind === kind).map(({ n, steps, parts }) => ({ n, steps, parts })),
   })).filter((row) => row.items.length);
 }
 
+/** A part's pip: on your own (alone or nudge), with a hint, or answer given (partial or shown). */
+export function pip(rung: Rung): "own" | "hint" | "given" {
+  return rung === "alone" || rung === "nudge" ? "own" : rung === "hint" ? "hint" : "given";
+}
+
+/** The tried exercise with the largest share of parts not given away, as `best k/m · e<n>`; the lower number on a tie. */
 function exerciseDetail(exercises: TopicProgress["exercises"]): string {
-  const count = (o: ExerciseOutcome) => exercises.filter((e) => e.outcome === o).length;
-  if (count("alone")) return `${count("alone")} solved alone`;
-  if (count("with hints")) return `${count("with hints")} tried with hints`;
-  if (count("not solved")) return `${count("not solved")} not solved`;
-  return "None tried yet";
+  let best: { n: number; parts: Rung[] } | null = null;
+  for (const { n, parts } of exercises) {
+    if (parts && (!best || keptParts(parts) / parts.length > keptParts(best.parts) / best.parts.length)) best = { n, parts };
+  }
+  return best ? `best ${keptParts(best.parts)}/${best.parts.length} · e${best.n}` : "None tried yet";
 }
 
 /**
@@ -352,7 +361,7 @@ export function heroStep(
     chips: progress
       ? [
           { label: "Quiz 4/5 or better", detail: progress.lastQuiz, met: progress.quizOk },
-          { label: "Solve an exercise alone", detail: exerciseDetail(progress.exercises), met: progress.applyAlone, tip: "exercises" },
+          { label: "Half an exercise, no answers given", detail: exerciseDetail(progress.exercises), met: progress.practised, tip: "exercises" },
         ]
       : [],
   };

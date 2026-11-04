@@ -57,7 +57,13 @@ Pick 1–2 entries from *Mine* in `misconceptions.md`: the ones never revisited 
 ### 5. Practise
 - Take exercises from `exercises/<topic>.md` the learner hasn't done (the topic's past `lessons/` notes list which ones were), moving from `recall`/`apply` towards `analyse`/`transfer`.
 - They attempt first. Hint by escalating steps; never paste the worked solution until they've made a real attempt, and then have them redo it after.
-- Note each exercise as solved alone, solved with hints, or not solved.
+- Score each exercise part by part, its parts being the numbered steps of its worked solution (one part if it has none). Each part gets the most help it needed:
+  - `alone`: none.
+  - `nudge`: you said where the problem is, not what it is.
+  - `hint`: you named the idea to use, not how to apply it.
+  - `partial`: you gave part of the answer.
+  - `shown`: you gave the solution, or most of it.
+  A slip they fix after a nudge is still theirs; don't count it as more.
 
 ### 6. Teach-back
 Have them explain the objective as if to a classmate. You play a skeptical student: ask "why?", offer a plausible wrong idea (prefer one from *Known in the field*), and push on the weakest step. Correct only through questions. Keep their explanation for the lesson note.
@@ -70,10 +76,10 @@ Have them explain the objective as if to a classmate. You play a skeptical stude
    - The A must agree with `knowledge/` and with the correction logged in `misconceptions.md`.
    - Show them, edit until the learner approves, then write the approved ones as `### <topic>` blocks with `Q:`/`A:` to a scratch file and run `cards.js add <course> <file>`. Report the new IDs.
 3. **Misconceptions:** append each real error from this session to *Mine*, in the formats.md shape.
-4. **Syllabus:** set the topic `done` only if they solved an `apply` or harder exercise alone and passed the quiz items on it (4/5 or better); otherwise leave it `in-progress`.
+4. **Syllabus:** set the topic `done` when the quiz scored 4/5 or better and some `apply` or harder exercise has at least half its parts at `hint` or less (`partial` and `shown` count against); otherwise leave it `in-progress`. Done means taught and practised; the unit checkpoint is the test of mastery.
 5. **verify.md:** list any items appended this session, and say `/learn:build <course> --verify` resolves them.
 6. **Reading** (when it applies): for each claim missed in the quiz, practice or teach-back, name the source and section behind it as a re-read, e.g. "Designing Data-Intensive Applications ch. 6, 'Problems with Replication Lag'"; when the source has a reading line in the unit, take the label and section from it. In a `read-after` unit, name the unit's reading lines to compare against their own attempt. If `next` opens a unit, give that unit's reading lines now so they can be done before the next session.
-7. **Lesson note** (full sessions): `lessons/<today>-<topic>.md` with what was covered, the key claims as `[[<topic>#^c<n>]]`, exercises done (one `- e<n> · alone | with hints | not solved` line each, as formats.md has it), the teach-back, the reading given, and open questions.
+7. **Lesson note** (full sessions): `lessons/<today>-<topic>.md` with what was covered, the key claims as `[[<topic>#^c<n>]]`, exercises done (one `- e<n> · <rung>, <rung>, …` line each, as formats.md has it), the teach-back, the reading given, and open questions.
 8. **log.md:** append the entry from formats.md (`full` or `quick`): the heading with the start time, `cards added` (when any were), skipped steps, `next`, and `ended: complete`.
 9. **Voice** (language trait, full sessions): offer a `work/voice-NN.md` prompt, as the trait describes.
 

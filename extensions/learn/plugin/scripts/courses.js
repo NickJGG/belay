@@ -102,32 +102,54 @@ function titles(dir) {
 }
 
 const HARD = ['apply', 'analyse', 'transfer'];
-const OUTCOMES = ['not solved', 'with hints', 'alone'];
+const RUNG = '(?:alone|nudge|hint|partial|shown)';
+const EXERCISE_LINE = new RegExp(`^- e(\\d+) · (${RUNG}(?:, ${RUNG})*)\\b`, 'gm');
+/* Parts not given away: alone, nudge or hint. */
+const kept = parts => parts.filter(p => p !== 'partial' && p !== 'shown').length;
+const keptShare = parts => kept(parts) / parts.length;
 
-/* The criteria /learn:learn's Close sets a topic done by: an apply-or-harder exercise solved alone, quiz 4/5 or better.
-   `exercises` lists those harder exercises, each with its best outcome across the topic's lesson notes. */
+/* A topic's lesson notes in order: `<date>-<topic>.md`, then a same-day `<date>-<topic>-<n>.md`. */
+function topicNotes(ldir, topic) {
+  if (!fs.existsSync(ldir)) return [];
+  const name = new RegExp(`^(\\d{4}-\\d{2}-\\d{2})-${escape(topic)}(?:-(\\d+))?\\.md$`);
+  return fs.readdirSync(ldir)
+    .map(f => ({ f, m: f.match(name) }))
+    .filter(x => x.m)
+    .sort((a, b) => a.m[1].localeCompare(b.m[1]) || Number(a.m[2] || 1) - Number(b.m[2] || 1))
+    .map(x => x.f);
+}
+
+/* The criteria /learn:learn's Close sets a topic done by: quiz 4/5 or better, and an apply-or-harder exercise with at
+   least half its parts not given away. `exercises` lists those harder exercises, each with the parts of its best
+   attempt across the topic's lesson notes (most parts kept; the later note on a tie), and `steps`, the number of parts
+   its worked solution has (its top-level numbered steps, or 1). */
 function progress(dir, topic) {
   const kinds = {};
-  for (const m of readIf(path.join(dir, 'exercises', `${topic}.md`)).matchAll(/^## e(\d+) · (\w+)/gm)) kinds[m[1]] = m[2];
+  const steps = {};
+  for (const sec of readIf(path.join(dir, 'exercises', `${topic}.md`)).split(/^(?=## e\d+ · )/m)) {
+    const m = sec.match(/^## e(\d+) · (\w+)/);
+    if (!m) continue;
+    kinds[m[1]] = m[2];
+    const solution = sec.slice(Math.max(0, sec.indexOf('<details>')));
+    steps[m[1]] = (solution.match(/^\d+\. /gm) || []).length || 1;
+  }
   const ldir = path.join(dir, 'lessons');
-  const notes = fs.existsSync(ldir)
-    ? fs.readdirSync(ldir).filter(f => /^\d{4}-\d{2}-\d{2}-/.test(f) && f.slice(11) === `${topic}.md`)
-    : [];
   const best = {};
-  for (const f of notes) {
-    for (const m of readIf(path.join(ldir, f)).matchAll(/^- e(\d+) · (alone|with hints|not solved)\b/gm)) {
-      if (OUTCOMES.indexOf(m[2]) > OUTCOMES.indexOf(best[m[1]])) best[m[1]] = m[2];
+  for (const f of topicNotes(ldir, topic)) {
+    for (const m of readIf(path.join(ldir, f)).matchAll(EXERCISE_LINE)) {
+      const parts = m[2].split(', ');
+      if (!best[m[1]] || keptShare(parts) >= keptShare(best[m[1]])) best[m[1]] = parts;
     }
   }
   const exercises = Object.keys(kinds)
     .filter(n => HARD.includes(kinds[n]))
-    .map(n => ({ n: Number(n), kind: kinds[n], outcome: best[n] || null }))
+    .map(n => ({ n: Number(n), kind: kinds[n], steps: steps[n], parts: best[n] || null }))
     .sort((a, b) => a.n - b.n);
-  const applyAlone = exercises.some(e => e.outcome === 'alone');
+  const practised = exercises.some(e => e.parts && kept(e.parts) * 2 >= e.parts.length);
   const quizzes = sessions(dir).filter(s => s.quiz && s.topics.includes(topic));
   const lastQuiz = quizzes.length ? quizzes[quizzes.length - 1].quiz : null;
   const [got, of] = lastQuiz ? lastQuiz.split('/').map(Number) : [0, 1];
-  return { applyAlone, lastQuiz, quizOk: got / of >= 0.8, exercises };
+  return { practised, lastQuiz, quizOk: got / of >= 0.8, exercises };
 }
 
 function overview(course, date) {
