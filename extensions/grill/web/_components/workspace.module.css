@@ -101,20 +101,10 @@
   height: 26px;
 }
 
-.olHead:hover {
-  background: none;
-  color: var(--muted);
-}
-
-.olHead b {
+.olTopic {
   font-family: var(--font-display);
   font-size: 14px;
   color: var(--text);
-}
-
-.olCount {
-  font-size: 11px;
-  color: var(--faint);
 }
 
 /* The views and questions scroll between the pinned head and foot, with no visible bar. */
@@ -965,6 +955,78 @@ a.chip:hover {
 
 .card h2 {
   font-size: var(--text-lg);
+}
+
+/* The Overview: a settled grill's status card. */
+.overview {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-6) var(--space-8);
+  align-self: flex-start;
+}
+
+.ovTitle {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: var(--leading-tight);
+}
+
+.ovAbout {
+  margin: 0 0 var(--space-5);
+  color: var(--muted);
+  line-height: var(--leading-normal);
+}
+
+.ovSegs {
+  display: flex;
+  gap: 4px;
+  max-width: 160px;
+  margin-top: 6px;
+}
+
+.ovSegs i {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+}
+
+.ovSeg-done {
+  background: var(--ok);
+}
+
+.ovSeg-open {
+  background: var(--brand);
+}
+
+.ovSeg-deferred {
+  background: var(--faint);
+}
+
+.ovWhere {
+  margin: 0;
+  line-height: var(--leading-normal);
+}
+
+.ovWhere a {
+  color: var(--brand);
+}
+
+.ovWhere a:hover {
+  text-decoration: underline;
+}
+
+.ovSec {
+  margin-top: var(--space-6);
+}
+
+.ovSec h3 {
+  margin: 0 0 8px;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--faint);
 }
 
 .cardOpts {

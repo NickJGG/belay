@@ -67,5 +67,5 @@ export default async function SessionPage({ params }: { params: Promise<{ slug: 
     questions: [],
   };
 
-  return <SessionWorkspace doc={doc} files={detail.files} live={live} nav={sessionNav} />;
+  return <SessionWorkspace doc={doc} issues={detail.issues} files={detail.files} live={live} nav={sessionNav} />;
 }

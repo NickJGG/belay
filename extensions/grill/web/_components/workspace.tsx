@@ -32,8 +32,10 @@ import {
   viewHash,
   type Question,
   type SessionDoc,
+  type StageView,
   type View,
 } from "../_lib/session-doc";
+import type { GrillIssue } from "../_lib/detail.server";
 import { usePendingComment } from "./pending-comment";
 import type { GrillLive } from "../_lib/runtime.server";
 import type { QuestionSummary } from "../_lib/sessions";
@@ -43,6 +45,7 @@ import { Bar, type CommentProps, type PickProps } from "./bar";
 import type { LinkState, Send } from "@/components/session/drawer";
 import { Frame } from "./frame";
 import { Outline, OutlineList } from "./outline";
+import { Overview } from "./overview";
 import shared from "@/components/session/session.module.css";
 import styles from "./workspace.module.css";
 
@@ -63,6 +66,7 @@ export type SessionNav = {
 
 type Props = {
   doc: SessionDoc;
+  issues: GrillIssue[];
   files: Partial<Record<MockFile, number>>;
   live: GrillLive | null;
   nav: SessionNav;
@@ -166,7 +170,7 @@ const goTo = (hash: string) => {
   if (location.hash !== hash) location.hash = hash;
 };
 
-export function SessionWorkspace({ doc, files, live, nav }: Props) {
+export function SessionWorkspace({ doc, issues, files, live, nav }: Props) {
   const router = useRouter();
   const view = useView(doc);
   const [shown, setShown] = React.useState<{ q: number; opt?: string } | null>(null);
@@ -228,10 +232,11 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
     return other ?? BEFORE;
   })();
 
-  // What the stage draws: this question's mock, else Current design under a "no mock" label.
-  const stageView: View = view.kind === "q" && !qMocked ? { kind: "current" } : view;
+  const overview = view.kind === "overview";
+  // What the stage draws: this question's mock, else Current design under a "no mock" label. Overview draws none.
+  const stageView: StageView = view.kind === "overview" || (view.kind === "q" && !qMocked) ? { kind: "current" } : view;
   const controls = spec?.CONTROLS ?? {};
-  const controlKeys = mock && spec ? viewControls(doc, stageView, controls) : [];
+  const controlKeys = mock && spec && !overview ? viewControls(doc, stageView, controls) : [];
   const phone = device === "phone";
 
   const styleUrls = mock
@@ -416,9 +421,11 @@ export function SessionWorkspace({ doc, files, live, nav }: Props) {
     [resume, copyResume],
   );
 
-  const title = q ? q.title : view.kind === "today" ? "Today" : "Current design";
+  const title = q ? q.title : overview ? "Overview" : view.kind === "today" ? "Today" : "Current design";
   let stage: React.ReactNode;
-  if (!mock) {
+  if (overview) {
+    stage = <Overview doc={doc} issues={issues} />;
+  } else if (!mock) {
     stage = <QuestionCard q={q} doc={doc} />;
   } else if (missing) {
     stage = <p className={styles.stageNote}>This session has mock settings but no preview.spec.js yet.</p>;

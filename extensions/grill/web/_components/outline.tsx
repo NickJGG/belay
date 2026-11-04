@@ -8,6 +8,7 @@ import { RailFoot } from "@/components/layout/rail";
 import { SidePane } from "@/components/layout/side-pane";
 import { tip } from "@/components/layout/side-tip";
 import { useNav } from "@/components/layout/site-nav";
+import { GrillIcon } from "./mark";
 import { families, statusChip, type Opt, type Question, type SessionDoc } from "../_lib/session-doc";
 import { cn } from "@/lib/utils";
 import styles from "./workspace.module.css";
@@ -16,7 +17,7 @@ const RAIL_MARK: Record<string, string> = { resolved: "done", open: "open", defe
 
 type Props = {
   doc: SessionDoc;
-  /** The open view's hash (`#current`, `#today`, `#q-<n>`). */
+  /** The open view's hash (`#overview`, `#current`, `#today`, `#q-<n>`). */
   here: string;
   /** The selected question's shown option. */
   opt: string;
@@ -28,12 +29,11 @@ type Props = {
 };
 
 /**
- * A grill's left pane in place of the sidebar (>=768px): the app nav, the topic, Current design and Today, then the
+ * A grill's left pane in place of the sidebar (>=768px): the app nav, the topic (Overview), Current design and Today, then the
  * questions with the selected one's options beneath. Every row keeps its key (mark, icon, number, letter) in one
  * column; expanding only adds labels to its right, so nothing moves.
  */
 export function Outline({ doc, here, opt, onOpt, pulse, open, onToggle }: Props) {
-  const decided = doc.questions.filter((q) => q.status === "resolved").length;
   const nav = useNav();
   return (
     <SidePane open={open} label="Outline" className={cn(!open && styles.outlineShut)} foot={<RailFoot open={open} onToggle={onToggle} label="the outline ( | )" />}>
@@ -53,12 +53,14 @@ export function Outline({ doc, here, opt, onOpt, pulse, open, onToggle }: Props)
           : null}
       </nav>
       <span className={styles.olRule} />
-      <div className={cn(styles.olRow, styles.olHead)} {...tip(open, `${doc.topic} · ${decided} of ${doc.questions.length} decided`)}>
-        <span className={cn(styles.olKey, styles.olCount)}>
-          {decided}/{doc.questions.length}
-        </span>
-        {open ? <b className={styles.olText}>{doc.topic}</b> : null}
-      </div>
+      <ViewRow
+        hash="#overview"
+        here={here}
+        open={open}
+        icon={<GrillIcon size={16} aria-hidden />}
+        label={<b className={cn(styles.olText, styles.olTopic)}>{doc.topic}</b>}
+        tipText={`${doc.topic} · Overview`}
+      />
       <div className={styles.olScroll}>
         <Rows doc={doc} here={here} opt={opt} onOpt={onOpt} pulse={pulse} open={open} />
       </div>
@@ -68,13 +70,21 @@ export function Outline({ doc, here, opt, onOpt, pulse, open, onToggle }: Props)
 
 type RowsProps = Pick<Props, "doc" | "here" | "opt" | "onOpt" | "pulse" | "open">;
 
+type ViewRowProps = { hash: string; here: string; open: boolean; icon: React.ReactNode; label: React.ReactNode; tipText: string };
+
+function ViewRow({ hash, here, open, icon, label, tipText }: ViewRowProps) {
+  return (
+    <a href={hash} className={cn(styles.olRow, here === hash && styles.olOn)} {...tip(open, tipText)} aria-label={open ? undefined : tipText}>
+      <span className={styles.olKey}>{icon}</span>
+      {open ? label : null}
+    </a>
+  );
+}
+
 /** Current design and Today (with a mock), then the questions with the selected one's options. */
 function Rows({ doc, here, opt, onOpt, pulse, open }: RowsProps) {
   const view = (hash: string, icon: React.ReactNode, label: string) => (
-    <a href={hash} className={cn(styles.olRow, here === hash && styles.olOn)} {...tip(open, label)} aria-label={open ? undefined : label}>
-      <span className={styles.olKey}>{icon}</span>
-      {open ? <span className={styles.olText}>{label}</span> : null}
-    </a>
+    <ViewRow hash={hash} here={here} open={open} icon={icon} label={<span className={styles.olText}>{label}</span>} tipText={label} />
   );
   return (
     <>
@@ -133,6 +143,7 @@ function Rows({ doc, here, opt, onOpt, pulse, open }: RowsProps) {
 export function OutlineList(props: Omit<RowsProps, "open">) {
   return (
     <div className={styles.olSheet}>
+      <ViewRow hash="#overview" here={props.here} open icon={<GrillIcon size={16} aria-hidden />} label={<span className={styles.olText}>Overview</span>} tipText="Overview" />
       <Rows {...props} open />
     </div>
   );

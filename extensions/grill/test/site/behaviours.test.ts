@@ -40,14 +40,19 @@ describe("optForKey", () => {
 });
 
 describe("stepView", () => {
-  test("rail order is Current, Today, then the questions", () => {
-    assert.deepEqual(viewOrder(doc).map(viewHash), ["#current", "#today", "#q-3", "#q-4"]);
+  test("rail order is Overview, Current, Today, then the questions", () => {
+    assert.deepEqual(viewOrder(doc).map(viewHash), ["#overview", "#current", "#today", "#q-3", "#q-4"]);
+  });
+  test("Overview comes first even without a mock", () => {
+    assert.deepEqual(viewOrder({ ...doc, mock: null }).map(viewHash), ["#overview", "#q-3", "#q-4"]);
   });
   test("steps both ways and stops at the ends", () => {
     assert.equal(viewHash(stepView(doc, { kind: "q", n: 3 }, 1)!), "#q-4");
     assert.equal(viewHash(stepView(doc, { kind: "q", n: 3 }, -1)!), "#today");
     assert.equal(stepView(doc, { kind: "q", n: 4 }, 1), null);
-    assert.equal(stepView(doc, { kind: "current" }, -1), null);
+    assert.equal(viewHash(stepView(doc, { kind: "current" }, -1)!), "#overview");
+    assert.equal(stepView(doc, { kind: "overview" }, -1), null);
+    assert.equal(viewHash(stepView(doc, { kind: "overview" }, 1)!), "#current");
   });
   test("a new page has no Today", () => {
     const fresh = { ...doc, mock: { ...doc.mock!, page: "new" as const } };

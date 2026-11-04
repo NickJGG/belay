@@ -63,8 +63,11 @@ export type SessionDoc = {
   questions: Question[];
 };
 
-/** What the stage shows: the page before the session, every pick combined, or one question. */
-export type View = { kind: "today" } | { kind: "current" } | { kind: "q"; n: number };
+/** What the stage shows: the grill's status card, the page before the session, every pick combined, or one question. */
+export type View = { kind: "overview" } | { kind: "today" } | { kind: "current" } | { kind: "q"; n: number };
+
+/** A view whose stage draws the mock. */
+export type StageView = Exclude<View, { kind: "overview" }>;
 
 /** The option shown for a question; `BEFORE` is the question's region without its own patch. */
 export const BEFORE = "before";
@@ -73,7 +76,7 @@ const picked = (q: Question) => q.status === "resolved" && q.pick != null;
 const patchOf = (q: Question | undefined, key: string) => q?.opts?.find((o) => o.key === key)?.patch ?? {};
 
 /** Decision values for a view; for a question, `opt` is the option shown (`BEFORE` for none). */
-export function decisions(doc: SessionDoc, base: Patch, view: View, opt: string = BEFORE): Patch {
+export function decisions(doc: SessionDoc, base: Patch, view: StageView, opt: string = BEFORE): Patch {
   const d = { ...base };
   if (view.kind === "today") return d;
   const n = view.kind === "q" ? view.n : null;
@@ -102,7 +105,7 @@ export function context(
 }
 
 /** The controls a view's bar offers, limited to keys the spec defines. */
-export function viewControls(doc: SessionDoc, view: View, controls: Controls): string[] {
+export function viewControls(doc: SessionDoc, view: StageView, controls: Controls): string[] {
   const keys = view.kind === "q" ? doc.questions.find((q) => q.n === view.n)?.mock?.controls : doc.mock?.currentControls;
   return (keys ?? []).filter((k) => k in controls);
 }
@@ -148,8 +151,12 @@ export function statusChip(q: Question): StatusChip {
   return { text: "open", tone: "open" };
 }
 
-/** Where the page opens: the newest open question, else Current design when there's a mock, else the last question. */
+/**
+ * Where the page opens: Overview for a settled grill; in progress, the newest open question, else Current design
+ * when there's a mock, else the last question.
+ */
 export function initialView(doc: SessionDoc): View {
+  if (doc.status !== "in-progress") return { kind: "overview" };
   const open = [...doc.questions].reverse().find((q) => q.status === "open");
   if (open) return { kind: "q", n: open.n };
   if (doc.mock) return { kind: "current" };
@@ -157,11 +164,22 @@ export function initialView(doc: SessionDoc): View {
   return last ? { kind: "q", n: last.n } : { kind: "current" };
 }
 
+export type DecidedSeg = "done" | "open" | "deferred";
+
+/** Resolved questions out of every question but dropped and see ones, with a segment per counted question. */
+export function decidedCount(doc: SessionDoc): { decided: number; total: number; segs: DecidedSeg[] } {
+  const segs: DecidedSeg[] = doc.questions
+    .filter((q) => q.status !== "dropped" && q.status !== "see")
+    .map((q) => (q.status === "resolved" ? "done" : q.status === "deferred" ? "deferred" : "open"));
+  return { decided: segs.filter((s) => s === "done").length, total: segs.length, segs };
+}
+
 export const viewHash = (v: View) => (v.kind === "q" ? `#q-${v.n}` : `#${v.kind}`);
 
 /** The view a location hash names, or null when it names none this session has. */
 export function parseViewHash(hash: string, doc: SessionDoc): View | null {
   const h = hash.replace(/^#/, "");
+  if (h === "overview") return { kind: "overview" };
   if (h === "current") return { kind: "current" };
   if (h === "today") return doc.mock?.page === "existing" ? { kind: "today" } : null;
   const m = /^q-(\d+)$/.exec(h);

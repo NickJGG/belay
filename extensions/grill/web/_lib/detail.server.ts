@@ -11,7 +11,9 @@ import { projectsOf } from "@/lib/projects";
 import { readChat } from "@/lib/session-files";
 import type { ItemContext } from "@/lib/session-kind";
 import { isSlug } from "@/lib/sessions";
+import type { Issue } from "../../../../src/store.ts";
 import type { Usage } from "@/lib/usage";
+import { byGrillOf } from "./issues";
 import { MOCK_FILES, type MockFile } from "./mock";
 import type { SessionDoc } from "./session-doc";
 import type { GrillLive, runtime } from "./runtime.server";
@@ -40,7 +42,11 @@ export async function sessionData(slug: string): Promise<SessionPage | null> {
   return { session, live: items[0] ?? null, projectName, mark: m.get(slug) ?? null };
 }
 
+/** An issue the grill links to, as its Overview lists it. */
+export type GrillIssue = Pick<Issue, "id" | "title" | "status" | "priority">;
+
 export type SessionDetail = SessionPage & {
+  issues: GrillIssue[];
   /** Null for a legacy grill, or a fresh one with only bridge.json. */
   doc: SessionDoc | null;
   chat: ChatEntry[];
@@ -58,12 +64,13 @@ export async function sessionDetail(slug: string): Promise<SessionDetail | null>
   const root = sessionRoots().grill;
   if (!page || !root) return null;
   const dir = path.join(root, slug);
+  const issues = (byGrillOf(belay().issues).get(slug) ?? []).map(({ id, title, status, priority }) => ({ id, title, status, priority }));
   if (page.session.legacy) {
     let markdown = "";
     try {
       markdown = parseFrontmatter(readFileSync(path.join(dir, `${slug}.md`), "utf8")).body;
     } catch {}
-    return { ...page, doc: null, chat: [], turn: null, usage: null, files: {}, legacy: { markdown, preview: existsSync(path.join(dir, "preview.html")) } };
+    return { ...page, issues, doc: null, chat: [], turn: null, usage: null, files: {}, legacy: { markdown, preview: existsSync(path.join(dir, "preview.html")) } };
   }
   const files: SessionDetail["files"] = {};
   for (const name of MOCK_FILES) {
@@ -71,5 +78,5 @@ export async function sessionDetail(slug: string): Promise<SessionDetail | null>
       files[name] = statSync(path.join(dir, name)).mtimeMs;
     } catch {}
   }
-  return { ...page, doc: (await grillRuntime()).readDoc(dir), chat: readChat(dir), turn: openTurn(slug), usage: usageFor(slug), files, legacy: null };
+  return { ...page, issues, doc: (await grillRuntime()).readDoc(dir), chat: readChat(dir), turn: openTurn(slug), usage: usageFor(slug), files, legacy: null };
 }

@@ -9,8 +9,8 @@ export type Stage = "grilling" | "building" | "shipped";
 export const STAGES: Stage[] = ["grilling", "building", "shipped"];
 
 /** Issues per grill session slug, each list in id order. */
-export function issuesByGrill(issues: Issue[]): Map<string, Issue[]> {
-  const out = new Map<string, Issue[]>();
+export function issuesByGrill<T extends Issue>(issues: T[]): Map<string, T[]> {
+  const out = new Map<string, T[]>();
   for (const i of [...issues].sort((a, b) => compareIds(a.id, b.id))) {
     const { grill } = owned(i, "grill");
     if (!grill) continue;
@@ -24,10 +24,11 @@ export function issuesByGrill(issues: Issue[]): Map<string, Issue[]> {
 const grouped = new WeakMap<readonly Issue[], Map<string, Issue[]>>();
 
 /** `issuesByGrill`, worked out once per issue list (belay's, which a request loads once). */
-export function byGrillOf(issues: Issue[]): Map<string, Issue[]> {
+export function byGrillOf<T extends Issue>(issues: T[]): Map<string, T[]> {
   let by = grouped.get(issues);
   if (!by) grouped.set(issues, (by = issuesByGrill(issues)));
-  return by;
+  // Keyed by the list itself, so its groups hold that list's own issues.
+  return by as Map<string, T[]>;
 }
 
 /**

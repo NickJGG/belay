@@ -16,9 +16,9 @@ export function optForKey(q: Question, letter: string, current: string): string 
   return i === -1 ? keys[0] : keys[(i + 1) % keys.length];
 }
 
-/** Views in rail order: Current design, Today, then the questions. */
+/** Views in rail order: Overview, Current design, Today, then the questions. */
 export function viewOrder(doc: SessionDoc): View[] {
-  const out: View[] = [];
+  const out: View[] = [{ kind: "overview" }];
   if (doc.mock) out.push({ kind: "current" });
   if (doc.mock?.page === "existing") out.push({ kind: "today" });
   for (const q of doc.questions) out.push({ kind: "q", n: q.n });

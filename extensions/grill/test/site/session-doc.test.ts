@@ -5,6 +5,7 @@ import { fitDesktop, frameDoc, loadSpec, renderBody } from "../../web/_lib/mock.
 import {
   BEFORE,
   context,
+  decidedCount,
   decisions,
   defaultOpt,
   families,
@@ -113,6 +114,29 @@ describe("question helpers", () => {
     assert.equal(parseViewHash("#q-9", doc), null);
     assert.deepEqual(parseViewHash("#today", doc), { kind: "today" });
     assert.equal(parseViewHash("#today", { ...doc, mock: { ...doc.mock!, page: "new" } }), null);
+    assert.deepEqual(parseViewHash("#overview", doc), { kind: "overview" });
+    assert.deepEqual(parseViewHash("#overview", { ...doc, mock: null }), { kind: "overview" });
+  });
+
+  test("a settled grill opens on Overview", () => {
+    assert.deepEqual(initialView({ ...doc, status: "planned" }), { kind: "overview" });
+    assert.deepEqual(initialView({ ...doc, status: "abandoned" }), { kind: "overview" });
+  });
+
+  test("decidedCount leaves out dropped and see, keeps deferred", () => {
+    const d: SessionDoc = {
+      ...doc,
+      questions: [
+        { n: 1, title: "a", status: "resolved" },
+        { n: 2, title: "b", status: "open" },
+        { n: 3, title: "c", status: "deferred" },
+        { n: 4, title: "d", status: "dropped" },
+        { n: 5, title: "e", status: "see", see: 1 },
+        { n: 6, title: "f", status: "resolved" },
+      ],
+    };
+    assert.deepEqual(decidedCount(d), { decided: 2, total: 4, segs: ["done", "open", "deferred", "done"] });
+    assert.deepEqual(decidedCount({ ...doc, questions: [] }), { decided: 0, total: 0, segs: [] });
   });
 });
 

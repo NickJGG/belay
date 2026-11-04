@@ -53,6 +53,9 @@ _Avoid_: session page
 **Outline**:
 A Grill Workspace's left pane, in place of the sidebar: the app nav, its questions and the selected question's options. Collapsible to a column of question numbers. On a phone it opens as a sheet from the stage header's "Qn of N".
 
+**Overview**:
+A Grill's first view, a status card (status, decided count, where it stands, its issues) opened from the Outline's head row, and the one a settled Grill opens on.
+
 **Reading page**:
 Any page that isn't a Workspace (Home, Projects, an Issue, a Course's tabs), which opens with the sidebar expanded.
 

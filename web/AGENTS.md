@@ -211,5 +211,5 @@ open. The core message kinds live in `bridge/protocol.mts`, event types in `brid
   `images/`; `GET`/`DELETE /api/s/<slug>/images/<name>` serve and remove one, and a name `chat.jsonl` uses can't be deleted.
 - The shell keeps `belay:sidebar` (collapsed per page kind), `belay:tab` (the selected Tab), `belay:tabs` (Tab
   order), `belay:seen` (Tabs opened in this browser; a first visit seeds it with what's live), `belay:drawer` and
-  `belay:outline` (a grill's Outline expanded) in localStorage. Per-session UI state is in `belay:session:<slug>`; the view stays in the hash (`#current`,
+  `belay:outline` (a grill's Outline expanded) in localStorage. Per-session UI state is in `belay:session:<slug>`; the view stays in the hash (`#overview`, `#current`,
   `#today`, `#q-<n>`).
