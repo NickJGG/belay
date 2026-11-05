@@ -20,7 +20,9 @@
 
 .dir,
 .file {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 8px;
   overflow: hidden;
   border-radius: var(--radius-sm);
@@ -33,6 +35,16 @@
   color: var(--faint);
 }
 
+.file > svg {
+  flex: none;
+}
+
+.fileName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .file:hover {
   color: var(--text);
 }
@@ -42,11 +54,59 @@
   color: var(--text);
 }
 
-.newFile {
+.workspaceRail {
+  grid-template-columns: 30px minmax(0, 1fr);
+}
+
+.sideHead {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
   gap: var(--space-1);
 }
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.railButton {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+}
+
+.railButton:hover {
+  color: var(--text);
+}
+
+.newFile {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.newExt {
+  margin-left: auto;
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.newForm {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 
 .newInput {
   width: 100%;
@@ -319,6 +379,11 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .rail {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
   .tree {
     max-height: 160px;
     overflow-y: auto;
@@ -327,4 +392,51 @@
   .pane {
     height: max(360px, calc(100dvh - 260px));
   }
+}
+
+.askButton {
+  max-width: 220px;
+}
+
+.askButton > span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.askBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 340px;
+  padding: var(--space-3);
+}
+
+.askText {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--text-sm);
+  resize: vertical;
+}
+
+.askText:focus {
+  outline: none;
+  border-color: var(--text);
+}
+
+.askFoot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.askHint {
+  flex: 1;
+  color: var(--faint);
+  font-size: var(--text-xs);
 }

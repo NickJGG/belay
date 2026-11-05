@@ -235,3 +235,8 @@ main[data-kind="workspace"] > .coursePage {
     --main-pad-x: var(--space-6);
   }
 }
+
+/* An open diagram (the Work pane's `data-canvas`) lifts the page's 1100px cap; :has() outranks `belay.page`. */
+.coursePage:has([data-canvas]) {
+  max-width: none;
+}
