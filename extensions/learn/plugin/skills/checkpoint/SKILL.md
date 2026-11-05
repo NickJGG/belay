@@ -32,6 +32,8 @@ An end-of-unit test of what the learner can do alone. You set the task, stay out
    - `language`: the translation or writing task, plus a voice role-play. Write the role-play as `work/voice-NN.md` (shape in `P/references/traits/language.md`), with the rubric's brief as the scenario.
 
    Several traits: set all their parts as one checkpoint.
+
+   A part the rubric wants as a diagram is answered in `work/checkpoint-NN-<part>.excalidraw` (e.g. `work/checkpoint-02-design.excalidraw`); name the file in that part. Starters are allowed only if the rubric gives one; write it with `belay work write` (`P/references/answer-formats/excalidraw.md`).
 3. `NN` is the next two-digit number after the highest existing `work/checkpoint-NN.md` (first is `01`). Write `work/checkpoint-NN.md`:
    ```markdown
    # Checkpoint NN · unit <n> · <title>
@@ -60,7 +62,7 @@ Language trait: the learner does the voice role-play from `work/voice-NN.md` and
 
 ## 3. Mark
 
-1. Read the answers: `work/checkpoint-NN.md`, anything in `work/checkpoint-NN/`, and the transcript. Never edit them.
+1. Read the answers: `work/checkpoint-NN.md`, anything in `work/checkpoint-NN/`, and the transcript. Never edit them. A `work/checkpoint-NN*.excalidraw` diagram is read only by `belay work read "<absolute path>"`, never as a file, and marked as `P/references/answer-formats/excalidraw.md` says: an unattached end counts as a missing connection.
 2. For each rubric criterion: points awarded out of available, the level (full / partial / none), and the specific gap, citing the claim it misses as `[k:<topic>^c<n>]`. Re-derive every answer yourself before judging it; don't trust a first pass. Run code they wrote only if they ask, and judge it by what it does, not by how close it looks to your own version.
 3. Score is total points awarded as a percentage, rounded down. Result:
    - **pass:** at or above the rubric's pass line (about 80%).

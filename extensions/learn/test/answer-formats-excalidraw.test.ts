@@ -170,6 +170,29 @@ test('written files bind both sides of every arrow and carry the fields Excalidr
   }
 });
 
+test('written arrow labels leave the arrow showing on both sides', () => {
+  type El = { id: string; type: string; width: number; height: number; points?: number[][]; boundElements: { id: string }[] | null };
+  const specs = [
+    ...Object.values(SPECS),
+    'Arrows:\n  Client -> API "POST /tweet with media"\n  API -> Cache "reads"\n  API -> DB "writes on miss"\n  Cache -> DB "refill"',
+    'Arrows:\n  A -> B "x"\n  A -> C "a much longer label here"\n  B -> A\n  C -> B "same column"\n  B -> B "retry with backoff"',
+  ];
+  for (const spec of specs) {
+    const els: El[] = JSON.parse(write(spec)).elements;
+    const byId = new Map(els.map((e) => [e.id, e]));
+    for (const arrow of els.filter((e) => e.type === 'arrow')) {
+      const label = arrow.boundElements?.map((b) => byId.get(b.id)!).find((e) => e.type === 'text');
+      if (!label) continue;
+      const pts = arrow.points!;
+      // The label sits on the middle segment: the straight arrow, or a self-loop's top.
+      const [[ax, ay], [bx, by]] = pts.length === 2 ? pts : [pts[1], pts[2]];
+      const len = Math.hypot(bx - ax, by - ay);
+      const covered = Math.min(label.width / (Math.abs(bx - ax) / len || 1e-9), label.height / (Math.abs(by - ay) / len || 1e-9));
+      assert.ok(len - covered >= 2 * 30, `${spec.split('\n')[1]}…: ${Math.round(len)}px arrow, ${Math.round(covered)}px under its label`);
+    }
+  }
+});
+
 test('layout: columns by longest path from a source, a cycle broken in first-seen order', () => {
   const cols = (spec: string) => Object.fromEntries([...layout(parseSpec(spec))].map(([n, p]) => [n, p.col]));
   assert.deepEqual(cols(SPECS.cycle), { A: 0, B: 1, C: 2 });

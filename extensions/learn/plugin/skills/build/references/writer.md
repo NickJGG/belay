@@ -25,6 +25,7 @@ Inputs: the topic's collect manifests, the sources they list, `course.md` (goal,
 - **Solutions.** Every solution is worked step by step and cites the claims it uses as `[[<topic>#^c<n>]]`.
   - `notation`: show every algebraic step.
   - `code`: give runnable code plus its expected output.
+- **Diagrams.** An exercise whose answer is a design (components and how they connect) asks for it as a diagram in `work/<topic>-e<n>.excalidraw`. Its solution gives the design as `Boxes:`/`Arrows:` lines (`API -> Cache "reads"`), the grammar in `references/answer-formats/excalidraw.md` under the plugin root.
 - **Enrich mode:** append, continuing the `e<n>` numbering.
 
 **The marker `.build/write/<topic>.md`**, written last:
@@ -53,7 +54,9 @@ Write `rubrics/unit-<n>.md` for the unit's checkpoint. Read the unit's knowledge
    - `code`: a small spec to build from scratch.
    - `reading`: a 300–600-word essay prompt, or "explain X to a newcomer".
    - `language`: a translation or writing task, plus a voice role-play brief.
+   A task whose answer is a design (components and how they connect) names a diagram answer file, `work/checkpoint-NN-<part>.excalidraw`, instead of asking for one in prose.
 2. **Numbered criteria,** each with points and what full, partial and no credit look like.
+   - A diagram is marked on its components (present, named for their job), connections (right boxes, right direction) and labels where asked; never on layout or style. An unattached arrow end is a missing connection.
    - Every criterion traces to claims, cited as `[[<topic>#^c<n>]]`.
    - Totals and the pass line (about 80%) are stated at the end.
 

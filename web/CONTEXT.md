@@ -70,6 +70,10 @@ Any page that isn't a Workspace (Home, Projects, an Issue, a Course's tabs), whi
 A Course's `now.md`, which Claude rewrites with notation during a Lesson and which fills the Lesson's Workspace.
 _Avoid_: Now page
 
+**Answer format**:
+A kind of Course Work file with its own editor in the Work tab and, optionally, a text summary Claude reads instead of the file: text (the default) or an Excalidraw diagram (`.excalidraw`). Registered in `extensions/learn/answer-formats/`.
+_Avoid_: format (that's the course folder's format, `formats.md`)
+
 ## Relationships
 
 - A **Grill** spans one or more **Sessions**; a **Session** belongs to at most one **Grill**

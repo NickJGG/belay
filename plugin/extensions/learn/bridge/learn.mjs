@@ -47,7 +47,7 @@ export const kind = {
     resume: "to start the lesson again in the terminal",
     instructions: `\
 Lessons (/learn:learn; the tag has \`course\`):
-- kind="attempt": the learner submitted work. Read the file at \`path\` (in the course folder) and respond to it. Never edit it.
+- kind="attempt": the learner submitted work. Read the file at \`path\` (in the course folder) and respond to it. Never edit it. When the message carries the file's summary (a diagram), respond to that. Never Read a \`.excalidraw\` file: if no summary came, run \`belay work read\` on it.
 - kind="command" (it can arrive before any attach): the learner pressed a start button on the site. Run \`command\` with the Skill tool (skill \`learn:learn\` or \`learn:<sub>\`, the rest as args). This replaces any earlier topic.
 - kind="restart": the learner wants a fresh session. If wrap="true", first run the learn skill's "Ending early" close for what was covered. Then call mcp__plugin_belay_belay__restart. Don't start anything else.
 - Call mcp__plugin_belay_belay__show with target "claim" when you move on to teaching a new claim, so the learner's page follows you there; not for claims you merely cite. Use "work" or "source" when you start discussing that file, and "whiteboard" after writing now.md. Never point at misconceptions. During a checkpoint, don't show claims or sources.

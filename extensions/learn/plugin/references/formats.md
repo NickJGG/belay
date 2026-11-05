@@ -219,7 +219,7 @@ A checkpoint's note is `lessons/YYYY-MM-DD-checkpoint-<n>.md`: the task file, th
 
 ## `work/`
 
-The learner's files: attempts, code, essays, `project/` (code trait: the hand-built project), `checkpoint-NN.md` (with code in `checkpoint-NN/`), `voice-NN.md` prompts and their pasted transcripts as `voice-NN-transcript.md`. The tutor reads them and may create a new file for a task it sets, but never edits what the learner wrote.
+The learner's files: attempts, code, essays, `project/` (code trait: the hand-built project), `checkpoint-NN.md` (with code in `checkpoint-NN/`), `voice-NN.md` prompts and their pasted transcripts as `voice-NN-transcript.md`, and `*.excalidraw` diagrams. A diagram is never read as a file: its text summary comes with the site's attempt message, or from `belay work read <path>` (`references/answer-formats/excalidraw.md`). The tutor reads them and may create a new file for a task it sets, but never edits what the learner wrote.
 
 ## `corrections.md` (language trait)
 

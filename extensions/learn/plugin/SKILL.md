@@ -95,6 +95,16 @@ Applies when `course.md` has `reading: start` and the unit has reading lines in 
 - **`read-after` units** (listed in `course.md`): the learner attempts first and reads after. Their reading lines sit after the topics, so the unit-start check doesn't fire; give the reading at Close instead.
 - Reading is done alone, never in a session. Diagnose from what they read rather than re-teaching it.
 
+## Answer formats
+
+A task's answer file in `work/` may be in a format with its own editor on the site. Read a format's reference only when setting or marking a task in it.
+
+| Extension | Use when | Reference |
+|---|---|---|
+| `.excalidraw` | the answer is a structure: components and connections (a system design, a data flow) | `P/references/answer-formats/excalidraw.md` |
+
+Anything else (`.md`, `.txt`, code) is plain text, read as it is.
+
 ## Off-scope questions
 
 A question outside `scope.in`: answer briefly, labelled *(unverified)*, append it to `verify.md`, and offer `/learn:build <course> --extend "<area>"`. A topic in an unbuilt unit gets the same brief answer, but name the unit that will cover it instead of offering `--extend`. Then return to the objective.

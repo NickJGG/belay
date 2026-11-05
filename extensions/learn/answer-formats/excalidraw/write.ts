@@ -140,8 +140,13 @@ export function layout(spec: Spec): Map<string, { col: number; row: number }> {
 const BOX_W = 160;
 const BOX_H = 60;
 const COL_GAP = 60;
-const ROW_PITCH = 120;
+const ROW_GAP = 60;
 const FONT = 20;
+const LABEL_FONT = 16;
+/** Arrow line left showing on each side of its label, which Excalidraw centres on the arrow and masks the line behind. */
+const LABEL_MARGIN_X = 40;
+const LABEL_MARGIN_Y = 30;
+const LOOP_INSET = 20;
 const LINE_H = 1.25;
 const GAP = 5;
 
@@ -190,12 +195,12 @@ function base(type: string, x: number, y: number, width: number, height: number,
   };
 }
 
-function textEl(s: string, cx: number, cy: number, containerId: string | null): Json {
-  const { width, height } = textSize(s);
+function textEl(s: string, cx: number, cy: number, containerId: string | null, size = FONT): Json {
+  const { width, height } = textSize(s, size);
   return {
     ...base('text', containerId ? cx - width / 2 : cx, containerId ? cy - height / 2 : cy, width, height, null),
     text: s,
-    fontSize: FONT,
+    fontSize: size,
     fontFamily: 5,
     textAlign: containerId ? 'center' : 'left',
     verticalAlign: containerId ? 'middle' : 'top',
@@ -220,10 +225,25 @@ function edgePoint(a: Placed, b: Placed): [number, number] {
 export function write(specText: string): string {
   const spec = parseSpec(specText);
   const pos = layout(spec);
-  const widths = new Map(spec.boxes.map((b) => [b.name, Math.max(BOX_W, textSize(b.name).width + 40)]));
+  const labelled = spec.arrows.filter((a) => a.label).map((a) => ({ ...a, size: textSize(a.label!, LABEL_FONT) }));
+  const loopW = (name: string) => Math.max(0, ...labelled.filter((a) => a.from === name && a.to === name).map((a) => a.size.width + 2 * (LABEL_MARGIN_X + LOOP_INSET)));
+  const widths = new Map(spec.boxes.map((b) => [b.name, Math.max(BOX_W, textSize(b.name).width + 40, loopW(b.name))]));
   const colCount = Math.max(...[...pos.values()].map((p) => p.col)) + 1;
   const colW = Array.from({ length: colCount }, (_, c) => Math.max(...spec.boxes.filter((b) => pos.get(b.name)!.col === c).map((b) => widths.get(b.name)!)));
-  const colX = colW.map((_, c) => colW.slice(0, c).reduce((s, w) => s + w + COL_GAP, 0));
+  const colGap = Array.from({ length: colCount }, (_, c) =>
+    Math.max(
+      COL_GAP,
+      ...labelled
+        .filter((a) => Math.min(pos.get(a.from)!.col, pos.get(a.to)!.col) === c && Math.abs(pos.get(a.from)!.col - pos.get(a.to)!.col) === 1)
+        .map((a) => a.size.width + 2 * LABEL_MARGIN_X + 2 * GAP),
+    ),
+  );
+  const colX = colW.map((_, c) => colW.slice(0, c).reduce((s, w, i) => s + w + colGap[i], 0));
+  const rowGap = Math.max(
+    ROW_GAP,
+    ...labelled.filter((a) => a.from !== a.to && pos.get(a.from)!.col === pos.get(a.to)!.col).map((a) => a.size.height + 2 * LABEL_MARGIN_Y + 2 * GAP),
+  );
+  const rowPitch = BOX_H + rowGap;
   const rows = Array.from({ length: colCount }, (_, c) => spec.boxes.filter((b) => pos.get(b.name)!.col === c).length);
   const maxRows = Math.max(...rows);
 
@@ -233,7 +253,7 @@ export function write(specText: string): string {
     const { col, row } = pos.get(b.name)!;
     const w = widths.get(b.name)!;
     const cx = colX[col] + colW[col] / 2;
-    const cy = ((maxRows - rows[col]) * ROW_PITCH) / 2 + row * ROW_PITCH + BOX_H / 2;
+    const cy = ((maxRows - rows[col]) * rowPitch) / 2 + row * rowPitch + BOX_H / 2;
     const el = base(b.shape, cx - w / 2, cy - BOX_H / 2, w, BOX_H, b.shape === 'rectangle' ? { type: 3 } : b.shape === 'diamond' ? { type: 2 } : null);
     const label = textEl(b.name, cx, cy, el.id as string);
     el.boundElements = [{ type: 'text', id: label.id }];
@@ -246,8 +266,8 @@ export function write(specText: string): string {
     const from = placed.get(a.from)!;
     const to = placed.get(a.to)!;
     const self = from === to;
-    const [x1, y1] = edgePoint(from, to);
-    const [x2, y2] = self ? [from.cx + from.hw / 2, y1] : edgePoint(to, from);
+    const [x1, y1] = self ? [from.cx - from.hw + LOOP_INSET, from.cy - from.hh - GAP] : edgePoint(from, to);
+    const [x2, y2] = self ? [from.cx + from.hw - LOOP_INSET, y1] : edgePoint(to, from);
     const points = self
       ? [
           [0, 0],
@@ -273,7 +293,7 @@ export function write(specText: string): string {
     };
     const bound: Json[] = [];
     if (a.label) {
-      const label = textEl(a.label, x1 + (x2 - x1) / 2, (self ? y1 - 40 : y1 + (y2 - y1) / 2), el.id as string);
+      const label = textEl(a.label, x1 + (x2 - x1) / 2, self ? y1 - 40 : y1 + (y2 - y1) / 2, el.id as string, LABEL_FONT);
       labels.push(label);
       bound.push({ type: 'text', id: label.id });
     }
@@ -283,7 +303,7 @@ export function write(specText: string): string {
   }
   elements.push(...labels);
 
-  let y = maxRows * ROW_PITCH + 20;
+  let y = maxRows * rowPitch + 20;
   for (const n of spec.notes) {
     const note = textEl(n, 0, y, null);
     elements.push(note);
