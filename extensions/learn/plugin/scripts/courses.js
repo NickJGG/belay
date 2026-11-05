@@ -85,6 +85,17 @@ function lastSession(text) {
   return s ? { date: s.date, kind: s.kind } : null;
 }
 
+/* In-progress before todo, looking first in the unit of the newest logged session that names one of `topics` (a
+   lesson's topic, or a checkpoint's whole unit), then the units after it, then the whole course. A learner who
+   skipped ahead stays there, even with an earlier unit's topic left in progress. */
+function nextTopic(topics, log) {
+  const pick = list => list.find(t => t.status === 'in-progress') || list.find(t => t.status === 'todo');
+  const unitOf = new Map(topics.map(t => [t.topic, t.unit]));
+  const recent = log.findLast(s => s.topics.some(t => unitOf.has(t)));
+  const from = recent ? unitOf.get(recent.topics.find(t => unitOf.has(t))) : 0;
+  return pick(topics.filter(t => t.unit === from)) || pick(topics.filter(t => t.unit > from)) || pick(topics) || null;
+}
+
 const tidy = slug => slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ');
 
 /* Topic slug → its knowledge file's `#` heading; topics not built yet get a tidied slug. */
@@ -162,7 +173,7 @@ function overview(course, date) {
   const units = all.filter(u => ready.includes(u.n));
   const topics = units.flatMap(u => u.topics.map(t => ({ ...t, unit: u.n })));
   const pick = r => ({ source: r.source, status: r.status, label: r.label, sections: r.sections });
-  const next = topics.find(t => t.status === 'in-progress') || topics.find(t => t.status === 'todo') || null;
+  const next = nextTopic(topics, sessions(dir));
   if (next) {
     const items = units.find(u => u.n === next.unit).items;
     const at = items.findIndex(i => i.kind === 'topic' && i.topic === next.topic);

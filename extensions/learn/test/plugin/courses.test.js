@@ -135,6 +135,35 @@ test('a failed checkpoint that reopens topics puts them next, ahead of later uni
   assert.deepStrictEqual(o.checkpoint, { unit: 1, title: 'Limits', result: 'fail', left: ['limit-laws'], due: false });
 });
 
+test('the next topic stays in the unit last worked on, past an earlier unit left in progress, then moves on from it', () => {
+  const syl = `# Syllabus
+
+## Unit 1 · Limits
+- [ ] limit-definition · in-progress
+- checkpoint 1 · pending
+
+## Unit 2 · Derivatives
+- [x] derivative-definition · done
+- [ ] chain-rule · todo
+- checkpoint 2 · pending
+
+## Unit 3 · Integrals
+- [ ] antiderivatives · todo
+- checkpoint 3 · pending
+`;
+  const log = '## 2026-10-11 · full\n- topics: derivative-definition\n\n## 2026-10-12 · review\n- cards: 3 reviewed (1 again)\n';
+  const next = (s, l) => {
+    const root = make({ calc: { 'course.md': COURSE, 'syllabus.md': s, 'log.md': l } });
+    return courses.overview(path.join(root, 'calc'), '2026-10-21').next;
+  };
+  assert.deepStrictEqual(next(syl, log), { topic: 'chain-rule', status: 'todo', unit: 2 });
+  const unit2Done = syl.replace('- [ ] chain-rule · todo', '- [x] chain-rule · done');
+  assert.deepStrictEqual(next(unit2Done, log), { topic: 'antiderivatives', status: 'todo', unit: 3 });
+  assert.deepStrictEqual(next(syl, ''), { topic: 'limit-definition', status: 'in-progress', unit: 1 });
+  const failed = `${log}\n## 2026-10-13 · checkpoint\n- topics: limit-definition\n- checkpoint: unit 1 · fail 40%\n`;
+  assert.deepStrictEqual(next(syl, failed), { topic: 'limit-definition', status: 'in-progress', unit: 1 });
+});
+
 const READ_SYLLABUS = `# Syllabus
 
 ## Unit 1 · Method
