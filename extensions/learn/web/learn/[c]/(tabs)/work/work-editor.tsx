@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Play, Square } from "lucide-react";
@@ -14,7 +15,10 @@ import { runCommand } from "../../../../_lib/run";
 import type { WorkEntry } from "../../../../_lib/work";
 import { draftKey, encodeDraft, restoreDraft, saveOutcome, type SaveResponse } from "../../../../_lib/work-draft";
 import { cn } from "@/lib/utils";
-import { CodeEditor, type CodeEditorHandle } from "./code-editor";
+import type { BodyHandle } from "../../../../../answer-formats/body.ts";
+import { formatFor, type Summary } from "../../../../../answer-formats/index.ts";
+import { attemptText, warningsLabel } from "../../../../_lib/attempt";
+import { CodeEditor } from "./code-editor";
 import { RunSplit, useInput, useRun } from "./run-panel";
 import styles from "./work.module.css";
 
@@ -161,7 +165,10 @@ function VsCode({ abs }: { abs: string }) {
 type Status = "saved" | "unsaved" | "saving" | "error";
 type Conflict = { kind: "changed"; text: string; mtime: number } | { kind: "deleted" } | null;
 
+const ExcalidrawBody = dynamic(() => import("../../../../../answer-formats/excalidraw/editor.tsx"), { ssr: false });
+
 const SAVE_DELAY_MS = 800;
+const SUMMARY_DELAY_MS = 300;
 const CHECKPOINT = /^work\/checkpoint-\d{2}\.md$/;
 
 function Editor({
@@ -177,7 +184,7 @@ function Editor({
   topics: LearnMarkdown["topics"];
   send?: SendToLesson;
 }) {
-  const editor = React.useRef<CodeEditorHandle>(null);
+  const editor = React.useRef<BodyHandle>(null);
   const [text, setText] = React.useState(file.text);
   const [status, setStatus] = React.useState<Status>("saved");
   const [error, setError] = React.useState<string | null>(null);
@@ -350,22 +357,31 @@ function Editor({
     setTimeout(() => setSent(null), 2500);
   };
 
-  const sendAttempt = () => void submit(`Attempt: ${rel}`, { kind: "attempt", path: rel });
+  const format = formatFor(rel);
+  const textual = format.id === "text";
+  const summary = useSummary(format.summarize, text, rel);
+  const [showSummary, setShowSummary] = React.useState(false);
 
-  const runnable = runCommand(rel) !== null;
+  const sendAttempt = () =>
+    void submit(attemptText(format, textRef.current, rel, file.abs), { kind: "attempt", path: rel });
+
+  const runnable = textual && runCommand(rel) !== null;
   const input = useInput(course, rel, runnable);
   const saveInput = input.save;
   const prepare = React.useCallback(async () => (await save()) && (await saveInput()), [save, saveInput]);
   const run = useRun(course, rel, prepare);
 
-  const isMd = rel.endsWith(".md");
-  const isCode = !isMd && !rel.endsWith(".txt");
+  const isMd = textual && rel.endsWith(".md");
+  const isCode = textual && !isMd && !rel.endsWith(".txt");
   const checkpoint = CHECKPOINT.test(rel);
   const offline = !send;
   const deferred = React.useDeferredValue(text);
   const rendered = isMd && preview;
 
-  const editorView = (
+  const warnings = summary ? warningsLabel(summary.warnings) : null;
+
+  // The canvas reads `initial` only on mount, and loads later than a draft restore runs.
+  const editorView = textual ? (
     <CodeEditor
       ref={editor}
       path={rel}
@@ -375,6 +391,8 @@ function Editor({
       onSubmit={offline ? undefined : sendAttempt}
       onRun={runnable ? run.toggle : undefined}
     />
+  ) : (
+    <ExcalidrawBody ref={editor} initial={text} onChange={onChange} />
   );
 
   const statusLabel =
@@ -388,6 +406,16 @@ function Editor({
           {sent ?? statusLabel}
         </span>
         <span className={styles.spacer} />
+        {warnings ? (
+          <span className={styles.warnings} title="Claude reads these as drawn, without guessing what you meant">
+            ⚠ {warnings}
+          </span>
+        ) : null}
+        {format.summarize ? (
+          <Button variant="ghost" size="sm" onClick={() => setShowSummary((s) => !s)} aria-pressed={showSummary}>
+            What Claude sees
+          </Button>
+        ) : null}
         {isMd ? (
           <Button variant="ghost" size="sm" onClick={() => setPreview((p) => !p)} aria-pressed={preview}>
             {preview ? "Edit" : "Preview"}
@@ -452,6 +480,11 @@ function Editor({
           <RunSplit rel={rel} run={run} input={input}>
             {editorView}
           </RunSplit>
+        ) : !textual ? (
+          <>
+            <div className={cn(styles.code, showSummary && styles.hidden)}>{editorView}</div>
+            {showSummary ? <pre className={styles.summary}>{summary?.text ?? "Can't read this file."}</pre> : null}
+          </>
         ) : (
           <>
             <div className={cn(styles.code, rendered && styles.hidden)}>{editorView}</div>
@@ -465,4 +498,22 @@ function Editor({
       </div>
     </div>
   );
+}
+
+/** The format's summary of the live document, after a pause in edits; null when it has none or can't read it. */
+function useSummary(summarize: ((text: string, name: string) => Summary) | undefined, text: string, rel: string) {
+  const compute = React.useCallback(() => {
+    if (!summarize) return null;
+    try {
+      return summarize(text, rel);
+    } catch {
+      return null;
+    }
+  }, [summarize, text, rel]);
+  const [summary, setSummary] = React.useState<Summary | null>(compute);
+  React.useEffect(() => {
+    const timer = setTimeout(() => setSummary(compute()), SUMMARY_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [compute]);
+  return summary;
 }

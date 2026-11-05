@@ -9,12 +9,8 @@ import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { indentWithTab } from "@codemirror/commands";
 import { editorTheme, highlightStyle, loadFileLanguage } from "@/components/content/syntax";
+import type { BodyHandle, BodyProps } from "../../../../../answer-formats/body.ts";
 import { tsChecked } from "../../../../_lib/ts-env";
-
-export type CodeEditorHandle = {
-  /** Replaces the whole document, e.g. after reloading from disk. */
-  setDoc: (text: string) => void;
-};
 
 // Markdown and Python's indent are known up front; other languages load into `lang` once fetched.
 function fileSetup(path: string): Extension {
@@ -24,11 +20,9 @@ function fileSetup(path: string): Extension {
 }
 
 export const CodeEditor = React.forwardRef<
-  CodeEditorHandle,
-  {
+  BodyHandle,
+  BodyProps & {
     path: string;
-    initial: string;
-    onChange: (text: string) => void;
     onBlur?: () => void;
     onSubmit?: () => void;
     onRun?: () => void;

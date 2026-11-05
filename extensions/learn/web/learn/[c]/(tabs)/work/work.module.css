@@ -169,6 +169,22 @@
   padding: var(--space-4) var(--space-6);
 }
 
+.warnings {
+  color: var(--warn);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.summary {
+  height: 100%;
+  margin: 0;
+  overflow: auto;
+  padding: var(--space-4) var(--space-6);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+}
+
 .split {
   display: flex;
   flex-direction: column;
