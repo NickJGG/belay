@@ -16,7 +16,7 @@ import shared from "@/components/session/session.module.css";
 import { Button } from "@/components/ui/button";
 import { OUTLINE_KEY, parseOutline } from "@/lib/shell";
 import { cn } from "@/lib/utils";
-import type { Decision, Finding } from "../../cli/state.ts";
+import type { Decision, DecisionEntry, Finding } from "../../cli/state.ts";
 import type { ReviewDetail } from "../_lib/detail.server";
 import { decide, openReviewTerminal, track } from "../_lib/review-actions";
 import {
@@ -32,6 +32,7 @@ import {
   overviewGroups,
   parseFilter,
   parseView,
+  pinned,
   queueAllNumbers,
   reviewTitle,
   segments,
@@ -56,9 +57,6 @@ import styles from "./review.module.css";
 
 // The Unfiled pseudo-project's key; `_lib/manifest.ts` is fine to import, but this keeps the client bundle lean.
 const UNFILED_KEY = "unfiled";
-
-// Until the walk follows the Overview's filter, it covers every finding.
-const EVERY: Filter = { status: "all", kind: null };
 
 const subscribeHash = (cb: () => void) => {
   addEventListener("hashchange", cb);
@@ -177,6 +175,10 @@ export function ReviewWorkspace({ d }: { d: ReviewDetail }) {
   };
 
   const finding = view.kind === "finding" ? findings.find((f) => f.n === view.n)! : null;
+  const [opened, setOpened] = React.useState<{ n: number; entry: DecisionEntry | undefined } | null>(null);
+  if ((opened?.n ?? null) !== (finding?.n ?? null)) setOpened(finding ? { n: finding.n, entry: decisions[finding.n] } : null);
+  const walkDecisions = finding && opened?.n === finding.n ? pinned(decisions, finding.n, opened.entry) : decisions;
+  const walk = shown(findings, walkDecisions, filter);
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -184,13 +186,13 @@ export function ReviewWorkspace({ d }: { d: ReviewDetail }) {
       const k = e.key.toLowerCase();
       if (!finding) {
         if (k === "j") {
-          const n = walkStart(findings, decisions, EVERY);
+          const n = walkStart(findings, decisions, filter);
           if (n != null) goTo({ kind: "finding", n });
         }
         return;
       }
       const move = (by: 1 | -1) => {
-        const n = step(findings, decisions, EVERY, finding.n, by);
+        const n = step(walk, finding.n, by);
         if (n != null) goTo({ kind: "finding", n });
       };
       if (k === "j") move(1);
@@ -206,7 +208,7 @@ export function ReviewWorkspace({ d }: { d: ReviewDetail }) {
   });
 
   const resume = `belay claude "/review:review resume ${id}"`;
-  const start = walkStart(findings, decisions, EVERY);
+  const start = walkStart(findings, decisions, filter);
   const commands = React.useMemo<PageCommand[]>(
     () => [
       { id: "review-resume", label: `Copy ${resume}`, run: () => void navigator.clipboard.writeText(resume) },
@@ -216,7 +218,16 @@ export function ReviewWorkspace({ d }: { d: ReviewDetail }) {
   );
 
   const pane = (
-    <Outline title={title} running={running} findings={findings} decisions={decisions} checking={d.checking} view={view} open={outlineOpen} onToggle={toggleOutline} />
+    <Outline
+      title={title}
+      running={running}
+      groups={overviewGroups(findings, walkDecisions, filter)}
+      decisions={decisions}
+      checking={d.checking}
+      view={view}
+      open={outlineOpen}
+      onToggle={toggleOutline}
+    />
   );
 
   return (
@@ -226,9 +237,9 @@ export function ReviewWorkspace({ d }: { d: ReviewDetail }) {
       {running ? (
         <RunningBar d={d} title={title} now={now} />
       ) : finding ? (
-        <FindingBar d={d} f={finding} />
+        <FindingBar d={d} f={finding} walk={walk} />
       ) : (
-        <OverviewBar d={d} title={title} />
+        <OverviewBar d={d} title={title} walk={walk} start={start} />
       )}
       <div className={styles.canvas}>
         {running ? (
@@ -274,10 +285,10 @@ function ReviewSlot({ d, pane }: { d: ReviewDetail; pane: React.ReactNode }) {
   return <ShellSlot project={project} section="Reviews" pane={pane} glow={d.mark ? projectColor(d.mark) : undefined} />;
 }
 
-function Segs({ d, current }: { d: ReviewDetail; current: number | null }) {
+function Segs({ d, walk, current }: { d: ReviewDetail; walk: Finding[]; current: number | null }) {
   return (
     <span className={styles.segs} aria-hidden>
-      {segments(d.findings, d.decisions, EVERY, current).map((s, i) => (
+      {segments(walk, d.decisions, current).map((s, i) => (
         <i key={i} className={styles[`seg-${s}`]} />
       ))}
     </span>
@@ -329,10 +340,9 @@ function RunningBar({ d, title, now }: { d: ReviewDetail; title: string; now: nu
   );
 }
 
-function OverviewBar({ d, title }: { d: ReviewDetail; title: string }) {
-  const { review, findings, decisions } = d;
+function OverviewBar({ d, title, walk, start }: { d: ReviewDetail; title: string; walk: Finding[]; start: number | null }) {
+  const { review } = d;
   const must = d.counts.mustFix;
-  const start = walkStart(findings, decisions, EVERY);
   const note = [
     review.ref,
     `${day(review.started)} ${clock(review.started)}`,
@@ -348,7 +358,7 @@ function OverviewBar({ d, title }: { d: ReviewDetail; title: string }) {
       chips={must ? <span className={cn(styles.chip, styles.chipBad)}>{must} must-fix</span> : <span className={cn(styles.chip, styles.chipOk)}>Nothing must be fixed</span>}
       note={note}
     >
-      <Segs d={d} current={null} />
+      <Segs d={d} walk={walk} current={null} />
       <button
         type="button"
         className={cn(shared.btn, styles.btn)}
@@ -367,11 +377,10 @@ function OverviewBar({ d, title }: { d: ReviewDetail; title: string }) {
   );
 }
 
-function FindingBar({ d, f }: { d: ReviewDetail; f: Finding }) {
-  const list = shown(d.findings, d.decisions, EVERY);
-  const i = list.findIndex((x) => x.n === f.n);
-  const prev = step(d.findings, d.decisions, EVERY, f.n, -1);
-  const next = step(d.findings, d.decisions, EVERY, f.n, 1);
+function FindingBar({ d, f, walk }: { d: ReviewDetail; f: Finding; walk: Finding[] }) {
+  const i = walk.findIndex((x) => x.n === f.n);
+  const prev = step(walk, f.n, -1);
+  const next = step(walk, f.n, 1);
   const tone = severityTone(f);
   const verified = f.verdict === "confirmed" ? "confirmed by the verifier" : f.verdict;
   return (
@@ -387,10 +396,12 @@ function FindingBar({ d, f }: { d: ReviewDetail; f: Finding }) {
         </>
       }
     >
-      <span className={styles.pos}>
-        {i + 1} of {list.length}
-      </span>
-      <Segs d={d} current={f.n} />
+      {i === -1 ? null : (
+        <span className={styles.pos}>
+          {i + 1} of {walk.length}
+        </span>
+      )}
+      <Segs d={d} walk={walk} current={f.n} />
       <span className={styles.nav}>
         <Button variant="ghost" size="icon-sm" title="Previous (K)" aria-label="Previous finding" disabled={prev == null} onClick={() => prev != null && goTo({ kind: "finding", n: prev })}>
           <ChevronLeft size={16} aria-hidden />

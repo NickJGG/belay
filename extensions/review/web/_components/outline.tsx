@@ -10,11 +10,11 @@ import { tip } from "@/components/layout/side-tip";
 import { useNav } from "@/components/layout/site-nav";
 import { cn } from "@/lib/utils";
 import type { Checking, DecisionEntry, Decisions, Finding } from "../../cli/state.ts";
-import { checkingSplit, decisionChip, groups, severityTone, statusOf, type Status, type Tone, type View } from "../_lib/view";
+import { checkingSplit, decisionChip, severityTone, statusOf, type OverviewGroup, type Status, type Tone, type View } from "../_lib/view";
 import { ReviewIcon } from "./mark";
 import styles from "./review.module.css";
 
-export const TONE_DOT: Record<Tone, string> = { bad: styles.dotBad, warn: styles.dotWarn, quiet: styles.dotQuiet };
+const TONE_DOT: Record<Tone, string> = { bad: styles.dotBad, warn: styles.dotWarn, quiet: styles.dotQuiet };
 
 const STATUS_DOT: Record<Exclude<Status, "undecided">, string> = {
   fix: styles.dotQueued,
@@ -33,7 +33,8 @@ export function findingDot(f: Finding, entry: DecisionEntry | undefined): string
 type Props = {
   title: string;
   running: boolean;
-  findings: Finding[];
+  /** The Overview's groups under its filter. */
+  groups: OverviewGroup[];
   decisions: Decisions;
   checking: Checking[];
   view: View;
@@ -43,9 +44,9 @@ type Props = {
 
 /**
  * A review's left pane in place of the sidebar (>=768px): the app nav, the review (its Overview), then its findings
- * under their groups with their decision chips. While it runs: what's confirmed so far, then what's being checked.
+ * in the Overview's groups under its filter, with their decision chips. While it runs: what's confirmed so far, then what's being checked.
  */
-export function Outline({ title, running, findings, decisions, checking, view, open, onToggle }: Props) {
+export function Outline({ title, running, groups, decisions, checking, view, open, onToggle }: Props) {
   const nav = useNav();
   return (
     <SidePane open={open} label="Outline" className={cn(!open && styles.outlineShut)} foot={<RailFoot open={open} onToggle={onToggle} label="the outline ( | )" />}>
@@ -70,7 +71,7 @@ export function Outline({ title, running, findings, decisions, checking, view, o
         {open ? <b className={cn(styles.olText, styles.olTopic)}>{title}</b> : null}
       </a>
       <div className={styles.olScroll}>
-        {running ? <Running checking={checking} open={open} /> : <Findings findings={findings} decisions={decisions} view={view} open={open} />}
+        {running ? <Running checking={checking} open={open} /> : <Findings groups={groups} decisions={decisions} view={view} open={open} />}
       </div>
     </SidePane>
   );
@@ -84,8 +85,8 @@ export function DoingIcon({ size = 14 }: { size?: number }) {
   );
 }
 
-function Findings({ findings, decisions, view, open }: Pick<Props, "findings" | "decisions" | "view" | "open">) {
-  return groups(findings).map((g) => (
+function Findings({ groups, decisions, view, open }: Pick<Props, "groups" | "decisions" | "view" | "open">) {
+  return groups.map((g) => (
     <div key={g.label} className={styles.olGroup}>
       <div className={styles.olHead}>{g.label}</div>
       {g.findings.map((f) => {
@@ -100,7 +101,7 @@ function Findings({ findings, decisions, view, open }: Pick<Props, "findings" | 
             {...tip(open, `#${f.n} · ${f.title}${chip ? ` (${chip.text})` : ""}`)}
           >
             <span className={styles.olKey}>
-              <span className={cn(belay.dot, TONE_DOT[severityTone(f)])} aria-hidden />
+              <span className={cn(belay.dot, findingDot(f, decisions[f.n]))} aria-hidden />
             </span>
             {open ? (
               <>

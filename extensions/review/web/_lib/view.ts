@@ -151,13 +151,24 @@ export const shown = (findings: readonly Finding[], decisions: Decisions, filter
 
 export type Segment = "decided" | "track" | "open" | "now";
 
-/** The bar's progress segments, one per shown finding: decided (fix or skip), tracked, still open, or the one open. */
-export function segments(findings: readonly Finding[], decisions: Decisions, filter: Filter, current: number | null): Segment[] {
-  return shown(findings, decisions, filter).map((f) => {
+/** The bar's progress segments, one per finding of a walk: decided (fix or skip), tracked, still open, or the one open. */
+export function segments(list: readonly Finding[], decisions: Decisions, current: number | null): Segment[] {
+  return list.map((f) => {
     if (f.n === current) return "now";
     const s = statusOf(decisions[f.n]);
     return s === "undecided" ? "open" : s === "track" ? "track" : "decided";
   });
+}
+
+/**
+ * Decisions with finding `n`'s entry put back to `entry`, the one it had when it was opened, so deciding it there
+ * neither drops it from a status view's walk nor moves it into All's Decided group.
+ */
+export function pinned(decisions: Decisions, n: number, entry: DecisionEntry | undefined): Decisions {
+  const out = { ...decisions };
+  if (entry) out[n] = entry;
+  else delete out[n];
+  return out;
 }
 
 /** Where Walk through starts: the first undecided must-fix finding in the filter, else its first finding. */
@@ -166,9 +177,8 @@ export function walkStart(findings: readonly Finding[], decisions: Decisions, fi
   return (list.find((f) => f.must_fix && statusOf(decisions[f.n]) === "undecided") ?? list[0])?.n ?? null;
 }
 
-/** The finding before or after `n` in the filter's walk, or null at either end. */
-export function step(findings: readonly Finding[], decisions: Decisions, filter: Filter, n: number, by: 1 | -1): number | null {
-  const list = shown(findings, decisions, filter);
+/** The finding before or after `n` in a walk, or null at either end or when `n` isn't in it. */
+export function step(list: readonly Finding[], n: number, by: 1 | -1): number | null {
   const i = list.findIndex((f) => f.n === n);
   return i === -1 ? null : (list[i + by]?.n ?? null);
 }

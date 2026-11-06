@@ -17,6 +17,7 @@ import {
   openFilter,
   overviewGroups,
   parseFilter,
+  pinned,
   queueAllNumbers,
   parseView,
   reviewRow,
@@ -83,16 +84,16 @@ test("walking goes in group order, starting at the first undecided must-fix", ()
   assert.equal(walkStart(findings, {}, ALL), 1);
   assert.equal(walkStart(findings, d, ALL), 2);
   assert.equal(walkStart(findings, { ...d, 2: { decision: "skip", ...at } }, ALL), 6);
-  assert.equal(step(findings, {}, ALL, 2, 1), 6);
-  assert.equal(step(findings, {}, ALL, 6, 1), 3);
-  assert.equal(step(findings, {}, ALL, 1, -1), null);
-  assert.equal(step(findings, {}, ALL, 4, 1), null);
+  assert.equal(step(shown(findings, {}, ALL), 2, 1), 6);
+  assert.equal(step(shown(findings, {}, ALL), 6, 1), 3);
+  assert.equal(step(shown(findings, {}, ALL), 1, -1), null);
+  assert.equal(step(shown(findings, {}, ALL), 4, 1), null);
 });
 
 test("segments mark decided, tracked, open and the current finding", () => {
   const d: Decisions = { 1: { decision: "fix", ...at }, 3: { decision: "track", issue: "BEL-9", ...at } };
-  assert.deepEqual(segments(findings, d, ALL, 2), ["now", "open", "open", "decided", "track"]);
-  assert.deepEqual(segments(findings, d, { status: "undecided", kind: null }, 2), ["now", "open", "open"]);
+  assert.deepEqual(segments(shown(findings, d, ALL), d, 2), ["now", "open", "open", "decided", "track"]);
+  assert.deepEqual(segments(shown(findings, d, { status: "undecided", kind: null }), d, 2), ["now", "open", "open"]);
 });
 
 test("decision chips: to fix, fixed, manual, skipped, tracked", () => {
@@ -294,8 +295,8 @@ test("the walk follows the filter", () => {
     shown(mixed, decided, bugs).map((f) => f.n),
     [1, 2, 7],
   );
-  assert.equal(step(mixed, decided, bugs, 1, 1), 2);
-  assert.equal(step(mixed, decided, bugs, 7, 1), null);
+  assert.equal(step(shown(mixed, decided, bugs), 1, 1), 2);
+  assert.equal(step(shown(mixed, decided, bugs), 7, 1), null);
   assert.equal(walkStart(mixed, decided, { status: "skip", kind: null }), 7);
   assert.equal(walkStart(mixed, decided, { status: "undecided", kind: "naming" }), 6);
   assert.equal(walkStart(mixed, decided, { status: "track", kind: null }), null);
@@ -319,4 +320,22 @@ test("Queue all takes the shown findings not already queued or fixed", () => {
   assert.deepEqual(queueAllNumbers(mixed, d, { status: "undecided", kind: null }), [6, 4]);
   assert.deepEqual(queueAllNumbers(mixed, d, ALL), [6, 3, 4, 7]);
   assert.deepEqual(queueAllNumbers(mixed, d, { status: "all", kind: "bug" }), [7]);
+});
+
+test("a finding decided while open keeps its place in the walk", () => {
+  const undecided: Filter = { status: "undecided", kind: null };
+  const now: Decisions = { ...decided, 1: { decision: "fix", ...at } };
+  assert.deepEqual(
+    shown(mixed, now, undecided).map((f) => f.n),
+    [6, 4],
+  );
+  const walk = pinned(now, 1, decided[1]);
+  assert.deepEqual(
+    shown(mixed, walk, undecided).map((f) => f.n),
+    [1, 6, 4],
+  );
+  assert.equal(step(shown(mixed, walk, undecided), 1, 1), 6);
+  assert.deepEqual(segments(shown(mixed, walk, undecided), now, 6), ["decided", "now", "open"]);
+  assert.deepEqual(pinned(now, 2, { decision: "skip", ...at })[2], { decision: "skip", ...at });
+  assert.equal(now[1].decision, "fix");
 });
