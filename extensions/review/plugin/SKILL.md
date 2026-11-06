@@ -43,8 +43,10 @@ Run `node <skill>/scripts/discover.mjs`. It returns the root, default branch, wo
 Then start the saved review (`references/formats.md`, Saved review). Run `belay project which <root>` (no output: no project), then:
 
 ```
-node <skill>/scripts/save.mjs init --target "<the target as the user gave it, else what 0.1 resolved>" --root <root> --ref <short sha, range or PR #N> [--project <key>]
+node <skill>/scripts/save.mjs init --target "<the target as the user gave it, else what 0.1 resolved>" --root <root> --ref <short sha, range or PR #N> [--project <key>] [--campaign <unit>/<of>]
 ```
+
+`--campaign` is for a campaign step only; `references/campaign.md` says what to pass.
 
 Keep its `id`, and attach it to the Belay site ([Belay site](#belay-site)). From here, run `save.mjs progress --id <id> --packet <packet>` after each milestone: once `plan.mjs` has run; with `--checks doing` and `--checks done` around Phase 1; when each reviewer replies; after `collect.mjs`; and when each verifier replies. It reads the packet itself, so the site shows the review as it runs. If the review stops before its report (the user stops it, or it can't go on), run `save.mjs stop --id <id>`.
 

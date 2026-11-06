@@ -40,6 +40,7 @@ import {
   verdictLine,
   viewHash,
   walkStart,
+  type Filter,
   type View,
 } from "../_lib/view";
 import { HunkView } from "./hunk";
@@ -48,6 +49,9 @@ import styles from "./review.module.css";
 
 // The Unfiled pseudo-project's key; `_lib/manifest.ts` is fine to import, but this keeps the client bundle lean.
 const UNFILED_KEY = "unfiled";
+
+// Until the Overview keeps a filter, the walk covers every finding.
+const EVERY: Filter = { status: "all", kind: null };
 
 const subscribeHash = (cb: () => void) => {
   addEventListener("hashchange", cb);
@@ -169,13 +173,13 @@ export function ReviewWorkspace({ d }: { d: ReviewDetail }) {
       const k = e.key.toLowerCase();
       if (!finding) {
         if (k === "j") {
-          const n = walkStart(findings, decisions);
+          const n = walkStart(findings, decisions, EVERY);
           if (n != null) goTo({ kind: "finding", n });
         }
         return;
       }
       const move = (by: 1 | -1) => {
-        const n = step(findings, finding.n, by);
+        const n = step(findings, decisions, EVERY, finding.n, by);
         if (n != null) goTo({ kind: "finding", n });
       };
       if (k === "j") move(1);
@@ -191,7 +195,7 @@ export function ReviewWorkspace({ d }: { d: ReviewDetail }) {
   });
 
   const resume = `belay claude "/review:review resume ${id}"`;
-  const start = walkStart(findings, decisions);
+  const start = walkStart(findings, decisions, EVERY);
   const commands = React.useMemo<PageCommand[]>(
     () => [
       { id: "review-resume", label: `Copy ${resume}`, run: () => void navigator.clipboard.writeText(resume) },
@@ -262,7 +266,7 @@ function ReviewSlot({ d, pane }: { d: ReviewDetail; pane: React.ReactNode }) {
 function Segs({ d, current }: { d: ReviewDetail; current: number | null }) {
   return (
     <span className={styles.segs} aria-hidden>
-      {segments(d.findings, d.decisions, current).map((s, i) => (
+      {segments(d.findings, d.decisions, EVERY, current).map((s, i) => (
         <i key={i} className={styles[`seg-${s}`]} />
       ))}
     </span>
@@ -317,7 +321,7 @@ function RunningBar({ d, title, now }: { d: ReviewDetail; title: string; now: nu
 function OverviewBar({ d, title }: { d: ReviewDetail; title: string }) {
   const { review, findings, decisions } = d;
   const must = d.counts.mustFix;
-  const start = walkStart(findings, decisions);
+  const start = walkStart(findings, decisions, EVERY);
   const note = [
     review.ref,
     `${day(review.started)} ${clock(review.started)}`,
@@ -353,10 +357,10 @@ function OverviewBar({ d, title }: { d: ReviewDetail; title: string }) {
 }
 
 function FindingBar({ d, f }: { d: ReviewDetail; f: Finding }) {
-  const list = shown(d.findings);
+  const list = shown(d.findings, d.decisions, EVERY);
   const i = list.findIndex((x) => x.n === f.n);
-  const prev = step(d.findings, f.n, -1);
-  const next = step(d.findings, f.n, 1);
+  const prev = step(d.findings, d.decisions, EVERY, f.n, -1);
+  const next = step(d.findings, d.decisions, EVERY, f.n, 1);
   const tone = severityTone(f);
   const verified = f.verdict === "confirmed" ? "confirmed by the verifier" : f.verdict;
   return (

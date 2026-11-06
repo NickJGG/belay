@@ -6,18 +6,28 @@ import {
   checkingSplit,
   decisionChip,
   elapsed,
+  filterQuery,
   expandRange,
   filterRows,
   groups,
   hunkSpan,
   kindLabel,
+  kindTabs,
+  nextUndecided,
   openFilter,
+  overviewGroups,
+  parseFilter,
+  queueAllNumbers,
   parseView,
   reviewRow,
   segments,
   sentence,
+  shown,
+  statusOf,
+  statusTabs,
   step,
   stageRows,
+  type Filter,
   toFix,
   verdictLine,
   viewHash,
@@ -65,19 +75,24 @@ test("groups follow the report: must fix first, refuted left out", () => {
   );
 });
 
+const ALL: Filter = { status: "all", kind: null };
+const at = { at: "t", by: "user" };
+
 test("walking goes in group order, starting at the first undecided must-fix", () => {
-  const d: Decisions = { 1: { decision: "fix", at: "t", by: "user" } };
-  assert.equal(walkStart(findings, d), 2);
-  assert.equal(walkStart(findings, { ...d, 2: { decision: "skip", at: "t", by: "user" } }), 1);
-  assert.equal(step(findings, 2, 1), 6);
-  assert.equal(step(findings, 6, 1), 3);
-  assert.equal(step(findings, 1, -1), null);
-  assert.equal(step(findings, 4, 1), null);
+  const d: Decisions = { 1: { decision: "fix", ...at } };
+  assert.equal(walkStart(findings, {}, ALL), 1);
+  assert.equal(walkStart(findings, d, ALL), 2);
+  assert.equal(walkStart(findings, { ...d, 2: { decision: "skip", ...at } }, ALL), 6);
+  assert.equal(step(findings, {}, ALL, 2, 1), 6);
+  assert.equal(step(findings, {}, ALL, 6, 1), 3);
+  assert.equal(step(findings, {}, ALL, 1, -1), null);
+  assert.equal(step(findings, {}, ALL, 4, 1), null);
 });
 
 test("segments mark decided, tracked, open and the current finding", () => {
-  const d: Decisions = { 1: { decision: "fix", at: "t", by: "user" }, 3: { decision: "track", issue: "BEL-9", at: "t", by: "user" } };
-  assert.deepEqual(segments(findings, d, 2), ["decided", "now", "open", "track", "open"]);
+  const d: Decisions = { 1: { decision: "fix", ...at }, 3: { decision: "track", issue: "BEL-9", ...at } };
+  assert.deepEqual(segments(findings, d, ALL, 2), ["now", "open", "open", "decided", "track"]);
+  assert.deepEqual(segments(findings, d, { status: "undecided", kind: null }, 2), ["now", "open", "open"]);
 });
 
 test("decision chips: to fix, fixed, manual, skipped, tracked", () => {
@@ -171,4 +186,137 @@ test("Show 20 lines extends the hunk's new-side span, never above line 1", () =>
   assert.deepEqual(expandRange({ first: 5, last: 9 }, "above"), { from: 1, to: 4 });
   assert.equal(expandRange({ first: 1, last: 9 }, "above"), null);
   assert.equal(hunkSpan([{ kind: "-", line: 3, text: "" }]), null);
+});
+
+test("a finding's status: queued, fixed, manual, skipped, tracked or undecided", () => {
+  assert.equal(statusOf(undefined), "undecided");
+  assert.equal(statusOf({ ...at }), "undecided");
+  assert.equal(statusOf({ decision: "fix", ...at }), "fix");
+  assert.equal(statusOf({ decision: "fix", outcome: "applied", ...at }), "fixed");
+  assert.equal(statusOf({ decision: "fix", outcome: "manual", ...at }), "manual");
+  assert.equal(statusOf({ decision: "skip", issue: "BEL-9", ...at }), "skip");
+  assert.equal(statusOf({ issue: "BEL-9", ...at }), "track");
+  assert.deepEqual(decisionChip({ decision: "track", ...at }), { text: "Tracked", tone: "track" });
+});
+
+test("the filter lives in the query, defaults left out", () => {
+  assert.deepEqual(parseFilter(new URLSearchParams("")), { status: "undecided", kind: null });
+  assert.deepEqual(parseFilter(new URLSearchParams("show=fix&kind=Duplicated_logic")), { status: "fix", kind: "duplicated-logic" });
+  assert.deepEqual(parseFilter(new URLSearchParams("show=nonsense")), { status: "undecided", kind: null });
+  assert.equal(filterQuery({ status: "undecided", kind: null }), "");
+  assert.equal(filterQuery({ status: "all", kind: "bug" }), "?show=all&kind=bug");
+  assert.equal(filterQuery({ status: "undecided", kind: "bug" }), "?kind=bug");
+  const f: Filter = { status: "skip", kind: "missing-test" };
+  assert.deepEqual(parseFilter(new URLSearchParams(filterQuery(f))), f);
+});
+
+const mixed = [
+  finding(1, "critical", { kind: "bug" }),
+  finding(2, "important", { kind: "bug" }),
+  finding(3, "debt", { kind: "duplicated-logic" }),
+  finding(4, "suggested", { kind: "naming" }),
+  finding(5, "refuted", { kind: "naming" }),
+  finding(6, "unverified", { kind: "naming" }),
+  finding(7, "debt", { kind: "bug" }),
+];
+const decided: Decisions = {
+  2: { decision: "fix", ...at },
+  3: { decision: "fix", outcome: "manual", ...at },
+  7: { decision: "skip", ...at },
+};
+
+test("status tabs count under the current kind and hide at zero, except All and Undecided", () => {
+  const tabs = statusTabs(mixed, decided, { status: "undecided", kind: null });
+  assert.deepEqual(
+    tabs.map((t) => [t.label, t.count, t.on]),
+    [
+      ["All", 6, false],
+      ["Undecided", 3, true],
+      ["Manual", 1, false],
+      ["To fix", 1, false],
+      ["Skipped", 1, false],
+    ],
+  );
+  assert.deepEqual(
+    statusTabs(mixed, decided, { status: "undecided", kind: "naming" }).map((t) => [t.key, t.count]),
+    [
+      ["all", 2],
+      ["undecided", 2],
+    ],
+  );
+  assert.ok(statusTabs(mixed, decided, { status: "fixed", kind: null }).some((t) => t.key === "fixed" && t.on && t.count === 0));
+});
+
+test("kind tabs keep their total order across status views; counts follow the status", () => {
+  const order = (status: Filter["status"]) => kindTabs(mixed, decided, { status, kind: null }).map((t) => [t.label, t.count]);
+  assert.deepEqual(order("undecided"), [
+    ["All kinds", 3],
+    ["Bug", 1],
+    ["Naming", 2],
+    ["Duplicated logic", 0],
+  ]);
+  assert.deepEqual(order("skip"), [
+    ["All kinds", 1],
+    ["Bug", 1],
+    ["Naming", 0],
+    ["Duplicated logic", 0],
+  ]);
+  const on = kindTabs(mixed, decided, { status: "all", kind: "naming" });
+  assert.deepEqual(
+    on.filter((t) => t.on).map((t) => t.key),
+    ["naming"],
+  );
+});
+
+test("Overview groups: one status by group; All puts the open ones first and a collapsed Decided group last", () => {
+  const view = (filter: Filter) => overviewGroups(mixed, decided, filter).map((g) => [g.label, g.findings.map((f) => f.n), g.collapsed ?? false]);
+  assert.deepEqual(view({ status: "undecided", kind: null }), [
+    ["Must fix", [1], false],
+    ["Unverified", [6], false],
+    ["Quality", [4], false],
+  ]);
+  assert.deepEqual(view({ status: "all", kind: null }), [
+    ["Must fix", [1], false],
+    ["Unverified", [6], false],
+    ["Quality", [3, 4], false],
+    ["Decided", [2, 7], true],
+  ]);
+  assert.deepEqual(view({ status: "all", kind: "bug" }), [
+    ["Must fix", [1], false],
+    ["Decided", [2, 7], true],
+  ]);
+  assert.deepEqual(view({ status: "track", kind: null }), []);
+});
+
+test("the walk follows the filter", () => {
+  const bugs: Filter = { status: "all", kind: "bug" };
+  assert.deepEqual(
+    shown(mixed, decided, bugs).map((f) => f.n),
+    [1, 2, 7],
+  );
+  assert.equal(step(mixed, decided, bugs, 1, 1), 2);
+  assert.equal(step(mixed, decided, bugs, 7, 1), null);
+  assert.equal(walkStart(mixed, decided, { status: "skip", kind: null }), 7);
+  assert.equal(walkStart(mixed, decided, { status: "undecided", kind: "naming" }), 6);
+  assert.equal(walkStart(mixed, decided, { status: "track", kind: null }), null);
+});
+
+test("after a decision, the next undecided finding opens, wrapping to the start", () => {
+  const list = shown(mixed, {}, ALL);
+  assert.deepEqual(
+    list.map((f) => f.n),
+    [1, 2, 6, 3, 4, 7],
+  );
+  const d: Decisions = { ...decided, 1: { decision: "fix", ...at } };
+  assert.equal(nextUndecided(list, d, 1), 6);
+  assert.equal(nextUndecided(list, d, 6), 4);
+  assert.equal(nextUndecided(list, d, 4), 6);
+  assert.equal(nextUndecided(list, { ...d, 4: { decision: "skip", ...at }, 6: { decision: "skip", ...at } }, 4), null);
+});
+
+test("Queue all takes the shown findings not already queued or fixed", () => {
+  const d: Decisions = { ...decided, 1: { decision: "fix", outcome: "applied", ...at } };
+  assert.deepEqual(queueAllNumbers(mixed, d, { status: "undecided", kind: null }), [6, 4]);
+  assert.deepEqual(queueAllNumbers(mixed, d, ALL), [6, 3, 4, 7]);
+  assert.deepEqual(queueAllNumbers(mixed, d, { status: "all", kind: "bug" }), [7]);
 });

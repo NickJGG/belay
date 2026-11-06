@@ -44,50 +44,154 @@ export function groups(findings: readonly Finding[]): { label: GroupName; findin
   ].filter((g) => g.findings.length);
 }
 
-/** The findings the page walks through, in group order. */
-export const shown = (findings: readonly Finding[]): Finding[] => groups(findings).flatMap((g) => g.findings);
+/** Every finding the page lists, refuted ones left out, in group order. */
+const listed = (findings: readonly Finding[]): Finding[] => groups(findings).flatMap((g) => g.findings);
+
+export type Status = "undecided" | "manual" | "fix" | "fixed" | "skip" | "track";
+
+/** Where a finding stands: a fix queued, applied or left manual, skipped, tracked (a Track or its issue), or undecided. */
+export function statusOf(d: DecisionEntry | undefined): Status {
+  if (d?.decision === "fix") return d.outcome === "applied" ? "fixed" : d.outcome === "manual" ? "manual" : "fix";
+  if (d?.decision === "skip") return "skip";
+  if (d?.decision === "track" || d?.issue) return "track";
+  return "undecided";
+}
 
 export type Chip = { text: string; tone: "fix" | "done" | "skip" | "track" | "manual" };
 
+const CHIP: Record<Exclude<Status, "undecided">, Chip> = {
+  fix: { text: "To fix", tone: "fix" },
+  fixed: { text: "Fixed", tone: "done" },
+  manual: { text: "Manual", tone: "manual" },
+  skip: { text: "Skipped", tone: "skip" },
+  track: { text: "Tracked", tone: "track" },
+};
+
 /** A finding's decision chip in the Outline, or null while it's undecided. */
 export function decisionChip(d: DecisionEntry | undefined): Chip | null {
-  if (d?.decision === "fix") {
-    if (d.outcome === "applied") return { text: "Fixed", tone: "done" };
-    if (d.outcome === "manual") return { text: "Manual", tone: "manual" };
-    return { text: "To fix", tone: "fix" };
-  }
-  if (d?.decision === "skip") return { text: "Skipped", tone: "skip" };
-  if (d?.decision === "track" || d?.issue) return { text: d.issue ?? "Tracked", tone: "track" };
-  return null;
+  const s = statusOf(d);
+  if (s === "undecided") return null;
+  return s === "track" && d?.issue ? { text: d.issue, tone: "track" } : CHIP[s];
 }
+
+export type StatusView = "all" | Status;
+export const STATUS_VIEWS: readonly StatusView[] = ["all", "undecided", "manual", "fix", "fixed", "skip", "track"];
+const STATUS_LABEL: Record<StatusView, string> = { all: "All", undecided: "Undecided", manual: "Manual", fix: "To fix", fixed: "Fixed", skip: "Skipped", track: "Tracked" };
+
+/** The Overview's filter, kept in the query: a status view and a kind (kebab case), null for every kind. */
+export type Filter = { status: StatusView; kind: string | null };
+export const DEFAULT_FILTER: Filter = { status: "undecided", kind: null };
+
+/** `Duplicated logic`, `duplicated_logic` → `duplicated-logic`; the kind as the query names it. */
+const kindKey = (kind: string): string => kind.trim().toLowerCase().replace(/[\s_-]+/g, "-") || "other";
+
+export function parseFilter(q: URLSearchParams): Filter {
+  const show = q.get("show");
+  const kind = q.get("kind");
+  return { status: STATUS_VIEWS.find((v) => v === show) ?? DEFAULT_FILTER.status, kind: kind ? kindKey(kind) : null };
+}
+
+/** `?show=all&kind=bug`, defaults left out; empty for the default filter. */
+export function filterQuery(f: Filter): string {
+  const q = new URLSearchParams();
+  if (f.status !== DEFAULT_FILTER.status) q.set("show", f.status);
+  if (f.kind) q.set("kind", f.kind);
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
+
+const inKind = (f: Finding, kind: string | null) => kind == null || kindKey(f.kind) === kind;
+const inStatus = (f: Finding, decisions: Decisions, status: StatusView) => status === "all" || statusOf(decisions[f.n]) === status;
+
+export type Tab<K> = { key: K; label: string; count: number; on: boolean };
+
+/** The status row: counts under the current kind; a tab with none hides, except All, Undecided and the one on. */
+export function statusTabs(findings: readonly Finding[], decisions: Decisions, filter: Filter): Tab<StatusView>[] {
+  const pool = listed(findings).filter((f) => inKind(f, filter.kind));
+  return STATUS_VIEWS.map((v) => ({ key: v, label: STATUS_LABEL[v], count: pool.filter((f) => inStatus(f, decisions, v)).length, on: v === filter.status })).filter(
+    (t) => t.count || t.on || t.key === "all" || t.key === "undecided",
+  );
+}
+
+/** The kind row: All kinds, then each kind by its total count (so the order holds across status tabs), ties A–Z; counts under the current status. */
+export function kindTabs(findings: readonly Finding[], decisions: Decisions, filter: Filter): Tab<string | null>[] {
+  const all = listed(findings);
+  const total = new Map<string, number>();
+  const label = new Map<string, string>();
+  for (const f of all) {
+    const k = kindKey(f.kind);
+    total.set(k, (total.get(k) ?? 0) + 1);
+    if (!label.has(k)) label.set(k, kindLabel(f.kind));
+  }
+  const pool = all.filter((f) => inStatus(f, decisions, filter.status));
+  const kinds = [...total.keys()].sort((a, b) => total.get(b)! - total.get(a)! || label.get(a)!.localeCompare(label.get(b)!));
+  return [
+    { key: null, label: "All kinds", count: pool.length, on: filter.kind == null },
+    ...kinds.map((k) => ({ key: k, label: label.get(k)!, count: pool.filter((f) => kindKey(f.kind) === k).length, on: k === filter.kind })),
+  ];
+}
+
+export type OverviewGroup = { label: GroupName | "Decided"; findings: Finding[]; collapsed?: boolean };
+
+/** The Overview's groups under a filter. All shows what's still open (undecided, manual) by group, then one collapsed Decided group. */
+export function overviewGroups(findings: readonly Finding[], decisions: Decisions, filter: Filter): OverviewGroup[] {
+  const pool = findings.filter((f) => inKind(f, filter.kind));
+  if (filter.status !== "all") return groups(pool.filter((f) => inStatus(f, decisions, filter.status)));
+  const open = (f: Finding) => {
+    const s = statusOf(decisions[f.n]);
+    return s === "undecided" || s === "manual";
+  };
+  const decided = listed(pool).filter((f) => !open(f));
+  return [...groups(pool.filter(open)), ...(decided.length ? [{ label: "Decided" as const, findings: decided, collapsed: true }] : [])];
+}
+
+/** The findings the page walks through under a filter, in Overview order. */
+export const shown = (findings: readonly Finding[], decisions: Decisions, filter: Filter): Finding[] =>
+  overviewGroups(findings, decisions, filter).flatMap((g) => g.findings);
 
 export type Segment = "decided" | "track" | "open" | "now";
 
 /** The bar's progress segments, one per shown finding: decided (fix or skip), tracked, still open, or the one open. */
-export function segments(findings: readonly Finding[], decisions: Decisions, current: number | null): Segment[] {
-  return shown(findings).map((f) => {
+export function segments(findings: readonly Finding[], decisions: Decisions, filter: Filter, current: number | null): Segment[] {
+  return shown(findings, decisions, filter).map((f) => {
     if (f.n === current) return "now";
-    const d = decisions[f.n]?.decision;
-    return d === "fix" || d === "skip" ? "decided" : d === "track" ? "track" : "open";
+    const s = statusOf(decisions[f.n]);
+    return s === "undecided" ? "open" : s === "track" ? "track" : "decided";
   });
 }
 
-/** Where Walk through starts: the first must-fix finding with no decision, else the first finding. */
-export function walkStart(findings: readonly Finding[], decisions: Decisions): number | null {
-  const list = shown(findings);
-  return (list.find((f) => f.must_fix && !decisions[f.n]?.decision) ?? list[0])?.n ?? null;
+/** Where Walk through starts: the first undecided must-fix finding in the filter, else its first finding. */
+export function walkStart(findings: readonly Finding[], decisions: Decisions, filter: Filter): number | null {
+  const list = shown(findings, decisions, filter);
+  return (list.find((f) => f.must_fix && statusOf(decisions[f.n]) === "undecided") ?? list[0])?.n ?? null;
 }
 
-/** The finding before or after `n` in walk order, or null at either end. */
-export function step(findings: readonly Finding[], n: number, by: 1 | -1): number | null {
-  const list = shown(findings);
+/** The finding before or after `n` in the filter's walk, or null at either end. */
+export function step(findings: readonly Finding[], decisions: Decisions, filter: Filter, n: number, by: 1 | -1): number | null {
+  const list = shown(findings, decisions, filter);
   const i = list.findIndex((f) => f.n === n);
   return i === -1 ? null : (list[i + by]?.n ?? null);
 }
 
-/** Bulk decisions from the dock: every must-fix finding, or every shown one. */
+/**
+ * The undecided finding to open once `n` is decided: the next after it in `list`, wrapping to the start; null when none is left.
+ * Pass the walk from before the decision, since an Undecided view drops `n` from it.
+ */
+export function nextUndecided(list: readonly Finding[], decisions: Decisions, n: number): number | null {
+  const i = list.findIndex((f) => f.n === n);
+  const order = [...list.slice(i + 1), ...list.slice(0, Math.max(i, 0))];
+  return order.find((f) => f.n !== n && statusOf(decisions[f.n]) === "undecided")?.n ?? null;
+}
+
+/** What Queue all queues: the shown findings, less those already queued or fixed (queueing a fixed one would drop its outcome). */
+export const queueAllNumbers = (findings: readonly Finding[], decisions: Decisions, filter: Filter): number[] =>
+  shown(findings, decisions, filter)
+    .filter((f) => !["fix", "fixed"].includes(statusOf(decisions[f.n])))
+    .map((f) => f.n);
+
+/** Bulk decisions from the dock: every must-fix finding, or every listed one. */
 export const mustFixNumbers = (findings: readonly Finding[]): number[] => findings.filter((f) => f.must_fix).map((f) => f.n);
-export const allNumbers = (findings: readonly Finding[]): number[] => shown(findings).map((f) => f.n);
+export const allNumbers = (findings: readonly Finding[]): number[] => listed(findings).map((f) => f.n);
 
 /** Fix decisions with no outcome yet: what Apply would run. */
 export const toFix = (decisions: Decisions): number =>

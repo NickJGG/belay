@@ -18,7 +18,7 @@ Run `campaign.mjs status`. If it exits 3 there is no campaign yet.
 
 ## One unit per session
 
-1. Run `campaign.mjs next`. For `kind: "unit"`, write its `paths` to a comma-joined list and follow SKILL.md from Phase 0.3 with `plan.mjs --snapshot --paths <paths> --passes 1 --out <packet>`, skipping the large-tier wait, since the campaign was approved.
+1. Run `campaign.mjs next`. For `kind: "unit"`, write its `paths` to a comma-joined list and follow SKILL.md from Phase 0.2, passing `--campaign <position>/<of>` from `next`'s output to `save.mjs init`, then Phase 0.3 with `plan.mjs --snapshot --paths <paths> --passes 1 --out <packet>`, skipping the large-tier wait, since the campaign was approved.
 2. Add `<campaign>/map.md` to `context.md` as `<system_map>`. Phase 1 runs the unit's tests.
 3. After Phase 3, **hunt variants**: for each confirmed 🔴/🟠 bug, spawn one `general-purpose` agent, `model: sonnet`, to Grep the whole repo for the same mistake and write any further sites as a bare JSON array of findings to `<packet>/variants-<n>.json`, with `reviewer: "variants"`. Run `collect.mjs --packet <packet> --add <file>`, spawn the verifiers it lists as in SKILL.md Phase 3, then run `collect.mjs --packet <packet> --verdicts` again.
 4. Run `campaign.mjs record --unit "<name>" --merged <packet>/merged.json`.
@@ -30,13 +30,13 @@ If context is running short before a step finishes, stop before `record`. An unr
 
 `campaign.mjs next` returns `kind: "cross-module"` once every unit is done.
 
-1. Run the full checks, with 10-minute timeouts.
+1. Start the saved review as in SKILL.md Phase 0.2, with `--campaign cross-module/<of>`, then run the full checks, with 10-minute timeouts.
 2. Spawn `09-api-contract` on `model: opus` and `04-consistency-history` on `model: sonnet`, with `map.md`, `rollup.json` (from `campaign.mjs rollup`) and each unit's exported entry points and manifests. Their bugs live where modules meet. They write findings to the packet as usual, then Phases 3 and 4 apply.
 3. Run `campaign.mjs record --unit "(cross-module)" --merged <packet>/merged.json`.
 
 ## Final report
 
-Run `campaign.mjs rollup` again and write the report in `references/report.md`'s layout, across every unit, from `rollup.json`. A root cause found in several units is one finding with all its sites. Scope lists every unit, the excluded files, and any unit still pending under `⚠️ PARTIAL REVIEW`. Nothing is pre-existing in a campaign, and there is no Already there section.
+Run `campaign.mjs rollup` again, start the saved review as in SKILL.md Phase 0.2 with `--campaign rollup/<of>`, finish it with `save.mjs finish --id <id> --merged <campaign>/rollup.json`, and write the report in `references/report.md`'s layout, across every unit, from `rollup.json`. A root cause found in several units is one finding with all its sites. Scope lists every unit, the excluded files, and any unit still pending under `⚠️ PARTIAL REVIEW`. Nothing is pre-existing in a campaign, and there is no Already there section.
 
 ## Differences from a diff review
 
