@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import belay from "@/components/belay/belay.module.css";
 import { Facts, type Fact } from "@/components/belay/facts";
@@ -20,14 +20,19 @@ import type { Decision, Finding } from "../../cli/state.ts";
 import type { ReviewDetail } from "../_lib/detail.server";
 import { decide, openReviewTerminal, track } from "../_lib/review-actions";
 import {
-  allNumbers,
   at,
   checkingSplit,
+  decisionChip,
   elapsed,
+  filterQuery,
   groups,
   kindLabel,
-  mustFixNumbers,
+  kindTabs,
+  nextUndecided,
+  overviewGroups,
+  parseFilter,
   parseView,
+  queueAllNumbers,
   reviewTitle,
   segments,
   sentence,
@@ -35,22 +40,24 @@ import {
   severityWord,
   shown,
   stageRows,
+  statusTabs,
   step,
   toFix,
   verdictLine,
   viewHash,
   walkStart,
   type Filter,
+  type Tab,
   type View,
 } from "../_lib/view";
 import { HunkView } from "./hunk";
-import { DoingIcon, Outline, TONE_DOT } from "./outline";
+import { DoingIcon, findingDot, Outline } from "./outline";
 import styles from "./review.module.css";
 
 // The Unfiled pseudo-project's key; `_lib/manifest.ts` is fine to import, but this keeps the client bundle lean.
 const UNFILED_KEY = "unfiled";
 
-// Until the Overview keeps a filter, the walk covers every finding.
+// Until the walk follows the Overview's filter, it covers every finding.
 const EVERY: Filter = { status: "all", kind: null };
 
 const subscribeHash = (cb: () => void) => {
@@ -62,6 +69,9 @@ const goTo = (v: View) => {
   const h = viewHash(v);
   if (location.hash !== h) location.hash = h;
 };
+
+/** Swaps the query and keeps the view hash; Next's router follows `replaceState`, so `useSearchParams` updates without a server round trip. */
+const replaceFilter = (f: Filter) => history.replaceState(null, "", `${location.pathname}${filterQuery(f)}${location.hash}`);
 
 const editable = (t: EventTarget | null) =>
   !!t && "tagName" in t && (/^(INPUT|TEXTAREA|SELECT)$/.test((t as Element).tagName) || (t as HTMLElement).isContentEditable);
@@ -119,6 +129,7 @@ export function ReviewWorkspace({ d }: { d: ReviewDetail }) {
   const running = review.status === "running";
   const hash = React.useSyncExternalStore(subscribeHash, () => location.hash, () => "");
   const view = running ? ({ kind: "overview" } as const) : parseView(hash, findings);
+  const filter = parseFilter(useSearchParams());
   const [outlineOpen, toggleOutline] = useOutlineOpen();
   const now = useNow(running);
   const [pending, startTransition] = React.useTransition();
@@ -228,7 +239,7 @@ export function ReviewWorkspace({ d }: { d: ReviewDetail }) {
             <FindingDock d={d} f={finding} queued={queued} a={actions} />
           </div>
         ) : (
-          <Overview d={d} queued={queued} a={actions} />
+          <Overview d={d} filter={filter} queued={queued} a={actions} />
         )}
         {!running && queued && !d.connected ? (
           <p className={styles.hint}>
@@ -425,7 +436,8 @@ function overviewFacts(d: ReviewDetail): Fact[] {
   ];
 }
 
-function Overview({ d, queued, a }: { d: ReviewDetail; queued: number; a: Actions }) {
+function Overview({ d, filter, queued, a }: { d: ReviewDetail; filter: Filter; queued: number; a: Actions }) {
+  const { findings, decisions } = d;
   const [selected, setSelected] = React.useState<Set<number>>(new Set());
   const [open, setOpen] = React.useState<number | null>(null);
   const pick = (n: number) =>
@@ -434,88 +446,149 @@ function Overview({ d, queued, a }: { d: ReviewDetail; queued: number; a: Action
       if (!next.delete(n)) next.add(n);
       return next;
     });
-  const list = groups(d.findings);
+  const changeFilter = (f: Filter) => {
+    setSelected(new Set());
+    setOpen(null);
+    replaceFilter(f);
+  };
+  const list = overviewGroups(findings, decisions, filter);
+  const walk = list.flatMap((g) => g.findings);
+  const queueAll = queueAllNumbers(findings, decisions, filter);
+  const unfiltered = filter.status === "all" && filter.kind == null;
+  /** Queue fix or Skip on an opened row: set, the row closes and the next undecided one opens; pressed again, it clears. */
+  const decideRow = (f: Finding, action: "fix" | "skip") => {
+    const setting = decisions[f.n]?.decision !== action;
+    a.toggle(f, action);
+    if (setting) setOpen(nextUndecided(walk, decisions, f.n));
+  };
+  const bulk = (action: "fix" | "skip") => {
+    a.decideOn([...selected], action);
+    setSelected(new Set());
+  };
+  const any = groups(findings).length > 0;
   return (
     <>
       <Facts facts={overviewFacts(d)} />
-      {list.length ? null : <p className={belay.empty}>No findings.</p>}
+      {any ? (
+        <div className={styles.tabs}>
+          <Tabs tabs={statusTabs(findings, decisions, filter)} to={(status) => ({ ...filter, status })} onPick={changeFilter} />
+          <Tabs tabs={kindTabs(findings, decisions, filter)} to={(kind) => ({ ...filter, kind })} onPick={changeFilter} className={styles.kindTabs}>
+            <Button variant="outline" size="sm" className={styles.queueAll} disabled={a.pending || !queueAll.length} onClick={() => a.decideOn(queueAll, "fix")}>
+              {unfiltered ? "Queue all" : `Queue ${queueAll.length} shown`}
+            </Button>
+          </Tabs>
+        </div>
+      ) : null}
+      {!any ? <p className={belay.empty}>No findings.</p> : list.length ? null : <p className={belay.empty}>No findings match.</p>}
       {list.map((g) => (
-        <GroupDetails key={g.label} id={`review-${g.label}`} label={g.label} count={g.findings.length} open defaultOpen>
+        <GroupDetails key={g.label} id={`review-${g.label}`} label={g.label} count={g.findings.length} open={!g.collapsed} defaultOpen={!g.collapsed}>
           <ul className={belay.rows}>
-            {g.findings.map((f) => (
-              <React.Fragment key={f.n}>
-                <li className={belay.row}>
-                  <input type="checkbox" className={cn(styles.check, belay.above)} checked={selected.has(f.n)} onChange={() => pick(f.n)} aria-label={`Select #${f.n}`} />
-                  <span className={belay.dotSlot}>
-                    <span className={cn(belay.dot, TONE_DOT[severityTone(f)])} aria-hidden />
-                  </span>
-                  <span className={belay.keyTitle}>
-                    <span className={cn(belay.key, styles.nkey)}>#{f.n}</span>
-                    <button type="button" className={cn(belay.grow, belay.stretch, styles.rowBtn)} aria-expanded={open === f.n} onClick={() => setOpen((o) => (o === f.n ? null : f.n))}>
-                      {f.title}
-                    </button>
-                  </span>
-                  <span className={cn(belay.side, styles.kind)}>{f.must_fix ? severityWord(f.severity) : kindLabel(f.kind)}</span>
-                  <code className={cn(belay.side, styles.at)}>{at(f)}</code>
-                </li>
-                {open === f.n ? (
-                  <li className={styles.inset}>
-                    <Detail d={d} f={f} />
-                    <div className={styles.insetActs}>
-                      <Button variant="subtle" size="sm" aria-pressed={d.decisions[f.n]?.decision === "fix"} disabled={a.pending} onClick={() => a.toggle(f, "fix")}>
-                        {d.decisions[f.n]?.decision === "fix" ? "To fix" : "Fix"}
-                      </Button>
-                      <span className={styles.actSep} />
-                      <AskButtons d={d} n={f.n} a={a} variant="outline" />
-                    </div>
+            {g.findings.map((f) => {
+              const dec = decisions[f.n];
+              const tone = severityTone(f);
+              return (
+                <React.Fragment key={f.n}>
+                  <li className={belay.row}>
+                    <input type="checkbox" className={cn(styles.check, belay.above)} checked={selected.has(f.n)} onChange={() => pick(f.n)} aria-label={`Select #${f.n}`} />
+                    <span className={belay.dotSlot} title={decisionChip(dec)?.text}>
+                      <span className={cn(belay.dot, findingDot(f, dec))} aria-hidden />
+                    </span>
+                    <span className={belay.keyTitle}>
+                      <span className={cn(belay.key, styles.nkey)}>#{f.n}</span>
+                      <button type="button" className={cn(belay.grow, belay.stretch, styles.rowBtn)} aria-expanded={open === f.n} onClick={() => setOpen((o) => (o === f.n ? null : f.n))}>
+                        {f.title}
+                      </button>
+                    </span>
+                    <span className={cn(belay.side, styles.kind)}>
+                      {f.must_fix ? <span className={cn(styles.chip, tone === "bad" ? styles.chipBad : styles.chipWarn)}>{severityWord(f.severity)}</span> : null}
+                      <span className={styles.chip}>{kindLabel(f.kind)}</span>
+                    </span>
                   </li>
-                ) : null}
-              </React.Fragment>
-            ))}
+                  {open === f.n ? (
+                    <li className={styles.inset}>
+                      <Detail d={d} f={f} />
+                      <div className={styles.insetActs}>
+                        <Button variant="subtle" size="sm" aria-pressed={dec?.decision === "fix"} disabled={a.pending} onClick={() => decideRow(f, "fix")}>
+                          {dec?.decision === "fix" ? "Queued" : "Queue fix"}
+                        </Button>
+                        <Button variant="outline" size="sm" aria-pressed={dec?.decision === "skip"} disabled={a.pending} onClick={() => decideRow(f, "skip")}>
+                          {dec?.decision === "skip" ? "Skipped" : "Skip"}
+                        </Button>
+                        <span className={styles.actSep} />
+                        <AskButtons d={d} n={f.n} a={a} variant="outline" />
+                      </div>
+                    </li>
+                  ) : null}
+                </React.Fragment>
+              );
+            })}
           </ul>
         </GroupDetails>
       ))}
-      {list.length ? (
+      {any ? (
         <div className={styles.dock}>
           <span className={styles.dockN}>{selected.size} selected</span>
           <Button variant="ghost" size="sm" disabled={!selected.size} onClick={() => setSelected(new Set())}>
             Clear
           </Button>
           <span className={styles.dockSep} />
-          <Button variant="outline" size="sm" disabled={a.pending || !d.counts.mustFix} onClick={() => a.decideOn(mustFixNumbers(d.findings), "fix")}>
-            Fix must-fix
+          <Button variant="outline" size="sm" disabled={a.pending || !selected.size} onClick={() => bulk("fix")}>
+            Queue fix
           </Button>
-          <Button variant="outline" size="sm" disabled={a.pending} onClick={() => a.decideOn(allNumbers(d.findings), "fix")}>
-            Fix all
+          <Button variant="outline" size="sm" disabled={a.pending || !selected.size} onClick={() => bulk("skip")}>
+            Skip
           </Button>
-          <Button
-            size="sm"
-            disabled={a.pending || !selected.size}
-            onClick={() => {
-              a.decideOn([...selected], "fix");
-              setSelected(new Set());
-            }}
-          >
-            Fix selected
-          </Button>
-          {queued ? <ApplyPart d={d} queued={queued} a={a} /> : null}
+          <span className={styles.dockSep} />
+          <ApplyButton d={d} queued={queued} a={a} />
         </div>
       ) : null}
     </>
   );
 }
 
-function ApplyPart({ d, queued, a }: { d: ReviewDetail; queued: number; a: Actions }) {
+/** A row of filter pills; each links to its filter, swapped in place on a plain click. */
+function Tabs<K>({
+  tabs,
+  to,
+  onPick,
+  className,
+  children,
+}: {
+  tabs: Tab<K>[];
+  to: (key: K) => Filter;
+  onPick: (f: Filter) => void;
+  className?: string;
+  children?: React.ReactNode;
+}) {
   return (
-    <>
-      <span className={styles.dockSep} />
-      <span className={styles.dockN}>
-        <b>{queued}</b> to fix
-      </span>
-      <Button size="sm" disabled={a.pending || !queued} onClick={a.apply}>
-        {d.connected ? "Apply fixes" : "Open terminal and apply"}
-      </Button>
-    </>
+    <div className={cn(belay.filter, className)} role="tablist">
+      {tabs.map((t) => (
+        <a
+          key={String(t.key)}
+          href={`${filterQuery(to(t.key)) || "?"}#overview`}
+          role="tab"
+          aria-selected={t.on}
+          className={cn(belay.pill, t.on && belay.pillOn)}
+          onClick={(e) => {
+            if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            e.preventDefault();
+            onPick(to(t.key));
+          }}
+        >
+          {t.label}
+          <span className={belay.count}>{t.count}</span>
+        </a>
+      ))}
+      {children}
+    </div>
+  );
+}
+
+function ApplyButton({ d, queued, a }: { d: ReviewDetail; queued: number; a: Actions }) {
+  return (
+    <Button size="sm" disabled={a.pending || !queued} title={d.connected ? undefined : "Opens a terminal to apply them"} onClick={a.apply}>
+      Apply {queued} {queued === 1 ? "fix" : "fixes"}
+    </Button>
   );
 }
 
@@ -578,7 +651,7 @@ function FindingDock({ d, f, queued, a }: { d: ReviewDetail; f: Finding; queued:
   return (
     <div className={styles.dock}>
       <Button variant="subtle" size="sm" aria-pressed={dec?.decision === "fix"} disabled={a.pending} onClick={() => a.toggle(f, "fix")}>
-        {dec?.decision === "fix" ? "To fix" : "Fix"}
+        {dec?.decision === "fix" ? "Queued" : "Queue fix"}
         <Kbd k="F" />
       </Button>
       <Button variant="outline" size="sm" aria-pressed={dec?.decision === "skip"} disabled={a.pending} onClick={() => a.toggle(f, "skip")}>
@@ -598,12 +671,7 @@ function FindingDock({ d, f, queued, a }: { d: ReviewDetail; f: Finding; queued:
       <span className={styles.dockSep} />
       <AskButtons d={d} n={f.n} a={a} variant="ghost" />
       <span className={styles.dockSep} />
-      <span className={styles.dockN}>
-        <b>{queued}</b> to fix
-      </span>
-      <Button size="sm" disabled={a.pending || !queued} onClick={a.apply}>
-        {d.connected ? "Apply fixes" : "Open terminal and apply"}
-      </Button>
+      <ApplyButton d={d} queued={queued} a={a} />
     </div>
   );
 }

@@ -9,12 +9,26 @@ import { SidePane } from "@/components/layout/side-pane";
 import { tip } from "@/components/layout/side-tip";
 import { useNav } from "@/components/layout/site-nav";
 import { cn } from "@/lib/utils";
-import type { Checking, Decisions, Finding } from "../../cli/state.ts";
-import { checkingSplit, decisionChip, groups, severityTone, type Tone, type View } from "../_lib/view";
+import type { Checking, DecisionEntry, Decisions, Finding } from "../../cli/state.ts";
+import { checkingSplit, decisionChip, groups, severityTone, statusOf, type Status, type Tone, type View } from "../_lib/view";
 import { ReviewIcon } from "./mark";
 import styles from "./review.module.css";
 
 export const TONE_DOT: Record<Tone, string> = { bad: styles.dotBad, warn: styles.dotWarn, quiet: styles.dotQuiet };
+
+const STATUS_DOT: Record<Exclude<Status, "undecided">, string> = {
+  fix: styles.dotQueued,
+  fixed: styles.dotOk,
+  manual: styles.dotWarn,
+  skip: styles.dotSkip,
+  track: styles.dotTrack,
+};
+
+/** A finding's dot: its severity while undecided, else its status (a hollow ring while queued to fix). */
+export function findingDot(f: Finding, entry: DecisionEntry | undefined): string {
+  const s = statusOf(entry);
+  return s === "undecided" ? TONE_DOT[severityTone(f)] : STATUS_DOT[s];
+}
 
 type Props = {
   title: string;

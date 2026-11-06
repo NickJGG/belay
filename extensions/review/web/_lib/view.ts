@@ -189,10 +189,6 @@ export const queueAllNumbers = (findings: readonly Finding[], decisions: Decisio
     .filter((f) => !["fix", "fixed"].includes(statusOf(decisions[f.n])))
     .map((f) => f.n);
 
-/** Bulk decisions from the dock: every must-fix finding, or every listed one. */
-export const mustFixNumbers = (findings: readonly Finding[]): number[] => findings.filter((f) => f.must_fix).map((f) => f.n);
-export const allNumbers = (findings: readonly Finding[]): number[] => listed(findings).map((f) => f.n);
-
 /** Fix decisions with no outcome yet: what Apply would run. */
 export const toFix = (decisions: Decisions): number =>
   Object.values(decisions).filter((d) => d.decision === "fix" && !d.outcome).length;
