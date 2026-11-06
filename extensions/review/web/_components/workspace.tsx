@@ -6,6 +6,7 @@ import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import belay from "@/components/belay/belay.module.css";
 import { Facts, type Fact } from "@/components/belay/facts";
 import { GroupDetails } from "@/components/belay/group-details";
+import { NotePopover } from "@/components/belay/note-popover";
 import { StatusIcon } from "@/components/belay/status-icon";
 import { toast, toastError } from "@/components/belay/toaster";
 import { PageCommands, type PageCommand } from "@/components/layout/palette";
@@ -115,7 +116,8 @@ type Actions = {
   decideOn: (ns: number[], action: Exclude<Decision, "track"> | "clear") => void;
   toggle: (f: Finding, action: "fix" | "skip") => void;
   trackOn: (n: number) => void;
-  ask: (kind: "ask" | "investigate" | "tests", n: number) => void;
+  /** Resolves whether the message was sent. */
+  ask: (kind: "ask" | "investigate" | "tests", n: number, question?: string) => Promise<boolean>;
   apply: () => void;
 };
 
@@ -157,9 +159,15 @@ export function ReviewWorkspace({ d }: { d: ReviewDetail }) {
         await tell({ kind: "track", n, ...(r.issue && { issue: r.issue }) });
         router.refresh();
       }),
-    ask: (kind, n) => {
-      if (!d.connected) return toastError(reattach);
-      void sendTo(id, { kind, n }).then((err) => (err ? toastError(err) : toast(kind === "ask" ? `Asked about #${n} in the Drawer` : `Sent ${kind === "tests" ? "Write test" : "Investigate"} for #${n}`)));
+    ask: async (kind, n, question) => {
+      if (!d.connected) {
+        toastError(reattach);
+        return false;
+      }
+      const err = await sendTo(id, { kind, n, ...(question && { question }) });
+      if (err) toastError(err);
+      else toast(kind === "ask" ? `Asked about #${n} in the Drawer` : `Sent ${kind === "tests" ? "Write test" : "Investigate"} for #${n}`);
+      return !err;
     },
     apply: () =>
       startTransition(async () => {
@@ -603,17 +611,37 @@ function ApplyButton({ d, queued, a }: { d: ReviewDetail; queued: number; a: Act
   );
 }
 
+/** Ask opens a question field; sent empty, the skill asks its default question. */
+function AskButton({ d, n, a, variant }: { d: ReviewDetail; n: number; a: Actions; variant: "outline" | "ghost" }) {
+  const [open, setOpen] = React.useState(false);
+  const close = React.useCallback(() => setOpen(false), []);
+  return (
+    <NotePopover
+      open={open && d.connected}
+      onClose={close}
+      label="Ask"
+      title={`Ask about #${n}`}
+      placeholder="Why does this happen and how would you fix it?"
+      submitLabel={() => "Ask"}
+      onSubmit={(q) => a.ask("ask", n, q || undefined)}
+      trigger={
+        <Button variant={variant} size="sm" disabled={!d.connected} title={d.connected ? undefined : "No terminal attached"} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          Ask
+        </Button>
+      }
+    />
+  );
+}
+
 function AskButtons({ d, n, a, variant }: { d: ReviewDetail; n: number; a: Actions; variant: "outline" | "ghost" }) {
   const off = d.connected ? undefined : "No terminal attached";
   return (
     <>
-      <Button variant={variant} size="sm" disabled={!d.connected} title={off} onClick={() => a.ask("ask", n)}>
-        Ask
-      </Button>
-      <Button variant={variant} size="sm" disabled={!d.connected} title={off ?? "Opus traces callers and the root cause, and proposes 2–3 fixes. Read-only."} onClick={() => a.ask("investigate", n)}>
+      <AskButton d={d} n={n} a={a} variant={variant} />
+      <Button variant={variant} size="sm" disabled={!d.connected} title={off ?? "Opus traces callers and the root cause, and proposes 2–3 fixes. Read-only."} onClick={() => void a.ask("investigate", n)}>
         Investigate
       </Button>
-      <Button variant={variant} size="sm" disabled={!d.connected} title={off} onClick={() => a.ask("tests", n)}>
+      <Button variant={variant} size="sm" disabled={!d.connected} title={off} onClick={() => void a.ask("tests", n)}>
         Write test
       </Button>
     </>

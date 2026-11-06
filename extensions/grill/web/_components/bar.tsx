@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Columns2, Menu, MessageSquarePlus, Monitor, Smartphone } from "lucide-react";
+import { NotePopover } from "@/components/belay/note-popover";
 import { Popover } from "@/components/ui/popover";
 import { BEFORE, families, statusChip, type Controls, type Opt, type Question } from "../_lib/session-doc";
 import { cn } from "@/lib/utils";
@@ -25,27 +26,18 @@ export type CommentProps = { on: boolean; disabled: boolean; why?: string; onTog
 
 /** Pick opens a note field: Enter picks, a note ("but grey") is an amendment the skill makes a Yours variant of. */
 function PickButton({ pick }: { pick: PickProps }) {
-  const [note, setNote] = React.useState("");
-  const [busy, setBusy] = React.useState(false);
   // Stable while the page re-renders (onOpen is a state setter), or the open popover would re-mount.
   const { onOpen } = pick;
   const close = React.useCallback(() => onOpen(false), [onOpen]);
-  const submit = async () => {
-    if (busy) return;
-    setBusy(true);
-    const ok = await pick.onPick(note.trim());
-    setBusy(false);
-    if (ok) {
-      setNote("");
-      close();
-    }
-  };
   return (
-    <Popover
+    <NotePopover
       open={pick.open && !pick.disabled}
       onClose={close}
       label="Pick"
-      focus="textarea"
+      title={`Pick ${pick.what}`}
+      placeholder="Add a note (optional), e.g. “but grey”"
+      submitLabel={(note) => (note ? "Pick with note" : "Pick")}
+      onSubmit={pick.onPick}
       trigger={
         <button
           type="button"
@@ -58,37 +50,7 @@ function PickButton({ pick }: { pick: PickProps }) {
           {pick.label}
         </button>
       }
-    >
-      <form
-        className={styles.pickForm}
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-      >
-        <b>Pick {pick.what}</b>
-        <textarea
-          value={note}
-          rows={3}
-          placeholder="Add a note (optional), e.g. “but grey”"
-          onChange={(e) => setNote(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              void submit();
-            }
-          }}
-        />
-        <span className={styles.pickActs}>
-          <button type="button" className={cn(shared.btn, styles.btn)} onClick={close}>
-            Cancel
-          </button>
-          <button type="submit" className={cn(shared.btn, styles.btn, shared.primary)} disabled={busy}>
-            {note.trim() ? "Pick with note" : "Pick"}
-          </button>
-        </span>
-      </form>
-    </Popover>
+    />
   );
 }
 

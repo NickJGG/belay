@@ -1110,34 +1110,6 @@ a.chip:hover {
   color: var(--faint);
 }
 
-.pickForm {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  width: min(340px, 80vw);
-}
-
-.pickForm textarea {
-  resize: vertical;
-  padding: 8px 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-md);
-  background: var(--bg);
-  color: var(--text);
-  line-height: var(--leading-normal);
-}
-
-.pickForm textarea:focus {
-  outline: 0;
-  border-color: var(--ring);
-}
-
-.pickActs {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-
 /* ---------- grill page ---------- */
 
 /* The issue page's spacing, 24px at the sides and top; the outlined bar and the mock frame share its edges. */
