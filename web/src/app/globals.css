@@ -48,12 +48,14 @@
   --brand-2: oklch(0.82 0.13 50);
   --brand-hover: color-mix(in srgb, var(--brand) 86%, var(--bg));
   --brand-fg: #170d21;
-  --brand-gradient: linear-gradient(90deg, var(--brand), var(--brand-2));
+  /* `background` shorthand only (border-box paints under the transparent border); not valid in background-image. */
+  --brand-gradient: linear-gradient(90deg, var(--brand), var(--brand-2)) border-box;
   --brand-gradient-hover: linear-gradient(
-    90deg,
-    var(--brand-hover),
-    color-mix(in srgb, var(--brand-2) 86%, var(--bg))
-  );
+      90deg,
+      var(--brand-hover),
+      color-mix(in srgb, var(--brand-2) 86%, var(--bg))
+    )
+    border-box;
 
   /* ink: primary actions and selection */
   --accent: var(--text);

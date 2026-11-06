@@ -166,6 +166,11 @@ function route() { return '/x'; }`;
     assert.match(html, /<body><i>x<\/i><\/body>/);
   });
 
+  test("frameDoc leaves html's background to the body, so it paints the whole frame", () => {
+    const html = frameDoc({ body: "", theme: "light", styles: [] });
+    assert.doesNotMatch(html, /html\s*\{[^}]*background/);
+  });
+
   test("fitDesktop scales below the floor only", () => {
     assert.deepEqual(fitDesktop(640, 1280), { width: 1280, scale: 0.5 });
     assert.deepEqual(fitDesktop(1600, 1280), { width: 1600, scale: 1 });
