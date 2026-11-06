@@ -36,7 +36,6 @@ import {
   pinned,
   queueAllNumbers,
   reviewTitle,
-  segments,
   sentence,
   severityTone,
   severityWord,
@@ -247,7 +246,7 @@ export function ReviewWorkspace({ d }: { d: ReviewDetail }) {
       ) : finding ? (
         <FindingBar d={d} f={finding} walk={walk} />
       ) : (
-        <OverviewBar d={d} title={title} walk={walk} start={start} />
+        <OverviewBar d={d} title={title} start={start} />
       )}
       <div className={styles.canvas}>
         {running ? (
@@ -293,17 +292,19 @@ function ReviewSlot({ d, pane }: { d: ReviewDetail; pane: React.ReactNode }) {
   return <ShellSlot project={project} section="Reviews" pane={pane} glow={d.mark ? projectColor(d.mark) : undefined} />;
 }
 
-function Segs({ d, walk, current }: { d: ReviewDetail; walk: Finding[]; current: number | null }) {
-  return (
-    <span className={styles.segs} aria-hidden>
-      {segments(walk, d.decisions, current).map((s, i) => (
-        <i key={i} className={styles[`seg-${s}`]} />
-      ))}
-    </span>
-  );
-}
-
-function Bar({ badge, title, chips, note, children }: { badge?: string; title: string; chips: React.ReactNode; note: React.ReactNode; children: React.ReactNode }) {
+function Bar({
+  badge,
+  title,
+  chips,
+  note,
+  children,
+}: {
+  badge?: string;
+  title: string;
+  chips: React.ReactNode;
+  note: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className={styles.bar}>
       <div className={styles.top}>
@@ -348,7 +349,7 @@ function RunningBar({ d, title, now }: { d: ReviewDetail; title: string; now: nu
   );
 }
 
-function OverviewBar({ d, title, walk, start }: { d: ReviewDetail; title: string; walk: Finding[]; start: number | null }) {
+function OverviewBar({ d, title, start }: { d: ReviewDetail; title: string; start: number | null }) {
   const { review } = d;
   const must = d.counts.mustFix;
   const note = [
@@ -366,7 +367,6 @@ function OverviewBar({ d, title, walk, start }: { d: ReviewDetail; title: string
       chips={must ? <span className={cn(styles.chip, styles.chipBad)}>{must} must-fix</span> : <span className={cn(styles.chip, styles.chipOk)}>Nothing must be fixed</span>}
       note={note}
     >
-      <Segs d={d} walk={walk} current={null} />
       <button
         type="button"
         className={cn(shared.btn, styles.btn)}
@@ -409,7 +409,6 @@ function FindingBar({ d, f, walk }: { d: ReviewDetail; f: Finding; walk: Finding
           {i + 1} of {walk.length}
         </span>
       )}
-      <Segs d={d} walk={walk} current={f.n} />
       <span className={styles.nav}>
         <Button variant="ghost" size="icon-sm" title="Previous (K)" aria-label="Previous finding" disabled={prev == null} onClick={() => prev != null && goTo({ kind: "finding", n: prev })}>
           <ChevronLeft size={16} aria-hidden />

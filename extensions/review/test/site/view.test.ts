@@ -21,7 +21,6 @@ import {
   queueAllNumbers,
   parseView,
   reviewRow,
-  segments,
   sentence,
   shown,
   statusOf,
@@ -88,12 +87,6 @@ test("walking goes in group order, starting at the first undecided must-fix", ()
   assert.equal(step(shown(findings, {}, ALL), 6, 1), 3);
   assert.equal(step(shown(findings, {}, ALL), 1, -1), null);
   assert.equal(step(shown(findings, {}, ALL), 4, 1), null);
-});
-
-test("segments mark decided, tracked, open and the current finding", () => {
-  const d: Decisions = { 1: { decision: "fix", ...at }, 3: { decision: "track", issue: "BEL-9", ...at } };
-  assert.deepEqual(segments(shown(findings, d, ALL), d, 2), ["now", "open", "open", "decided", "track"]);
-  assert.deepEqual(segments(shown(findings, d, { status: "undecided", kind: null }), d, 2), ["now", "open", "open"]);
 });
 
 test("decision chips: to fix, fixed, manual, skipped, tracked", () => {
@@ -335,7 +328,6 @@ test("a finding decided while open keeps its place in the walk", () => {
     [1, 6, 4],
   );
   assert.equal(step(shown(mixed, walk, undecided), 1, 1), 6);
-  assert.deepEqual(segments(shown(mixed, walk, undecided), now, 6), ["decided", "now", "open"]);
   assert.deepEqual(pinned(now, 2, { decision: "skip", ...at })[2], { decision: "skip", ...at });
   assert.equal(now[1].decision, "fix");
 });

@@ -1,6 +1,5 @@
 /**
- * What the review pages show, worked out from a saved review: finding groups, decision chips, progress segments,
- * the list's rows and filters, the stage timeline. Pure: no fs, no `@/`, so `test/site/` runs it and client
+ * What the review pages show, worked out from a saved review: finding groups, decision chips, the list's rows and filters, the stage timeline. Pure: no fs, no `@/`, so `test/site/` runs it and client
  * components may import it.
  */
 import { campaignLabel, reviewCounts, type Checking, type DecisionEntry, type Decisions, type Finding, type Review, type ReviewState, type Stage } from "../../cli/state.ts";
@@ -148,17 +147,6 @@ export function overviewGroups(findings: readonly Finding[], decisions: Decision
 /** The findings the page walks through under a filter, in Overview order. */
 export const shown = (findings: readonly Finding[], decisions: Decisions, filter: Filter): Finding[] =>
   overviewGroups(findings, decisions, filter).flatMap((g) => g.findings);
-
-export type Segment = "decided" | "track" | "open" | "now";
-
-/** The bar's progress segments, one per finding of a walk: decided (fix or skip), tracked, still open, or the one open. */
-export function segments(list: readonly Finding[], decisions: Decisions, current: number | null): Segment[] {
-  return list.map((f) => {
-    if (f.n === current) return "now";
-    const s = statusOf(decisions[f.n]);
-    return s === "undecided" ? "open" : s === "track" ? "track" : "decided";
-  });
-}
 
 /**
  * Decisions with finding `n`'s entry put back to `entry`, the one it had when it was opened, so deciding it there
